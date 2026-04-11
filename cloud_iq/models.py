@@ -141,7 +141,7 @@ class RecommendationsResponse(BaseModel):
 class NLQueryRequest(BaseModel):
     """POST /query request body."""
 
-    question: str = Field(...)
+    question: str = Field(..., min_length=5)
     session_id: str | None = None
     include_supporting_data: bool = True
 
