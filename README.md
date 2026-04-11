@@ -33,6 +33,25 @@ This platform closes all four gaps.
 
 ---
 
+## How We Compare
+
+| Feature | enterprise-ai-accelerator | AgentLedger | AIR Blackbox | ai-trace-auditor | Aulite | Langfuse | Credo AI |
+|---------|--------------------------|-------------|--------------|------------------|--------|----------|----------|
+| EU AI Act Art.12 | Yes (full) | Yes | Yes (6 articles) | Yes (Art.11-13,25) | Yes | No | Yes |
+| SARIF 2.1.0 export | Yes | No | No | No | No | No | No |
+| OpenTelemetry | Yes (native) | No | Yes (proxy) | Yes (consumer) | No | Yes (v3) | No |
+| Tamper-proof chain | SHA-256 Merkle | SHA-256 SQLite | HMAC-SHA256 | No | No | No | Unknown |
+| Python SDK | Yes | Yes | Yes | CLI only | No (TypeScript) | Yes | SaaS |
+| Streamlit UI | Yes | No | No | No | No | Yes (web) | Yes (SaaS) |
+| Test suite | 418 tests | Unknown | Unknown | Unknown | Unknown | Yes | N/A |
+| License | MIT | MIT | Apache 2.0 | Unknown | Unknown | MIT (core) | Proprietary |
+| Cost | Free | Free | Free | Free | Free | Free (self-host) | $50K+/yr |
+| GitHub stars | New | ~5 | 12 | ~10 | 26 | 24,677 | N/A |
+
+The SARIF 2.1.0 + OpenTelemetry + Article 12 combination is unique in the open-source ecosystem. No other tool produces GitHub Security tab-compatible compliance findings while also generating OTEL traces for enterprise observability stacks. Commercial alternatives like Credo AI and Holistic AI cover compliance but cost $50K–$500K/year and are closed-source.
+
+---
+
 ## Architecture
 
 The Risk Aggregator is the connective layer. Each module produces structured output; the aggregator weights them into a single executive-level score with a three-sentence narrative.

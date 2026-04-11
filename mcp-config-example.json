@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "enterprise-ai-accelerator": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "cwd": "/path/to/enterprise-ai-accelerator"
+    }
+  }
+}
