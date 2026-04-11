@@ -2,11 +2,18 @@
 integrations/aws_migration_hub.py — AWS Migration Hub Integration
 =================================================================
 
-Registers workload assessments with AWS Migration Hub.
+.. deprecated::
+   AWS Migration Hub was CLOSED TO NEW CUSTOMERS on November 7, 2025.
+   AWS Transform (its stated replacement) covers .NET and mainframe code
+   modernization only — it does NOT provide general-purpose 6R classification,
+   dependency mapping, or wave planning.
 
-NOTE: AWS Migration Hub was closed to NEW customers on November 15, 2025.
-Existing customers retain access. This module demonstrates the API structure
-for portfolio/interview purposes and works fully in dry-run mode.
+   For new deployments use the CloudQuery backend instead:
+     from migration_scout.integrations.cloudquery_backend import CloudQueryBackend
+
+   This module is retained for existing Migration Hub customers and to
+   demonstrate the API structure. It operates fully in dry-run mode when
+   no AWS credentials are present.
 
 Environment variables:
   AWS_REGION          — e.g., "us-east-1"
@@ -14,6 +21,15 @@ Environment variables:
   AWS_SECRET_ACCESS_KEY — AWS credentials
   MIG_HUB_HOME_REGION — AWS account home region for Migration Hub
 """
+
+import warnings
+
+warnings.warn(
+    "AWS Migration Hub closed to new customers on November 7, 2025. "
+    "Use migration_scout.integrations.cloudquery_backend.CloudQueryBackend instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 from __future__ import annotations
 

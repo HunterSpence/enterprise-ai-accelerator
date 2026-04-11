@@ -943,6 +943,24 @@ async def run_demo(
     skip_report: bool = False,
     fast: bool = False,
 ) -> None:
+    # Competitive positioning banner — unique OSS capabilities
+    console.print()
+    console.print(Panel(
+        "\n"
+        "  [bold white]finops_intelligence[/] \u2014 FOCUS 1.3 Compliant FinOps Engine\n\n"
+        "  [bold bright_green]\u2713[/] FOCUS 1.3 export  "
+        "[dim](only OSS tool with full spec compliance)[/]\n"
+        "  [bold bright_green]\u2713[/] AI/LLM cost tracking in FOCUS format  "
+        "[dim](unique in OSS)[/]\n"
+        "  [bold bright_green]\u2713[/] Multi-cloud: AWS + Azure + GCP normalization\n"
+        "  [bold bright_green]\u2713[/] Parquet export  [dim](FOCUS 1.4 ready)[/]\n"
+        "  [bold bright_green]\u2713[/] Anomaly detection + AI CFO narrative reports\n",
+        border_style="bright_blue",
+        width=70,
+        padding=(0, 1),
+    ))
+    _pause(0.3, fast)
+
     console.print()
     console.print(Panel(
         f"\n  [bold white]{COMPANY}[/]\n"

@@ -31,6 +31,7 @@ from agent_ops.agents import (
     MigrationAgent,
     ReportAgent,
 )
+from agent_ops.otel_tracer import AgentOpsTracer
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +113,7 @@ class Orchestrator:
         self,
         client: anthropic.AsyncAnthropic,
         on_activity: Callable[[AgentActivity], None] | None = None,
+        tracer: AgentOpsTracer | None = None,
     ) -> None:
         self._client = client
         self._on_activity = on_activity or (lambda _: None)
@@ -119,6 +121,8 @@ class Orchestrator:
         self._mig_agent = MigrationAgent(client)
         self._comp_agent = ComplianceAgent(client)
         self._report_agent = ReportAgent(client)
+        # OpenTelemetry tracer — optional, defaults to console export for demos
+        self._tracer = tracer or AgentOpsTracer(export_mode="console")
 
     async def run_pipeline(
         self, task: str, config: dict[str, Any]
@@ -143,6 +147,10 @@ class Orchestrator:
         # Step 1: Coordinator plans the work
         # ------------------------------------------------------------------
         log("Coordinator", "started", f"Task: {task}")
+        pipeline_span = self._tracer.start_span(
+            "agentops.pipeline",
+            attributes={"agent_ops.pipeline.task": task},
+        )
         coordinator_plan = await self._coordinator_plan(task, config)
         log("Coordinator", "completed", "Work plan generated")
 
@@ -157,6 +165,11 @@ class Orchestrator:
         mig_payload = {"workload_inventory": config.get("workload_inventory", [])}
         comp_payload = {"iac_config": config.get("iac_config", {})}
 
+        # Create per-agent spans (child spans of pipeline span)
+        arch_span = self._tracer.trace_agent("ArchitectureAgent", parent_span=pipeline_span)
+        mig_span = self._tracer.trace_agent("MigrationAgent", parent_span=pipeline_span)
+        comp_span = self._tracer.trace_agent("ComplianceAgent", parent_span=pipeline_span)
+
         arch_result, mig_result, comp_result = await asyncio.gather(
             self._run_agent(self._arch_agent, arch_payload),
             self._run_agent(self._mig_agent, mig_payload),
@@ -164,11 +177,13 @@ class Orchestrator:
             return_exceptions=False,
         )
 
-        for result, name in [
-            (arch_result, "ArchitectureAgent"),
-            (mig_result, "MigrationAgent"),
-            (comp_result, "ComplianceAgent"),
+        for result, name, span in [
+            (arch_result, "ArchitectureAgent", arch_span),
+            (mig_result, "MigrationAgent", mig_span),
+            (comp_result, "ComplianceAgent", comp_span),
         ]:
+            self._tracer.record_agent_result(span, result)
+            self._tracer.finish_span(span)
             if result.status == AgentStatus.DONE:
                 log(name, "completed", f"{len(result.findings)} findings")
             else:
@@ -178,6 +193,7 @@ class Orchestrator:
         # Step 3: Report agent synthesizes the analysis results
         # ------------------------------------------------------------------
         log("ReportAgent", "started", "Synthesizing executive briefing")
+        report_span = self._tracer.trace_agent("ReportAgent", parent_span=pipeline_span)
 
         report_payload = {
             "task": task,
@@ -186,6 +202,8 @@ class Orchestrator:
             "compliance_result": comp_result,
         }
         report_result = await self._run_agent(self._report_agent, report_payload)
+        self._tracer.record_agent_result(report_span, report_result)
+        self._tracer.finish_span(report_span)
 
         if report_result.status == AgentStatus.DONE:
             log("ReportAgent", "completed", "Executive briefing ready")
@@ -218,6 +236,13 @@ class Orchestrator:
         report_meta = report_result.metadata if report_result.status == AgentStatus.DONE else {}
 
         log("Coordinator", "completed", f"Pipeline {pipeline_status} — {total_findings} total findings")
+
+        # Finish root pipeline span
+        self._tracer.record_pipeline_result(pipeline_span, None)  # pre-result finish
+        pipeline_span.set_attribute("agent_ops.pipeline.status", pipeline_status)
+        pipeline_span.set_attribute("agent_ops.pipeline.total_findings", total_findings)
+        pipeline_span.set_attribute("agent_ops.pipeline.duration_s", round(time.monotonic() - pipeline_start, 3))
+        self._tracer.finish_span(pipeline_span)
 
         return PipelineResult(
             task=task,

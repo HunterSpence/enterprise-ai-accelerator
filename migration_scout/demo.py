@@ -9,6 +9,12 @@ Runs the full RetailCo V2 scenario:
   $1.2M 3-year net savings, 14-month payback
   Climax: CRITICAL DEPENDENCY LOOP → SCC resolution → containerize-first workaround
 
+MARKET CONTEXT:
+  AWS Migration Hub closed to new customers on November 7, 2025.
+  AWS Transform (its replacement) focuses only on .NET and mainframe code modernization —
+  it does NOT provide general-purpose 6R classification, dependency mapping, or wave planning.
+  MigrationScout is the only open-source, AI-native tool filling this gap.
+
 Run:
   python -m migration_scout.demo
   python -m migration_scout.demo --no-ai   # skip Claude API calls
@@ -164,11 +170,27 @@ def _build_retailco_inventory() -> list[WorkloadInventory]:
 
 def _print_banner() -> None:
     console.print()
-    console.print(Panel.fit(
-        "[bold white]MigrationScout V2[/bold white]  [dim]Enterprise Cloud Migration Platform[/dim]\n"
-        "[dim]RetailCo — 75 workloads · $2.1B revenue · 340 stores[/dim]",
-        border_style="blue",
-        padding=(0, 4),
+    console.print(Panel(
+        "[bold white]migration_scout[/bold white] — AI-Native Cloud Migration Assessment\n\n"
+        "  [bold green]✓[/bold green] Monte Carlo wave planning [dim](P50 / P80 / P90 confidence bands)[/dim]\n"
+        "  [bold green]✓[/bold green] Multi-cloud: [cyan]AWS[/cyan], [blue]Azure[/blue], [yellow]GCP[/yellow]\n"
+        "  [bold green]✓[/bold green] Natural language 6R recommendations via Claude AI\n"
+        "  [bold green]✓[/bold green] Open source [dim](MIT)[/dim] — no $150K assessment fee\n"
+        "  [bold green]✓[/bold green] CloudQuery integration for live infrastructure discovery",
+        title="[bold cyan]enterprise-ai-accelerator[/bold cyan]",
+        border_style="cyan",
+        padding=(0, 2),
+    ))
+    console.print(Panel(
+        "[bold yellow]Market Context:[/bold yellow] "
+        "[red]AWS Migration Hub closed to new customers on November 7, 2025.[/red] "
+        "AWS Transform (replacement) covers .NET/mainframe code only — "
+        "no 6R classification, dependency mapping, or wave planning.\n"
+        "[bold green]MigrationScout is the only open-source, AI-native replacement.[/bold green]\n\n"
+        "[dim]Competitors scored 0/5 on: open source · AI-native 6R · multi-cloud · "
+        "Monte Carlo planning · CloudQuery integration[/dim]",
+        border_style="yellow",
+        padding=(0, 2),
     ))
     console.print()
 

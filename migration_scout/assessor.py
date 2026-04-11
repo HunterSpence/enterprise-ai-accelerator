@@ -112,6 +112,8 @@ class WorkloadInventory:
     containerized: bool = False
     team_size: int = 5
     notes: str = ""
+    # Multi-cloud: "aws" | "azure" | "gcp" — controls target service recommendations
+    cloud_provider: str = "aws"
 
     def to_dict(self) -> dict[str, Any]:
         return {k: v for k, v in self.__dict__.items()}
@@ -460,6 +462,10 @@ def _rule_based_classify(w: WorkloadInventory) -> tuple[MigrationStrategy, int, 
 # ---------------------------------------------------------------------------
 
 def _estimate_target_service(strategy: MigrationStrategy, w: WorkloadInventory) -> str:
+    """
+    Recommend a target cloud service for the given strategy + workload.
+    Supports AWS (default), Azure, and GCP.
+    """
     if strategy == MigrationStrategy.RETIRE:
         return "Decommission"
     if strategy == MigrationStrategy.RETAIN:
@@ -472,32 +478,99 @@ def _estimate_target_service(strategy: MigrationStrategy, w: WorkloadInventory) 
                 return v
         return "SaaS Replacement"
 
-    if w.workload_type == "database":
-        db_map = {
-            "mysql": "RDS Aurora MySQL", "postgresql": "RDS Aurora PostgreSQL",
-            "mssql": "RDS SQL Server", "oracle": "RDS Oracle / Aurora PostgreSQL (migration)",
-            "mongodb": "DocumentDB / MongoDB Atlas", "redis": "ElastiCache Redis",
-            "cassandra": "Amazon Keyspaces",
-        }
-        return db_map.get(w.database_type or "", "RDS Managed DB")
+    provider = getattr(w, "cloud_provider", "aws").lower()
 
-    if strategy == MigrationStrategy.REFACTOR:
-        if w.workload_type in ("web_app", "microservice"):
-            return "ECS Fargate / EKS"
-        return "Lambda / Step Functions"
+    # ── AWS ────────────────────────────────────────────────────────────
+    if provider == "aws":
+        if w.workload_type == "database":
+            db_map = {
+                "mysql": "RDS Aurora MySQL", "postgresql": "RDS Aurora PostgreSQL",
+                "mssql": "RDS SQL Server", "oracle": "RDS Oracle / Aurora PostgreSQL (migration)",
+                "mongodb": "DocumentDB / MongoDB Atlas", "redis": "ElastiCache Redis",
+                "cassandra": "Amazon Keyspaces",
+            }
+            return db_map.get(w.database_type or "", "RDS Managed DB")
+        if strategy == MigrationStrategy.REFACTOR:
+            if w.workload_type in ("web_app", "microservice"):
+                return "ECS Fargate / EKS"
+            return "Lambda / Step Functions"
+        if strategy == MigrationStrategy.REPLATFORM:
+            if w.workload_type in ("web_app", "microservice"):
+                return "ECS Fargate"
+            if w.workload_type == "batch_job":
+                return "AWS Batch"
+            return "Elastic Beanstalk"
+        # Rehost — pick EC2 instance type by RAM
+        size_map = [(64, "r5.2xlarge"), (32, "m5.xlarge"), (16, "m5.large"), (0, "t3.medium")]
+        for threshold, instance in size_map:
+            if w.ram_gb >= threshold:
+                return f"EC2 {instance}"
+        return "EC2 t3.medium"
 
-    if strategy == MigrationStrategy.REPLATFORM:
-        if w.workload_type in ("web_app", "microservice"):
-            return "ECS Fargate"
-        if w.workload_type == "batch_job":
-            return "AWS Batch"
-        return "Elastic Beanstalk"
+    # ── Azure ──────────────────────────────────────────────────────────
+    if provider == "azure":
+        if w.workload_type == "database":
+            db_map = {
+                "mysql": "Azure Database for MySQL", "postgresql": "Azure Database for PostgreSQL",
+                "mssql": "Azure SQL Database", "oracle": "Azure SQL Managed Instance",
+                "mongodb": "Azure Cosmos DB (MongoDB API)", "redis": "Azure Cache for Redis",
+                "cassandra": "Azure Cosmos DB (Cassandra API)",
+            }
+            return db_map.get(w.database_type or "", "Azure SQL Database")
+        if strategy == MigrationStrategy.REFACTOR:
+            if w.workload_type in ("web_app", "microservice"):
+                return "Azure Container Apps / AKS"
+            return "Azure Functions"
+        if strategy == MigrationStrategy.REPLATFORM:
+            if w.workload_type in ("web_app", "microservice"):
+                return "Azure App Service / Container Apps"
+            if w.workload_type == "batch_job":
+                return "Azure Batch"
+            return "Azure App Service"
+        # Rehost — Azure VM sizing by RAM
+        size_map = [(64, "Standard_E8s_v5"), (32, "Standard_D8s_v5"),
+                    (16, "Standard_D4s_v5"), (0, "Standard_D2s_v5")]
+        for threshold, vm_size in size_map:
+            if w.ram_gb >= threshold:
+                return f"Azure VM {vm_size}"
+        return "Azure VM Standard_D2s_v5"
 
-    size_map = [(64, "r5.2xlarge"), (32, "m5.xlarge"), (16, "m5.large"), (0, "t3.medium")]
-    for threshold, instance in size_map:
-        if w.ram_gb >= threshold:
-            return f"EC2 {instance}"
-    return "EC2 t3.medium"
+    # ── GCP ────────────────────────────────────────────────────────────
+    if provider == "gcp":
+        if w.workload_type == "database":
+            db_map = {
+                "mysql": "Cloud SQL (MySQL)", "postgresql": "Cloud SQL (PostgreSQL) / AlloyDB",
+                "mssql": "Cloud SQL (SQL Server)", "oracle": "Bare Metal Solution / Cloud SQL",
+                "mongodb": "Firestore / MongoDB Atlas on GCP", "redis": "Memorystore for Redis",
+                "cassandra": "Bigtable",
+            }
+            return db_map.get(w.database_type or "", "Cloud SQL")
+        if strategy == MigrationStrategy.REFACTOR:
+            if w.workload_type in ("web_app", "microservice"):
+                return "Cloud Run / GKE Autopilot"
+            return "Cloud Functions (2nd gen)"
+        if strategy == MigrationStrategy.REPLATFORM:
+            if w.workload_type in ("web_app", "microservice"):
+                return "Cloud Run"
+            if w.workload_type == "batch_job":
+                return "Cloud Batch"
+            return "App Engine"
+        # Rehost — Compute Engine sizing by RAM
+        size_map = [(64, "n2-highmem-8"), (32, "n2-standard-8"),
+                    (16, "n2-standard-4"), (0, "e2-standard-2")]
+        for threshold, machine_type in size_map:
+            if w.ram_gb >= threshold:
+                return f"Compute Engine {machine_type}"
+        return "Compute Engine e2-standard-2"
+
+    # Unknown provider — log and return generic recommendation
+    import logging
+    logging.getLogger(__name__).warning(
+        "Unknown cloud_provider '%s' for workload '%s'. "
+        "Supported: aws, azure, gcp. Defaulting to generic recommendation.",
+        provider, w.name,
+    )
+    return f"Cloud VM ({provider} — assessment coming soon)"
 
 
 def _estimate_monthly_cloud_cost(strategy: MigrationStrategy, w: WorkloadInventory) -> float:
