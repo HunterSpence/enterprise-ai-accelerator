@@ -257,6 +257,20 @@ class RMFAssessment:
     def overall_level(self) -> str:
         return _score_to_level(self.overall_score)
 
+    def get_function_score(self, function: str) -> float:
+        """Return function maturity score as a 0-100 percentage."""
+        mapping = {
+            "GOVERN": self.govern_score,
+            "MAP": self.map_score,
+            "MEASURE": self.measure_score,
+            "MANAGE": self.manage_score,
+        }
+        score_obj = mapping.get(function.upper())
+        if score_obj is None:
+            return 0.0
+        # Convert 1-5 scale to 0-100 percentage
+        return round((score_obj.score - 1.0) / 4.0 * 100, 1)
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "system_id": self.system_id,
