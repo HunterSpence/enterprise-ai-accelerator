@@ -45,7 +45,7 @@ jobs:
       # Run all test suites, collecting JUnit XML for artifact upload
       - name: Run tests — ai_audit_trail
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pytest ai_audit_trail/tests/ \
             --tb=short \
@@ -55,7 +55,7 @@ jobs:
 
       - name: Run tests — cloud_iq
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pytest cloud_iq/tests/ \
             --tb=short \
@@ -65,7 +65,7 @@ jobs:
 
       - name: Run tests — policy_guard
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pytest policy_guard/tests/ \
             --tb=short \
@@ -108,7 +108,7 @@ jobs:
       # Collect all results in a single combined run (for badge status)
       - name: Run all tests (combined — badge target)
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           pytest \
             ai_audit_trail/tests/ \

@@ -39,7 +39,7 @@ class TestScanEndpoints:
         assert resp.status_code == 202
         data = resp.json()
         assert "scan_id" in data
-        assert data["status"] == "accepted"
+        assert data["status"] == "pending"
 
     def test_get_scan_status(self):
         client = TestClient(app)
@@ -69,7 +69,7 @@ class TestAISystemEndpoints:
         client = TestClient(app)
         payload = {
             "name": "HiringAI-Test",
-            "system_type": "classifier",
+            "use_domain": "hiring",
             "description": "Hiring recommendation system",
         }
         resp = client.post("/ai-systems/register", json=payload)
@@ -82,7 +82,8 @@ class TestAISystemEndpoints:
         # Register first
         reg_resp = client.post("/ai-systems/register", json={
             "name": "HiringAI-Tier-Test",
-            "system_type": "classifier",
+            "use_domain": "general",
+            "description": "Tier test system",
         })
         system_id = reg_resp.json()["system_id"]
 
@@ -91,7 +92,10 @@ class TestAISystemEndpoints:
         assert tier_resp.status_code == 200
         data = tier_resp.json()
         assert "risk_tier" in data
-        assert data["risk_tier"] in ("unacceptable", "high", "limited", "minimal", "unknown")
+        assert data["risk_tier"] in (
+            "Unacceptable", "High-Risk", "Limited Risk", "Minimal Risk",
+            "GPAI (General Purpose AI)", "unknown",
+        )
 
 
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
@@ -101,5 +105,5 @@ class TestDashboardEndpoint:
         resp = client.get("/dashboard/summary")
         assert resp.status_code == 200
         data = resp.json()
-        assert "overall_score" in data
-        assert "days_to_eu_enforcement" in data
+        assert "overall_compliance_score" in data
+        assert "days_to_high_risk_deadline" in data

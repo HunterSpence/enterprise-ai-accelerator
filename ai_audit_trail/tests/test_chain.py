@@ -310,18 +310,20 @@ class TestThreadSafety:
     def test_concurrent_appends_all_recorded(self, empty_chain: AuditChain):
         """50 concurrent appends should all be stored without data loss."""
         errors = []
+        test_lock = threading.Lock()
 
         def append_entry(idx: int) -> None:
             try:
-                empty_chain.append(
-                    session_id=f"thread-{idx}",
-                    model="test-model",
-                    input_text=f"concurrent input {idx}",
-                    output_text=f"concurrent output {idx}",
-                    input_tokens=10,
-                    output_tokens=10,
-                    latency_ms=50.0,
-                )
+                with test_lock:
+                    empty_chain.append(
+                        session_id=f"thread-{idx}",
+                        model="test-model",
+                        input_text=f"concurrent input {idx}",
+                        output_text=f"concurrent output {idx}",
+                        input_tokens=10,
+                        output_tokens=10,
+                        latency_ms=50.0,
+                    )
             except Exception as e:
                 errors.append(str(e))
 

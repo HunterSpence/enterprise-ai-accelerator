@@ -381,7 +381,7 @@ class ProphetForecaster:
 
         future = model.make_future_dataframe(periods=horizon_days)
         forecast = model.predict(future)
-        future_rows = forecast[forecast["ds"] > df["ds"].max()]
+        future_rows = forecast[forecast["ds"] > pd.Timestamp(df["ds"].max())]
 
         points: list[ForecastPoint] = []
         for _, row in future_rows.iterrows():

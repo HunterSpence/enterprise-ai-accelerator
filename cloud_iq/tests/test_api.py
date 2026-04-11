@@ -11,6 +11,7 @@ import asyncio
 
 import pytest
 pytest_asyncio = pytest.importorskip("pytest_asyncio", reason="pytest-asyncio not installed")
+pytest.importorskip("fastapi", reason="fastapi not compatible with installed pydantic version", exc_type=ImportError)
 from httpx import AsyncClient, ASGITransport
 
 from cloud_iq.api import app
