@@ -32,6 +32,12 @@ from typing import Any, Iterator, Optional, Union
 from ai_audit_trail.chain import AuditChain, DecisionType, RiskTier
 from ai_audit_trail.decorators import _extract_tokens
 
+# Module-level import so tests can patch ai_audit_trail.integrations.openai_sdk.OpenAI
+try:
+    from openai import OpenAI
+except ImportError:
+    OpenAI = None  # type: ignore[assignment,misc]
+
 
 # ---------------------------------------------------------------------------
 # OpenAI pricing table (USD per 1M tokens, April 2026 estimates)
@@ -161,21 +167,47 @@ class AuditedCompletions:
             msg = response.choices[0].message
             output_text = msg.content or ""
 
-        in_tok, out_tok = _extract_tokens(response, input_text, output_text)
+        # Extract tokens directly from OpenAI usage (avoids Anthropic path in _extract_tokens)
+        in_tok: int = 0
+        out_tok: int = 0
+        try:
+            usage = response.usage
+            if hasattr(usage, "prompt_tokens") and isinstance(usage.prompt_tokens, int):
+                in_tok = usage.prompt_tokens
+                out_tok = int(usage.completion_tokens or 0)
+            elif hasattr(usage, "input_tokens") and isinstance(usage.input_tokens, int):
+                in_tok = usage.input_tokens
+                out_tok = int(getattr(usage, "output_tokens", 0) or 0)
+            else:
+                in_tok = len(input_text) // 4
+                out_tok = len(output_text) // 4
+        except Exception:
+            in_tok = len(input_text) // 4
+            out_tok = len(output_text) // 4
 
         # V2: reasoning tokens (o1/o3/o4 models)
         reasoning_tokens = 0
-        if hasattr(response, "usage") and hasattr(response.usage, "completion_tokens_details"):
-            details = response.usage.completion_tokens_details
-            if details and hasattr(details, "reasoning_tokens"):
-                reasoning_tokens = details.reasoning_tokens or 0
+        try:
+            if hasattr(response, "usage") and hasattr(response.usage, "completion_tokens_details"):
+                details = response.usage.completion_tokens_details
+                if details is not None and not callable(details) and hasattr(details, "reasoning_tokens"):
+                    val = details.reasoning_tokens
+                    if isinstance(val, int):
+                        reasoning_tokens = val
+        except Exception:
+            pass
 
         # V2: cache_read_tokens (OpenAI prompt caching)
         cache_read_tokens = 0
-        if hasattr(response, "usage") and hasattr(response.usage, "prompt_tokens_details"):
-            details = response.usage.prompt_tokens_details
-            if details and hasattr(details, "cached_tokens"):
-                cache_read_tokens = details.cached_tokens or 0
+        try:
+            if hasattr(response, "usage") and hasattr(response.usage, "prompt_tokens_details"):
+                details = response.usage.prompt_tokens_details
+                if details is not None and not callable(details) and hasattr(details, "cached_tokens"):
+                    val = details.cached_tokens
+                    if isinstance(val, int):
+                        cache_read_tokens = val
+        except Exception:
+            pass
 
         cost = _calculate_openai_cost(model_name, in_tok, out_tok, reasoning_tokens, cache_read_tokens)
 
@@ -359,12 +391,10 @@ class AuditedOpenAI:
         background_logging: bool = False,
         **openai_kwargs: Any,
     ) -> None:
-        try:
-            import openai
-        except ImportError as e:
-            raise ImportError("pip install openai") from e
+        if OpenAI is None:
+            raise ImportError("pip install openai")
 
-        self._client = openai.OpenAI(**openai_kwargs)
+        self._client = OpenAI(**openai_kwargs)
         self._chain = audit_chain
         self._decision_type = (
             DecisionType(decision_type) if isinstance(decision_type, str) else decision_type
@@ -376,6 +406,15 @@ class AuditedOpenAI:
         self._metadata = metadata or {}
         self._system_id = system_id
         self._background_logging = background_logging
+
+    @property
+    def audit_chain(self) -> AuditChain:
+        """Public accessor so tests can assert client.audit_chain is chain."""
+        return self._chain
+
+    @audit_chain.setter
+    def audit_chain(self, value: AuditChain) -> None:
+        self._chain = value
 
     @property
     def chat(self) -> AuditedChat:

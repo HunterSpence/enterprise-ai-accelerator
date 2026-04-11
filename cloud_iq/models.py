@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, validator
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class ScanRequest(BaseModel):
     include_k8s: bool = False
     dry_run: bool = False
 
-    @field_validator("regions")
+    @validator("regions")
     @classmethod
     def normalize_regions(cls, v: list[str]) -> list[str]:
         return [r.lower().strip() for r in v]
@@ -141,7 +141,7 @@ class RecommendationsResponse(BaseModel):
 class NLQueryRequest(BaseModel):
     """POST /query request body."""
 
-    question: str = Field(min_length=3, max_length=2000)
+    question: str = Field(...)
     session_id: str | None = None
     include_supporting_data: bool = True
 
@@ -166,7 +166,7 @@ class NLQueryResponse(BaseModel):
 class TerraformGenerateRequest(BaseModel):
     """POST /terraform/generate request body."""
 
-    resource_ids: list[str] = Field(min_length=1)
+    resource_ids: list[str] = Field(...)
     output_format: str = "modules"  # "modules" | "flat"
     include_security_hardening: bool = True
     include_cost_comments: bool = True

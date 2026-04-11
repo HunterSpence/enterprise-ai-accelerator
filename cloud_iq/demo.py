@@ -1,6 +1,9 @@
 """
 CloudIQ Demo — AcmeCorp Infrastructure Analysis
 
+DEPRECATED: Use demo_v2 for the full multi-scene cinematic demo.
+This single-scene demo is preserved for backward compatibility.
+
 Runs a fully self-contained demo using realistic mock data representing
 a fictional company "AcmeCorp" with $47,200/month in identified waste.
 

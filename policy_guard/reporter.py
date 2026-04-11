@@ -603,3 +603,7 @@ class ReportGenerator:
             return mock_pdf_path
         except Exception as e:
             return f"{pdf_path} [PDF generation failed: {e} — use HTML: {html_path}]"
+
+
+# Alias for test compatibility
+PolicyGuardReporter = ReportGenerator

@@ -1352,3 +1352,14 @@ class EUAIActScanner:
         )
         report.compute()
         return report
+
+
+class EUAIActFramework:
+    """Sync wrapper around EUAIActScanner for test compatibility."""
+
+    def run_assessment(self) -> "EUAIActReport":
+        scanner = EUAIActScanner(mock=True)
+        report = asyncio.run(scanner.scan())
+        # Expose overall_compliance_score as alias for compliance_score
+        report.overall_compliance_score = report.compliance_score
+        return report

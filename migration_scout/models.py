@@ -12,7 +12,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field
 
 
 class MigrationStrategy(str, Enum):
@@ -75,7 +75,7 @@ class WorkloadInventoryModel(BaseModel):
     """Pydantic v2 model for workload inventory input."""
 
     id: str = Field(..., description="Unique workload identifier", examples=["ec-web-01"])
-    name: str = Field(..., description="Human-readable workload name", min_length=1)
+    name: str = Field(..., description="Human-readable workload name")
     workload_type: str = Field(
         ...,
         description="Type: web_app, database, batch_job, middleware, legacy, microservice",
@@ -111,14 +111,15 @@ class WorkloadInventoryModel(BaseModel):
     team_size: int = Field(default=5, ge=1, description="App team size (FTEs)")
     notes: str = Field(default="")
 
-    model_config = {"use_enum_values": True}
+    class Config:
+        use_enum_values = True
 
 
 class AssessmentRequest(BaseModel):
     """Request body for POST /assessments."""
 
     inventory: list[WorkloadInventoryModel] = Field(
-        ..., min_length=1, max_length=500, description="Workload inventory to assess"
+        ..., description="Workload inventory to assess"
     )
     use_ml_classifier: bool = Field(default=True, description="Use ML gradient boosting classifier")
     use_ai_enrichment: bool = Field(
@@ -344,7 +345,7 @@ class WhatIfRequest(BaseModel):
 
     assessment_id: str
     prioritize_workload_ids: list[str] = Field(
-        ..., min_length=1, description="Move these workloads to Wave 1"
+        ..., description="Move these workloads to Wave 1"
     )
     exclude_workload_ids: list[str] = Field(default_factory=list)
     scenario_name: str = Field(default="What-If Scenario")

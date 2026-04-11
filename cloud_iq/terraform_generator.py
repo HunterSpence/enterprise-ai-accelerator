@@ -1,6 +1,11 @@
 """
 Reverse Terraform generator.
 
+DEPRECATED: Use terraform_generator_v2.TerraformGeneratorV2 instead.
+This module is preserved for backward compatibility only.
+V2 adds: remote state backend, IMDSv2, KMS-everywhere, drift detection,
+Atlantis workflow, provider pins, and full outputs.tf generation.
+
 Takes an InfrastructureSnapshot and produces production-quality, modular
 Terraform with security best practices, proper tagging, and AI-enhanced
 descriptions generated via Claude Haiku.

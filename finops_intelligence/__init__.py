@@ -9,7 +9,12 @@ Headline: $89,400/month ($1.07M/year) savings identified on a $340K/month bill.
 
 # V1 modules (preserved)
 from .cost_tracker import CostTracker, SpendData, ServiceSpend, DailySpend
-from .anomaly_detector import AnomalyDetector as AnomalyDetectorV1, Anomaly, AnomalySeverity
+try:
+    from .anomaly_detector import AnomalyDetector as AnomalyDetectorV1, Anomaly, AnomalySeverity
+except ImportError:
+    AnomalyDetectorV1 = None  # sklearn not installed
+    Anomaly = None
+    AnomalySeverity = None
 from .forecaster import Forecaster, ForecastResult, BurnRateResult
 from .optimizer import Optimizer, OptimizationPlan, OptimizationOpportunity, OpportunityType
 from .nl_interface import NLInterface, ConversationSession
@@ -18,7 +23,13 @@ from .reporter import Reporter, ReportConfig, ReportData, generate_cfo_report
 
 # V2 modules
 from .analytics_engine import AnalyticsEngine, AnalyticsConfig, ServiceBreakdown
-from .anomaly_detector_v2 import EnsembleAnomalyDetector, DetectorConfig, AnomalyV2, SuppressionRule
+try:
+    from .anomaly_detector_v2 import EnsembleAnomalyDetector, DetectorConfig, AnomalyV2, SuppressionRule
+except ImportError:
+    EnsembleAnomalyDetector = None  # sklearn/torch not installed
+    DetectorConfig = None
+    AnomalyV2 = None
+    SuppressionRule = None
 from .unit_economics import (
     UnitEconomicsEngine,
     UnitEconomicsConfig,

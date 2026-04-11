@@ -1,0 +1,33 @@
+# Demo runner — runs all 6 module demos in sequence
+# Used by the `demo` compose profile
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app
+
+CMD ["python", "-c", "\
+import subprocess, sys; \
+modules = [ \
+    ('ai_audit_trail', 'ai_audit_trail.demo'), \
+    ('cloud_iq', 'cloud_iq.demo'), \
+    ('finops_intelligence', 'finops_intelligence.demo'), \
+    ('migration_scout', 'migration_scout.demo'), \
+    ('policy_guard', 'policy_guard.demo'), \
+    ('agent_ops', 'agent_ops.demo'), \
+]; \
+[subprocess.run([sys.executable, '-m', mod], check=False) for name, mod in modules] \
+"]

@@ -316,12 +316,14 @@ class TestAuditedOpenAI:
 
 class TestLangChainCallback:
     def test_callback_initializes_with_chain(self, empty_chain: AuditChain):
+        pytest.importorskip("langchain_core", reason="langchain-core not installed")
         from ai_audit_trail.integrations.langchain import AuditTrailCallback
         cb = AuditTrailCallback(audit_chain=empty_chain, system_id="lc-test")
         assert cb.audit_chain is empty_chain
 
     def test_on_llm_end_logs_entry(self, empty_chain: AuditChain):
         """Simulating on_llm_end should create an audit entry."""
+        pytest.importorskip("langchain_core", reason="langchain-core not installed")
         from ai_audit_trail.integrations.langchain import AuditTrailCallback
 
         cb = AuditTrailCallback(audit_chain=empty_chain, system_id="lc-test")

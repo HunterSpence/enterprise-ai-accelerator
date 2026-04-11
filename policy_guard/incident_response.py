@@ -518,6 +518,7 @@ DEMO_INCIDENTS: list[dict] = [
         "title": "Demographic parity violation detected in production",
         "description": "Bias monitoring alert: demographic parity difference for 'race' attribute spiked to 0.17 over the past 24 hours. Female candidates approved at 41% vs male at 73%.",
         "triggered_by": "monitoring_alert",
+        "severity": "P1",
         "metrics": {
             "demographic_parity_diff": 0.17,
             "disparate_impact_ratio": 0.56,
@@ -529,6 +530,7 @@ DEMO_INCIDENTS: list[dict] = [
         "title": "Critical: Medical AI recommending incorrect dosage ranges",
         "description": "User reports indicate AI diagnostic system recommended dosage 3x safe threshold for pediatric patients. Safety-critical incident. Physical harm potential.",
         "triggered_by": "user_report",
+        "severity": "P0",
         "metrics": {
             "safety_critical": True,
             "affected_patients": 47,
@@ -539,6 +541,7 @@ DEMO_INCIDENTS: list[dict] = [
         "title": "Accuracy degradation: model drift detected post Q1 data",
         "description": "Model monitoring detected precision drop from 0.88 to 0.71 following Q1 economic data update. Out-of-distribution inputs increasing at 23% daily rate.",
         "triggered_by": "monitoring_alert",
+        "severity": "P2",
         "metrics": {
             "accuracy_drop_pct": 17,
             "precision_current": 0.71,

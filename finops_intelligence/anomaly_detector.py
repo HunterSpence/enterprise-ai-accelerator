@@ -1,6 +1,11 @@
 """
 anomaly_detector.py — ML anomaly detection for cloud cost data.
 
+DEPRECATED: Use anomaly_detector_v2.EnsembleAnomalyDetector instead.
+V2 adds ensemble detection (IsolationForest + LSTM + statistical),
+suppression rules, and DetectorConfig tuning. This module is preserved
+for __init__.py backward-compat as AnomalyDetectorV1.
+
 Two-layer detection:
   1. Isolation Forest (scikit-learn) — point anomalies per service
   2. Rolling z-score — time-series drift detection

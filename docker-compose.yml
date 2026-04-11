@@ -1,0 +1,202 @@
+# enterprise-ai-accelerator — Root Docker Compose
+# Orchestrates all 6 portfolio modules.
+#
+# Usage:
+#   docker compose up                     # start all services
+#   docker compose --profile demo up      # start all + run demo sequence
+#   docker compose up ai_audit_trail      # start single service
+#
+# Prerequisites:
+#   Copy .env.example to .env and fill in ANTHROPIC_API_KEY
+
+networks:
+  ai_stack:
+    driver: bridge
+
+services:
+
+  # ── 1. AI Audit Trail ─────────────────────────────────────────────────────
+  # EU AI Act Article 12 compliance audit logging
+  ai_audit_trail:
+    build:
+      context: ./ai_audit_trail
+      dockerfile: Dockerfile
+    image: enterprise-ai/ai-audit-trail:latest
+    container_name: ai-audit-trail
+    ports:
+      - "8001:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AUDIT_DB_PATH: /data/audit.db
+      AUDIT_PORT: "8000"
+      AUDIT_DEV_MODE: "false"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ai_audit_data:/data
+    networks:
+      - ai_stack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # ── 2. CloudIQ ────────────────────────────────────────────────────────────
+  # Cloud security scanner — misconfig detection + cost anomalies
+  cloud_iq:
+    build:
+      context: ./cloud_iq
+      dockerfile: Dockerfile
+    image: enterprise-ai/cloud-iq:latest
+    container_name: cloud-iq
+    ports:
+      - "8002:8080"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - ai_stack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # ── 3. FinOps Intelligence ────────────────────────────────────────────────
+  # Cloud billing analyzer — anomaly detection + savings recommendations
+  finops_intelligence:
+    build:
+      context: ./finops_intelligence
+      dockerfile: Dockerfile
+    image: enterprise-ai/finops-intelligence:latest
+    container_name: finops-intelligence
+    ports:
+      - "8003:8000"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    networks:
+      - ai_stack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # ── 4. MigrationScout ────────────────────────────────────────────────────
+  # Cloud migration assessment — workload scoring + wave planning + TCO
+  migration_scout:
+    build:
+      context: ./migration_scout
+      dockerfile: Dockerfile
+    image: enterprise-ai/migration-scout:latest
+    container_name: migration-scout
+    ports:
+      - "8004:8080"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      HOST: "0.0.0.0"
+      PORT: "8080"
+      LOG_LEVEL: info
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - ai_stack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # ── 5. PolicyGuard ───────────────────────────────────────────────────────
+  # Multi-framework compliance — EU AI Act, ISO 27001, SOC 2, NIST
+  policy_guard:
+    build:
+      context: ./policy_guard
+      dockerfile: Dockerfile
+    image: enterprise-ai/policy-guard:latest
+    container_name: policy-guard
+    ports:
+      - "8005:8080"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      POLICYGUARD_ENV: production
+      POLICYGUARD_HOST: "0.0.0.0"
+      POLICYGUARD_PORT: "8080"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - policy_guard_reports:/app/reports
+    networks:
+      - ai_stack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # ── 6. AgentOps ──────────────────────────────────────────────────────────
+  # Multi-agent orchestration — parallel Claude agents with OTEL tracing
+  agent_ops:
+    build:
+      context: ./agent_ops
+      dockerfile: Dockerfile
+    image: enterprise-ai/agent-ops:latest
+    container_name: agent-ops
+    ports:
+      - "8006:8006"
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - ai_stack
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import agent_ops; print('ok')"]
+      interval: 60s
+      timeout: 10s
+      start_period: 20s
+      retries: 3
+
+  # ── Demo runner (profile: demo) ───────────────────────────────────────────
+  # Runs all 6 module demos in sequence. Useful for portfolio walkthroughs.
+  demo_runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.demo
+    image: enterprise-ai/demo-runner:latest
+    container_name: demo-runner
+    profiles:
+      - demo
+    environment:
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - ai_stack
+    depends_on:
+      ai_audit_trail:
+        condition: service_healthy
+      cloud_iq:
+        condition: service_healthy
+      finops_intelligence:
+        condition: service_healthy
+      migration_scout:
+        condition: service_healthy
+      policy_guard:
+        condition: service_healthy
+      agent_ops:
+        condition: service_started
+
+volumes:
+  ai_audit_data:
+  policy_guard_reports:

@@ -32,20 +32,35 @@ from .dependency_mapper import (
     DependencyMapper,
     WorkloadNode,
 )
-from .models import (
-    AssessmentRequest,
-    AssessmentResponse,
-    DependencyGraphResponse,
-    HealthResponse,
-    RunbookRequest,
-    RunbookResponse,
-    TCOResponse,
-    WavePlanRequest,
-    WavePlanResponse,
-    WhatIfRequest,
-    WhatIfResponse,
-    WorkloadInventoryModel,
-)
+try:
+    from .models import (
+        AssessmentRequest,
+        AssessmentResponse,
+        DependencyGraphResponse,
+        HealthResponse,
+        RunbookRequest,
+        RunbookResponse,
+        TCOResponse,
+        WavePlanRequest,
+        WavePlanResponse,
+        WhatIfRequest,
+        WhatIfResponse,
+        WorkloadInventoryModel,
+    )
+except ImportError:
+    # pydantic v2 not installed — API models unavailable
+    AssessmentRequest = None
+    AssessmentResponse = None
+    DependencyGraphResponse = None
+    HealthResponse = None
+    RunbookRequest = None
+    RunbookResponse = None
+    TCOResponse = None
+    WavePlanRequest = None
+    WavePlanResponse = None
+    WhatIfRequest = None
+    WhatIfResponse = None
+    WorkloadInventoryModel = None
 from .report_generator import ReportConfig, ReportGenerator
 from .runbook_generator import (
     MigrationRunbook,

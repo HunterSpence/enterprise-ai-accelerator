@@ -87,10 +87,14 @@ def _extract_tokens(
     if hasattr(response, "usage"):
         usage = response.usage
         if hasattr(usage, "input_tokens") and hasattr(usage, "output_tokens"):
-            return usage.input_tokens, usage.output_tokens
+            in_val, out_val = usage.input_tokens, usage.output_tokens
+            if isinstance(in_val, int) and isinstance(out_val, int):
+                return in_val, out_val
     # OpenAI usage
     if hasattr(response, "usage") and hasattr(response.usage, "prompt_tokens"):
-        return response.usage.prompt_tokens, response.usage.completion_tokens
+        p_val, c_val = response.usage.prompt_tokens, response.usage.completion_tokens
+        if isinstance(p_val, int) and isinstance(c_val, int):
+            return p_val, c_val
     # Dict usage
     if isinstance(response, dict) and "usage" in response:
         u = response["usage"]

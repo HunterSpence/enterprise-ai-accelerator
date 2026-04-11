@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    name: pytest / python-${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # Install root shared deps
+      - name: Install shared dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Install each module's own requirements (some have extras not in root)
+      - name: Install module dependencies
+        run: |
+          pip install -r ai_audit_trail/requirements.txt
+          pip install -r cloud_iq/requirements_v2.txt
+          pip install -r finops_intelligence/requirements.txt
+          pip install -r migration_scout/requirements.txt
+          pip install -r policy_guard/requirements.txt
+          pip install -r agent_ops/requirements.txt
+
+      # Run all test suites, collecting JUnit XML for artifact upload
+      - name: Run tests — ai_audit_trail
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+        run: |
+          pytest ai_audit_trail/tests/ \
+            --tb=short \
+            --junitxml=reports/ai_audit_trail.xml \
+            -v
+        continue-on-error: true
+
+      - name: Run tests — cloud_iq
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+        run: |
+          pytest cloud_iq/tests/ \
+            --tb=short \
+            --junitxml=reports/cloud_iq.xml \
+            -v
+        continue-on-error: true
+
+      - name: Run tests — policy_guard
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+        run: |
+          pytest policy_guard/tests/ \
+            --tb=short \
+            --junitxml=reports/policy_guard.xml \
+            -v
+        continue-on-error: true
+
+      - name: Run tests — finops_intelligence
+        run: |
+          pytest finops_intelligence/tests/ \
+            --tb=short \
+            --junitxml=reports/finops_intelligence.xml \
+            -v
+        continue-on-error: true
+
+      - name: Run tests — migration_scout
+        run: |
+          pytest migration_scout/integrations/tests/ \
+            --tb=short \
+            --junitxml=reports/migration_scout.xml \
+            -v
+        continue-on-error: true
+
+      - name: Run tests — agent_ops
+        run: |
+          pytest agent_ops/tests/ \
+            --tb=short \
+            --junitxml=reports/agent_ops.xml \
+            -v
+        continue-on-error: true
+
+      - name: Run tests — risk_aggregator
+        run: |
+          pytest tests/ \
+            --tb=short \
+            --junitxml=reports/risk_aggregator.xml \
+            -v
+        continue-on-error: true
+
+      # Collect all results in a single combined run (for badge status)
+      - name: Run all tests (combined — badge target)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY || 'sk-test-dummy' }}
+        run: |
+          pytest \
+            ai_audit_trail/tests/ \
+            cloud_iq/tests/ \
+            policy_guard/tests/ \
+            finops_intelligence/tests/ \
+            migration_scout/integrations/tests/ \
+            agent_ops/tests/ \
+            tests/ \
+            --tb=short \
+            --junitxml=reports/combined.xml \
+            --cov=. \
+            --cov-report=xml:reports/coverage.xml \
+            --cov-report=term-missing \
+            -v
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-python-${{ matrix.python-version }}
+          path: reports/
+          retention-days: 30
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-python-${{ matrix.python-version }}
+          path: reports/coverage.xml
+          retention-days: 30
+
+  docker-validate:
+    name: docker-compose validate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate docker-compose config
+        run: |
+          docker compose -f docker-compose.yml config --quiet
+        env:
+          ANTHROPIC_API_KEY: sk-test-dummy

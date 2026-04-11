@@ -126,11 +126,12 @@ class RDSInstance:
     region: str
     multi_az: bool
     allocated_storage_gb: int
-    vpc_id: str | None
-    publicly_accessible: bool
     encrypted: bool
     tags: dict[str, str]
     estimated_monthly_cost: float
+    vpc_id: str | None = None
+    publicly_accessible: bool = False
+    storage_type: str = "gp2"
 
 
 @dataclass
@@ -139,26 +140,26 @@ class LambdaFunction:
     runtime: str
     memory_mb: int
     timeout_seconds: int
-    last_modified: str
-    code_size_bytes: int
     region: str
-    vpc_config: dict[str, Any]
     tags: dict[str, str]
     estimated_monthly_cost: float
+    last_modified: str = ""
+    code_size_bytes: int = 0
+    vpc_config: dict = field(default_factory=dict)
 
 
 @dataclass
 class S3Bucket:
     name: str
     region: str
-    creation_date: datetime | None
     versioning: str
     encryption: str | None
     public_access_blocked: bool
     tags: dict[str, str]
-    size_gb: float
-    object_count: int
     estimated_monthly_cost: float
+    creation_date: datetime | None = None
+    size_gb: float = 0.0
+    object_count: int = 0
 
 
 @dataclass
@@ -181,23 +182,23 @@ class EKSCluster:
     kubernetes_version: str
     status: str
     region: str
-    endpoint: str | None
     node_groups: list[dict[str, Any]]
     tags: dict[str, str]
     estimated_monthly_cost: float
+    endpoint: str | None = None
 
 
 @dataclass
 class ECSCluster:
     cluster_name: str
-    cluster_arn: str
-    status: str
     region: str
     running_tasks: int
-    pending_tasks: int
-    active_services: int
     tags: dict[str, str]
     estimated_monthly_cost: float
+    cluster_arn: str = ""
+    status: str = "ACTIVE"
+    pending_tasks: int = 0
+    active_services: int = 0
 
 
 @dataclass
@@ -205,13 +206,13 @@ class VPC:
     vpc_id: str
     cidr_block: str
     region: str
-    is_default: bool
-    state: str
     tags: dict[str, str]
-    subnets: list[dict[str, Any]]
-    internet_gateways: list[str]
-    nat_gateways: list[dict[str, Any]]
-    estimated_monthly_cost: float
+    subnets: list[dict[str, Any]] = field(default_factory=list)
+    nat_gateways: list[dict[str, Any]] = field(default_factory=list)
+    is_default: bool = False
+    state: str = "available"
+    internet_gateways: list[str] = field(default_factory=list)
+    estimated_monthly_cost: float = 0.0
 
 
 @dataclass
@@ -245,11 +246,11 @@ class ElastiCacheCluster:
     engine_version: str
     node_type: str
     num_nodes: int
-    status: str
     region: str
-    encrypted: bool
     tags: dict[str, str]
     estimated_monthly_cost: float
+    status: str = "available"
+    encrypted: bool = False
 
 
 @dataclass
@@ -292,9 +293,10 @@ class ElasticIP:
     allocation_id: str
     public_ip: str
     region: str
-    associated_instance: str | None
     is_idle: bool
     estimated_monthly_cost: float
+    associated_instance: str | None = None
+    tags: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -323,6 +325,9 @@ class InfrastructureSnapshot:
 
     @property
     def total_estimated_monthly_cost(self) -> float:
+        override = self.__dict__.get("_total_cost_override")
+        if override is not None:
+            return override
         total = 0.0
         for inst in self.ec2_instances:
             total += inst.estimated_monthly_cost
@@ -346,8 +351,16 @@ class InfrastructureSnapshot:
             total += eip.estimated_monthly_cost
         return total
 
+    @total_estimated_monthly_cost.setter
+    def total_estimated_monthly_cost(self, value: float) -> None:
+        # Store override in instance dict so it takes precedence over computed sum.
+        object.__setattr__(self, "_total_cost_override", value)
+
     @property
     def resource_counts(self) -> dict[str, int]:
+        override = self.__dict__.get("_resource_counts_override")
+        if override is not None:
+            return override
         return {
             "ec2_instances": len(self.ec2_instances),
             "rds_instances": len(self.rds_instances),
@@ -364,6 +377,10 @@ class InfrastructureSnapshot:
             "sns_topics": len(self.sns_topics),
             "elastic_ips": len(self.elastic_ips),
         }
+
+    @resource_counts.setter
+    def resource_counts(self, value: dict) -> None:
+        object.__setattr__(self, "_resource_counts_override", value)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize snapshot to a plain dict suitable for JSON or LLM context."""

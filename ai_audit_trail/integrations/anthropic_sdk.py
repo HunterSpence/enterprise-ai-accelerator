@@ -33,6 +33,12 @@ from typing import Any, Iterator, Optional, Union
 from ai_audit_trail.chain import AuditChain, DecisionType, RiskTier
 from ai_audit_trail.decorators import _extract_text, _extract_tokens
 
+# Module-level import so tests can patch ai_audit_trail.integrations.anthropic_sdk.Anthropic
+try:
+    from anthropic import Anthropic
+except ImportError:
+    Anthropic = None  # type: ignore[assignment,misc]
+
 
 # ---------------------------------------------------------------------------
 # Pricing table (USD per 1M tokens, as of April 2026)
@@ -398,12 +404,10 @@ class AuditedAnthropic:
         background_logging: bool = False,
         **anthropic_kwargs: Any,
     ) -> None:
-        try:
-            import anthropic
-        except ImportError as e:
-            raise ImportError("pip install anthropic") from e
+        if Anthropic is None:
+            raise ImportError("pip install anthropic")
 
-        self._client = anthropic.Anthropic(**anthropic_kwargs)
+        self._client = Anthropic(**anthropic_kwargs)
         self._chain = audit_chain
         self._decision_type = (
             DecisionType(decision_type) if isinstance(decision_type, str) else decision_type
@@ -415,6 +419,39 @@ class AuditedAnthropic:
         self._metadata = metadata or {}
         self._system_id = system_id
         self._background_logging = background_logging
+
+    @property
+    def audit_chain(self) -> AuditChain:
+        """Public accessor so tests can assert client.audit_chain is chain."""
+        return self._chain
+
+    @audit_chain.setter
+    def audit_chain(self, value: AuditChain) -> None:
+        self._chain = value
+
+    @property
+    def system_id(self) -> str:
+        return self._system_id
+
+    @system_id.setter
+    def system_id(self, value: str) -> None:
+        self._system_id = value
+
+    @property
+    def default_risk_tier(self) -> RiskTier:
+        return self._risk_tier
+
+    @default_risk_tier.setter
+    def default_risk_tier(self, value: RiskTier) -> None:
+        self._risk_tier = value
+
+    @property
+    def session_id(self) -> str:
+        return self._session_id
+
+    @session_id.setter
+    def session_id(self, value: str) -> None:
+        self._session_id = value
 
     @property
     def messages(self) -> AuditedMessages:

@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-import pytest_asyncio
+pytest_asyncio = pytest.importorskip("pytest_asyncio", reason="pytest-asyncio not installed")
 from httpx import AsyncClient, ASGITransport
 
 from cloud_iq.api import app

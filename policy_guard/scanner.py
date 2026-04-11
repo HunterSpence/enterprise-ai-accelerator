@@ -364,3 +364,7 @@ class ComplianceScanner:
             f"[dim]Low: {report.low_findings}[/dim]"
         )
         console.print()
+
+
+# Alias for test compatibility
+PolicyGuardScanner = ComplianceScanner
