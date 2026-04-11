@@ -1,0 +1,83 @@
+# FinOps Intelligence V2 — docker-compose
+#
+# Services:
+#   finops    — FastAPI + WebSocket API  (:8000)
+#   postgres  — metadata store
+#   redis     — optional query cache (TTL 1hr)
+#
+# Quick start:
+#   docker compose up -d
+#   open http://localhost:8000/docs
+#   docker compose exec finops python -m finops_intelligence.demo --fast
+
+version: "3.9"
+
+services:
+
+  finops:
+    build:
+      context: .
+      target: runtime
+    image: finops-intelligence:v2
+    container_name: finops-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DATABASE_URL=postgresql://finops:finops@postgres:5432/finops
+      - REDIS_URL=redis://redis:6379/0
+      - FINOPS_ENV=production
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - finops-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: finops-postgres
+    environment:
+      POSTGRES_DB: finops
+      POSTGRES_USER: finops
+      POSTGRES_PASSWORD: finops
+    volumes:
+      - finops-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U finops -d finops"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - finops-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: finops-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - finops-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - finops-net
+
+volumes:
+  finops-pg-data:
+  finops-redis-data:
+
+networks:
+  finops-net:
+    driver: bridge

@@ -1,0 +1,218 @@
+name: PolicyGuard V2 CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "portfolio_modules/policy_guard/**"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "portfolio_modules/policy_guard/**"
+
+defaults:
+  run:
+    working-directory: portfolio_modules/policy_guard
+
+env:
+  PYTHON_VERSION: "3.12"
+  IMAGE_NAME: policyguard
+
+jobs:
+
+  # ── Lint & Type Check ───────────────────────────────────────────────────────
+  lint:
+    name: Ruff + Mypy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: portfolio_modules/policy_guard/requirements.txt
+
+      - name: Install lint dependencies
+        run: pip install ruff mypy types-dataclasses
+
+      - name: Ruff lint
+        run: ruff check . --output-format=github
+
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Install package dependencies for mypy
+        run: pip install -r requirements.txt
+
+      - name: Mypy type check
+        run: |
+          mypy . \
+            --ignore-missing-imports \
+            --exclude '(__pycache__|\.github|sql)' \
+            --python-version 3.12
+
+
+  # ── Unit + Integration Tests ────────────────────────────────────────────────
+  test:
+    name: Pytest
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: policyguard
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: policyguard_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: portfolio_modules/policy_guard/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run tests
+        env:
+          POLICYGUARD_ENV: test
+          POLICYGUARD_DB_URL: "postgresql+asyncpg://policyguard:testpass@localhost:5432/policyguard_test"
+        run: |
+          pytest tests/ \
+            --asyncio-mode=auto \
+            --cov=. \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --tb=short \
+            -v
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: portfolio_modules/policy_guard/coverage.xml
+          flags: policyguard
+          fail_ci_if_error: false
+
+
+  # ── Demo smoke test (no DB needed) ─────────────────────────────────────────
+  demo_smoke:
+    name: Demo Smoke Test
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: portfolio_modules/policy_guard/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Scenario A demo (no-color, timeout 120s)
+        run: |
+          timeout 120 python demo.py --scenario=a 2>&1 | tail -20
+          echo "Exit: $?"
+
+      - name: Run bias demo
+        run: |
+          timeout 60 python demo.py --bias 2>&1 | tail -10
+
+      - name: Run incident demo
+        run: |
+          timeout 60 python demo.py --incident 2>&1 | tail -10
+
+
+  # ── Docker Build ────────────────────────────────────────────────────────────
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test, demo_smoke]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build image (no push on PR)
+        uses: docker/build-push-action@v5
+        with:
+          context: portfolio_modules/policy_guard
+          dockerfile: portfolio_modules/policy_guard/Dockerfile
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          target: runtime
+
+      - name: Verify image runs healthcheck
+        run: |
+          docker run --rm -d \
+            --name policyguard-ci \
+            -p 8080:8080 \
+            -e POLICYGUARD_ENV=ci \
+            policyguard:${{ github.sha }} \
+            python -m uvicorn api:app --host 0.0.0.0 --port 8080 || true
+
+          # Give it 10s to start, then hit /health
+          sleep 10
+          curl -f http://localhost:8080/health || \
+            (docker logs policyguard-ci 2>&1 | tail -20; exit 1)
+
+          docker stop policyguard-ci || true
+
+
+  # ── Security scan ───────────────────────────────────────────────────────────
+  security:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    needs: docker
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: portfolio_modules/policy_guard
+          dockerfile: portfolio_modules/policy_guard/Dockerfile
+          push: false
+          tags: policyguard:scan
+          load: true
+          target: runtime
+
+      - name: Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: policyguard:scan
+          format: table
+          exit-code: "0"          # warn only, don't fail
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: CRITICAL,HIGH

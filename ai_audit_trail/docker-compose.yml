@@ -1,0 +1,116 @@
+version: "3.9"
+
+# AIAuditTrail V2 — Production Docker Compose
+#
+# Services:
+#   audit_trail  — FastAPI REST API (port 8000)
+#   postgres     — PostgreSQL 16 with WAL for production audit storage
+#   redis        — Redis 7 for API rate limiting and session cache
+#
+# Usage:
+#   docker compose up -d
+#   curl http://localhost:8000/health
+#   curl http://localhost:8000/docs  (OpenAPI UI)
+
+services:
+  # --------------------------------------------------------------------------
+  # AIAuditTrail FastAPI server
+  # --------------------------------------------------------------------------
+  audit_trail:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: ai-audit-trail:v2
+    container_name: ai-audit-trail
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      AUDIT_DB_PATH: /data/audit.db
+      AUDIT_PORT: 8000
+      AUDIT_DEV_MODE: "false"
+      AUDIT_STORE_PLAINTEXT: "false"
+      AUDIT_API_KEY: "${AUDIT_API_KEY:-change-me-in-production}"
+      # Postgres DSN (optional — SQLite used by default)
+      # DATABASE_URL: "postgresql://audit:${POSTGRES_PASSWORD}@postgres:5432/auditdb"
+    volumes:
+      - audit_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - audit_net
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL 16 — production audit storage with WAL
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: audit-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auditdb
+      POSTGRES_USER: audit
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-audit-secret-change-me}"
+      # WAL settings for audit durability
+      POSTGRES_INITDB_ARGS: "--wal-segsize=64"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - audit_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit -d auditdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: >
+      postgres
+        -c wal_level=replica
+        -c max_wal_senders=3
+        -c archive_mode=on
+        -c archive_command='test ! -f /tmp/%f && cp %p /tmp/%f'
+        -c log_statement=ddl
+        -c log_min_duration_statement=1000
+
+  # --------------------------------------------------------------------------
+  # Redis 7 — rate limiting + session cache
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: audit-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - audit_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# --------------------------------------------------------------------------
+# Volumes and networks
+# --------------------------------------------------------------------------
+volumes:
+  audit_data:
+    driver: local
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  audit_net:
+    driver: bridge

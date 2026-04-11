@@ -1,0 +1,178 @@
+name: CloudIQ CI
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: "3.12"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/cloudiq
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Lint — ruff (faster than flake8+isort+pyupgrade combined)
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install ruff
+        run: pip install ruff==0.4.4
+
+      - name: Run ruff linter
+        run: ruff check cloud_iq/ --output-format=github
+
+      - name: Run ruff formatter check
+        run: ruff format cloud_iq/ --check
+
+  # ---------------------------------------------------------------------------
+  # Type check — mypy
+  # ---------------------------------------------------------------------------
+  typecheck:
+    name: Type Check (mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements_v2.txt mypy types-requests
+
+      - name: Run mypy
+        run: |
+          mypy cloud_iq/ \
+            --ignore-missing-imports \
+            --no-implicit-reexport \
+            --strict-optional \
+            --warn-return-any \
+            --show-error-codes
+
+  # ---------------------------------------------------------------------------
+  # Tests — pytest with coverage
+  # ---------------------------------------------------------------------------
+  test:
+    name: Tests (pytest)
+    runs-on: ubuntu-latest
+    needs: [lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements_v2.txt pytest pytest-asyncio pytest-cov
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --cov=cloud_iq \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --tb=short \
+            -v
+        env:
+          # No real cloud credentials in CI — all tests use mock data
+          ANTHROPIC_API_KEY: "test-key-not-real"
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+
+  # ---------------------------------------------------------------------------
+  # Docker build (no push on PR)
+  # ---------------------------------------------------------------------------
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: cloudiq:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Run healthcheck smoke test
+        run: |
+          docker run -d --name cloudiq-smoke -p 8080:8080 \
+            -e ANTHROPIC_API_KEY=demo \
+            cloudiq:${{ github.sha }}
+          sleep 8
+          curl --fail --retry 5 --retry-delay 2 http://localhost:8080/health
+          docker logs cloudiq-smoke
+          docker stop cloudiq-smoke
+
+  # ---------------------------------------------------------------------------
+  # Docker push to GHCR (main branch only)
+  # ---------------------------------------------------------------------------
+  docker-push:
+    name: Docker Push (main only)
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

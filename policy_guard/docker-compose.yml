@@ -1,0 +1,98 @@
+version: "3.9"
+
+# PolicyGuard V2 — Docker Compose
+# Services: policy_guard API + postgres
+
+services:
+
+  # ── PolicyGuard FastAPI ───────────────────────────────────────────────────
+  policy_guard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: policyguard:v2
+    container_name: policyguard-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      POLICYGUARD_ENV: production
+      POLICYGUARD_HOST: "0.0.0.0"
+      POLICYGUARD_PORT: "8080"
+      POLICYGUARD_WORKERS: "2"
+      POLICYGUARD_LOG_LEVEL: info
+      # Database
+      POLICYGUARD_DB_URL: "postgresql+asyncpg://policyguard:${POSTGRES_PASSWORD:-changeme}@postgres:5432/policyguard"
+      # Optional: Slack/Teams webhooks for incident alerts
+      POLICYGUARD_SLACK_WEBHOOK: "${POLICYGUARD_SLACK_WEBHOOK:-}"
+      POLICYGUARD_TEAMS_WEBHOOK: "${POLICYGUARD_TEAMS_WEBHOOK:-}"
+    volumes:
+      - reports_data:/app/reports
+      - logs_data:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - policyguard_net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Demo runner (one-shot, exits after demo) ──────────────────────────────
+  policy_guard_demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: policyguard:v2
+    container_name: policyguard-demo
+    profiles:
+      - demo
+    command: ["python", "demo.py", "--scenario=a"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - reports_data:/app/reports
+    networks:
+      - policyguard_net
+
+  # ── PostgreSQL 16 ─────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: policyguard-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: policyguard
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
+      POSTGRES_DB: policyguard
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - policyguard_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U policyguard -d policyguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # Do not expose postgres externally in production
+    # ports:
+    #   - "5432:5432"
+
+networks:
+  policyguard_net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  reports_data:
+    driver: local
+  logs_data:
+    driver: local

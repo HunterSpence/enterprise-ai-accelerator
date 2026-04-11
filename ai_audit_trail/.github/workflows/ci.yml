@@ -1,0 +1,154 @@
+name: AIAuditTrail V2 CI
+
+on:
+  push:
+    branches: [main, master, develop]
+    paths:
+      - "portfolio_modules/ai_audit_trail/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "portfolio_modules/ai_audit_trail/**"
+
+defaults:
+  run:
+    working-directory: portfolio_modules/ai_audit_trail
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Lint + type check
+  # --------------------------------------------------------------------------
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install lint tools
+        run: pip install ruff mypy
+
+      - name: ruff check
+        run: ruff check . --select E,F,W,I,N,UP --ignore E501
+
+      - name: ruff format check
+        run: ruff format --check .
+
+      - name: mypy type check
+        run: |
+          pip install -r requirements.txt --quiet
+          mypy . \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            --exclude __pycache__ \
+            --exclude demo.py \
+            --exclude dashboard.py
+
+  # --------------------------------------------------------------------------
+  # Unit tests
+  # --------------------------------------------------------------------------
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+
+      - name: Run tests
+        run: |
+          pytest tests/ \
+            --cov=. \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -v \
+            --tb=short \
+            -x
+        env:
+          AUDIT_DEV_MODE: "true"
+          AUDIT_STORE_PLAINTEXT: "true"
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.12'
+        with:
+          files: portfolio_modules/ai_audit_trail/coverage.xml
+          fail_ci_if_error: false
+
+  # --------------------------------------------------------------------------
+  # Demo smoke test (no API keys required)
+  # --------------------------------------------------------------------------
+  demo:
+    name: Demo Smoke Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run demo (all 3 scenarios)
+        run: python -m ai_audit_trail.demo
+        env:
+          AUDIT_DEV_MODE: "true"
+          AUDIT_STORE_PLAINTEXT: "true"
+
+  # --------------------------------------------------------------------------
+  # Docker build
+  # --------------------------------------------------------------------------
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: portfolio_modules/ai_audit_trail
+          file: portfolio_modules/ai_audit_trail/Dockerfile
+          push: false
+          tags: ai-audit-trail:v2
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test container health check
+        run: |
+          docker run -d --name audit-test \
+            -e AUDIT_DEV_MODE=true \
+            -p 8001:8000 \
+            ai-audit-trail:v2
+          sleep 5
+          curl -f http://localhost:8001/health || (docker logs audit-test && exit 1)
+          docker stop audit-test
+          docker rm audit-test

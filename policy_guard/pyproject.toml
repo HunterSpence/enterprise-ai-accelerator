@@ -1,0 +1,71 @@
+[project]
+name = "policyguard"
+version = "2.0.0"
+description = "Enterprise AI Governance & Compliance Platform"
+requires-python = ">=3.12"
+readme = "README.md"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+exclude = [
+    ".github",
+    "sql",
+    "__pycache__",
+    ".pytest_cache",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function calls in argument defaults (FastAPI uses this)
+    "B904",   # raise ... from err inside except (stylistic)
+    "UP007",  # Optional[X] → X | None (keep py3.9 compat in signatures)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["frameworks", "bias_detector", "incident_response", "dashboard", "reporter", "scanner"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["sql/", ".github/"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "sql/*",
+    ".github/*",
+    "demo.py",
+    "__pycache__/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
