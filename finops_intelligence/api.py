@@ -27,7 +27,7 @@ import tempfile
 import time
 import uuid
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, AsyncGenerator
 
@@ -98,7 +98,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     plan = Optimizer(mock=True).analyze(state.spend_data)
     state.optimization_plan = plan
     state.nl_interface.set_context(state.spend_data, state.anomalies, plan)
-    state.last_ingested = datetime.utcnow()
+    state.last_ingested = datetime.now(timezone.utc)
     yield
     state.engine.close()
 
@@ -329,7 +329,7 @@ async def ingest_cost_explorer(
 
     state.spend_data = spend_data
     state.engine.load_dataframe(df)
-    state.last_ingested = datetime.utcnow()
+    state.last_ingested = datetime.now(timezone.utc)
 
     elapsed_ms = (time.perf_counter() - start) * 1000
 
@@ -372,7 +372,7 @@ async def ingest_cur_parquet(
 
         state.engine.close()
         state.engine = engine
-        state.last_ingested = datetime.utcnow()
+        state.last_ingested = datetime.now(timezone.utc)
 
         elapsed_ms = (time.perf_counter() - start) * 1000
         background_tasks.add_task(_refresh_anomalies)

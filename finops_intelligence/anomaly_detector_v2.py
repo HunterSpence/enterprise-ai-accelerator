@@ -20,7 +20,7 @@ import hashlib
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 from typing import Any
 
@@ -465,7 +465,7 @@ class AnomalyDetectorV2:
                 ),
                 "severity": anomaly.severity.value.lower(),
                 "source": "finops-intelligence",
-                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "custom_details": {
                     "service": anomaly.service,
                     "anomaly_date": str(anomaly.detected_at),

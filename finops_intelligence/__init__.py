@@ -22,7 +22,8 @@ from .dashboard import Dashboard
 from .reporter import Reporter, ReportConfig, ReportData, generate_cfo_report
 
 # V2 modules
-from .analytics_engine import AnalyticsEngine, AnalyticsConfig, ServiceBreakdown
+from .analytics_engine import AnalyticsEngine, ServiceBreakdown
+AnalyticsConfig = None  # analytics_engine currently takes no config dataclass; reserved for future
 try:
     from .anomaly_detector_v2 import EnsembleAnomalyDetector, DetectorConfig, AnomalyV2, SuppressionRule
 except ImportError:
@@ -32,23 +33,23 @@ except ImportError:
     SuppressionRule = None
 from .unit_economics import (
     UnitEconomicsEngine,
-    UnitEconomicsConfig,
-    UnitEconomicsResult,
-    MetricSnapshot,
+    UnitEconomicsReport as UnitEconomicsResult,
+    UnitMetric as MetricSnapshot,
     EfficiencyTrend,
 )
+UnitEconomicsConfig = None  # unit_economics.UnitEconomicsEngine accepts kwargs directly
 from .commitment_optimizer import (
     CommitmentOptimizer,
-    CommitmentOptimizerConfig,
     CommitmentAnalysisReport,
     SavingsPlanRecommendation,
 )
+CommitmentOptimizerConfig = None
 from .maturity_assessment import (
     MaturityAssessment,
-    MaturityAssessmentConfig,
     MaturityReport,
-    MaturityStage,
+    MaturityLevel as MaturityStage,
 )
+MaturityAssessmentConfig = None
 
 __version__ = "2.0.0"
 

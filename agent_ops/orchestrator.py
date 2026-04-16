@@ -28,7 +28,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Callable
 
 import anthropic
@@ -65,7 +65,7 @@ class AgentActivity:
     @classmethod
     def now(cls, agent: str, event: str, detail: str = "") -> "AgentActivity":
         return cls(
-            timestamp=datetime.utcnow().strftime("%H:%M:%S.%f")[:-3],
+            timestamp=datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3],
             agent=agent,
             event=event,
             detail=detail,

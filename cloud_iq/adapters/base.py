@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 
@@ -37,7 +37,7 @@ class Workload:
     cpu_cores: int = 0
     memory_gb: float = 0.0
     storage_gb: float = 0.0
-    last_seen: datetime = field(default_factory=lambda: datetime.utcnow())
+    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

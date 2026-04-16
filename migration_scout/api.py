@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
@@ -89,7 +89,7 @@ async def _emit_progress(job_id: str, step: str, percent: int, detail: str = "")
         "step": step,
         "percent": percent,
         "detail": detail,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
     if job_id in _progress_queues:
         await _progress_queues[job_id].put(event)
@@ -217,7 +217,7 @@ async def _run_assessment(job_id: str, request: AssessmentRequest) -> None:
 
         # ── Stage 5: Finalise ─────────────────────────────────────────────────
         job["status"] = "completed"
-        job["completed_at"] = datetime.utcnow().isoformat() + "Z"
+        job["completed_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         await _emit_progress(
             job_id, "completed", 100,
             f"Assessment complete. "
@@ -256,7 +256,7 @@ async def create_assessment(request: AssessmentRequest) -> AssessmentResponse:
     _jobs[job_id] = {
         "job_id": job_id,
         "status": "queued",
-        "created_at": datetime.utcnow().isoformat() + "Z",
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "workload_count": len(request.workloads),
         "project_name": request.project_name,
     }

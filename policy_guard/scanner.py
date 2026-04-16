@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from rich.console import Console
@@ -220,7 +220,7 @@ class ComplianceScanner:
         start = time.monotonic()
         report = ComplianceReport(
             scan_id=str(uuid.uuid4())[:8].upper(),
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             config=self.config,
         )
 

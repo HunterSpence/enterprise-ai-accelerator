@@ -35,7 +35,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from rich.console import Console
@@ -142,7 +142,7 @@ class MigrationHubClient:
                 "StatusDetail": f"Automated by MigrationScout V2",
                 "ProgressPercent": progress,
             },
-            "UpdateDateTime": datetime.utcnow().isoformat() + "Z",
+            "UpdateDateTime": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "_simulated": True,
             "_task_id": fake_id,
         }
@@ -242,7 +242,7 @@ class MigrationHubClient:
                         "StatusDetail": status_detail or f"Progress: {progress_percent}%",
                         "ProgressPercent": progress_percent,
                     },
-                    UpdateDateTime=datetime.utcnow(),
+                    UpdateDateTime=datetime.now(timezone.utc),
                     NextUpdateSeconds=300,
                     DryRun=False,
                 )

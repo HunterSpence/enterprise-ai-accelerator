@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -106,7 +106,7 @@ class PortfolioReport:
     # Identity
     repo_name: str
     repo_path: str
-    scanned_at: datetime = field(default_factory=datetime.utcnow)
+    scanned_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Language breakdown
     languages: dict[str, int] = field(default_factory=dict)   # lang -> LoC

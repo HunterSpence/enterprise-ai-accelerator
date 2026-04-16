@@ -18,7 +18,7 @@ import math
 import random
 import time
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -677,7 +677,7 @@ def _write_demo_report(path: Path) -> None:
         "\n"
         "<div class=\"header\">\n"
         "  <h1>FinOps Intelligence V2 \u2014 CFO Report</h1>\n"
-        f"  <p>{COMPANY} &nbsp;|&nbsp; Generated {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+        f"  <p>{COMPANY} &nbsp;|&nbsp; Generated {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
         " &nbsp;|&nbsp; Powered by FinOps Intelligence V2</p>\n"
         "</div>\n"
         "\n"

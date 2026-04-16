@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -368,9 +368,9 @@ class SARIFExporter:
                 "policyguard-medium": medium_count,
                 "policyguard-low": low_count,
                 "policyguard-scan-timestamp": (
-                    getattr(self.report, "timestamp", datetime.utcnow()).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    getattr(self.report, "timestamp", datetime.now(timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ")
                     if hasattr(self.report, "timestamp") else
-                    datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+                    datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
                 ),
             },
             # Artifact notation for tools that show file origin
@@ -412,7 +412,7 @@ class SARIFExporter:
                 sarif_file: policyguard_findings.sarif
         """
         Path(output_dir).mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
         scan_id = getattr(self.report, "scan_id", "scan")
         filename = f"policyguard_{scan_id}_{timestamp}.sarif"
         output_path = os.path.join(output_dir, filename)

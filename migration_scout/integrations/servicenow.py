@@ -22,7 +22,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import urljoin
 
@@ -127,7 +127,7 @@ class ServiceNowClient:
             "number": number,
             "state": "1",
             "short_description": payload.get("short_description", ""),
-            "sys_created_on": datetime.utcnow().isoformat(),
+            "sys_created_on": datetime.now(timezone.utc).isoformat(),
             "link": f"https://{self.instance}/nav_to.do?uri={table}.do?sys_id={fake_id}",
         }
 
@@ -162,7 +162,7 @@ class ServiceNowClient:
                 f"Target Service: {target_service}\n"
                 f"Migration Wave: {wave_number}\n"
                 f"Estimated Duration: {estimated_weeks:.1f} weeks\n"
-                f"Created by MigrationScout V2 on {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+                f"Created by MigrationScout V2 on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
             ),
             "category": self.CATEGORY_MIGRATION,
             "priority": self.PRIORITY_MAP.get(business_criticality, "3"),
@@ -252,7 +252,7 @@ class ServiceNowClient:
             "u_cloud_target": cloud_target,
             "u_migration_strategy": strategy,
             "u_migration_scout_id": workload_id,
-            "u_last_assessment_date": datetime.utcnow().strftime("%Y-%m-%d"),
+            "u_last_assessment_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         }
         result = self._post(self.TABLE_CMDB, payload)
         is_dry = not (self.token or (self.username and self.password))

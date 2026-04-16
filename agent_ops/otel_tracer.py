@@ -51,7 +51,7 @@ import os
 import time
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Optional
 
 
@@ -467,6 +467,6 @@ class AgentOpsTracer:
             "spans": [s.to_dict() for s in spans],
             "exportMode": self.export_mode,
             "otlpEndpoint": self.otlp_endpoint or "",
-            "generatedAt": datetime.utcnow().isoformat() + "Z",
+            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             "euAiActCompliant": self.eu_ai_act_mode,
         }

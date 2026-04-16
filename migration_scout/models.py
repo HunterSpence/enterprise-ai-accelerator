@@ -12,7 +12,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MigrationStrategy(str, Enum):
@@ -111,8 +111,7 @@ class WorkloadInventoryModel(BaseModel):
     team_size: int = Field(default=5, ge=1, description="App team size (FTEs)")
     notes: str = Field(default="")
 
-    class Config:
-        use_enum_values = True
+    model_config = ConfigDict(use_enum_values=True)
 
 
 class AssessmentRequest(BaseModel):

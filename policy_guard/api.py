@@ -24,7 +24,7 @@ import asyncio
 import json
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 try:
@@ -142,7 +142,7 @@ def _make_scan_record(scan_id: str, request: "ScanRequest") -> dict:
     return {
         "scan_id": scan_id,
         "status": "pending",
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
         "request": request.model_dump() if hasattr(request, "model_dump") else {},
         "overall_score": None,
@@ -214,7 +214,7 @@ async def _run_scan_background(scan_id: str, request_data: dict) -> None:
 
         _scans[scan_id].update({
             "status": "complete",
-            "completed_at": datetime.utcnow().isoformat(),
+            "completed_at": datetime.now(timezone.utc).isoformat(),
             "overall_score": round(report.overall_score, 1),
             "risk_rating": report.risk_rating,
             "total_findings": report.total_findings,
@@ -264,7 +264,7 @@ if FASTAPI_AVAILABLE:
             "status": "healthy",
             "version": "2.0.0",
             "days_to_eu_ai_act_deadline": days_until_enforcement("high_risk_systems"),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
     @app.post("/scans", response_model=ScanStatusResponse, status_code=202)
@@ -418,7 +418,7 @@ if FASTAPI_AVAILABLE:
             "use_domain": registration.use_domain,
             "is_gpai": registration.is_gpai,
             "deployment_region": registration.deployment_region,
-            "registered_at": datetime.utcnow().isoformat(),
+            "registered_at": datetime.now(timezone.utc).isoformat(),
             "annex_iii_match": annex_match,
             "attributes": registration.model_dump(),
         }
@@ -526,7 +526,7 @@ if FASTAPI_AVAILABLE:
         audit_result = {
             "system_id": system_id,
             "system_name": system["name"],
-            "audit_triggered_at": datetime.utcnow().isoformat(),
+            "audit_triggered_at": datetime.now(timezone.utc).isoformat(),
             "article_12_compliant": has_logging,
             "findings": [],
             "recommendations": [],

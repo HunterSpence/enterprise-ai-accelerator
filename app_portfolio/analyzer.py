@@ -27,7 +27,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -262,7 +262,7 @@ class RepoAnalyzer:
             raise ValueError(f"Repo path does not exist: {repo_path}")
 
         logger.info("Scanning %s", repo_path)
-        t_start = datetime.utcnow()
+        t_start = datetime.now(timezone.utc)
 
         # ----------------------------------------------------------------
         # Step 1: Walk the file tree
@@ -310,7 +310,7 @@ class RepoAnalyzer:
         # ----------------------------------------------------------------
         # Assemble report
         # ----------------------------------------------------------------
-        scan_duration_s = (datetime.utcnow() - t_start).total_seconds()
+        scan_duration_s = (datetime.now(timezone.utc) - t_start).total_seconds()
 
         report = PortfolioReport(
             repo_name=repo_path.name,

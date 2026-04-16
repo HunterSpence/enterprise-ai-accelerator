@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from rich.console import Console
@@ -145,7 +145,7 @@ class JiraClient:
             f"Estimated Duration: {estimated_weeks:.1f} weeks (P50)\n"
             f"Migration Cost: ${migration_cost:,.0f}\n"
             f"Risk Level: {risk_level.upper()}\n"
-            f"Created by MigrationScout V2 on {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}"
+            f"Created by MigrationScout V2 on {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}"
         )
         payload = {
             "fields": {
