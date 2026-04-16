@@ -2,8 +2,9 @@
 # Used by CI, the demo runner, and local development.
 # Individual modules have their own requirements.txt for Docker builds.
 
-# AI
-anthropic>=0.40.0
+# AI — Opus 4.7 requires anthropic SDK with extended thinking, batches,
+# citations, files, prompt caching, and native tool-use support.
+anthropic>=0.69.0
 
 # Web framework (shared by all API modules)
 fastapi>=0.111.0

@@ -7,6 +7,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Article%2012%20compliant-orange.svg)](#ai-audit-trail)
 [![FOCUS 1.3](https://img.shields.io/badge/FOCUS-1.3%20compliant-purple.svg)](#finops-intelligence)
+[![Claude Opus 4.7](https://img.shields.io/badge/Claude-Opus%204.7-black.svg)](docs/OPUS_4_7_UPGRADE.md)
+[![Prompt Caching](https://img.shields.io/badge/prompt%20caching-5m%20%2B%201h-8A2BE2.svg)](docs/OPUS_4_7_UPGRADE.md)
+[![Extended Thinking](https://img.shields.io/badge/extended%20thinking-Annex%20IV%20audit%20trail-orange.svg)](docs/OPUS_4_7_UPGRADE.md)
+[![1M Context](https://img.shields.io/badge/context-1M%20tokens-informational.svg)](docs/OPUS_4_7_UPGRADE.md)
+[![Batch API](https://img.shields.io/badge/batch%20API-50%25%20discount-green.svg)](docs/OPUS_4_7_UPGRADE.md)
+
+> **April 2026 — Opus 4.7 Executive Upgrade.** Platform now runs on Claude
+> Opus 4.7 across every auditable path, with prompt caching, native
+> tool-use structured output, extended-thinking reasoning traces as Annex
+> IV evidence, a 1M-context executive chat, and Batch API bulk scoring.
+> See [docs/OPUS_4_7_UPGRADE.md](docs/OPUS_4_7_UPGRADE.md) for the full
+> executive brief.
 
 ---
 
@@ -30,6 +42,24 @@ This platform closes all four gaps.
 | **PolicyGuard** | Compliance scanning across EU AI Act, HIPAA, SOC 2, PCI-DSS, CIS AWS, NIST SP 800-53 | Multi-framework cross-mapping: one implementation covers 3 regulatory frameworks | `python -m policy_guard.demo` |
 | **CloudIQ** | AWS infrastructure analysis — security score, cost waste identification, right-sizing | $47K/month waste identified in a single AcmeCorp demo without AWS credentials | `python -m cloud_iq.demo` |
 | **Risk Aggregator** | Unified 0–100 risk score correlating signals from all five modules | No competitor correlates security findings + FinOps waste + migration complexity + AI governance in one score | `python risk_aggregator.py` |
+| **ExecutiveChat** *(new)* | 1M-context CTO chat grounded in the full enterprise briefing — architecture, migration, compliance, FinOps, audit posture | Opus 4.7 1M context + 1-hour prompt cache — follow-up questions cost ~10% of the first | `from executive_chat import ExecutiveChat` |
+| **ComplianceCitations** *(new)* | Evidence-grounded regulatory Q&A with character-range citations (CIS, SOC 2, HIPAA, PCI-DSS, EU AI Act Annex IV) | Anthropic Citations API — every claim links to source document span, no hallucinated control IDs | `from compliance_citations import EvidenceLibrary` |
+
+---
+
+## Opus 4.7 Capabilities in This Release
+
+| Capability | Where it lives | Why it matters |
+|---|---|---|
+| **Prompt caching (5-min + 1-hour)** | `core/ai_client.py` | ~90% input-token cost reduction on repeat pipelines and executive chat follow-ups |
+| **Native tool-use structured output** | Every agent + MCP dispatcher | Replaces fragile JSON-regex parsing — every model response is schema-validated |
+| **Extended thinking (up to 32k reasoning tokens)** | `migration_scout/thinking_audit.py`, `policy_guard/thinking_audit.py` | Reasoning trace is persistable as EU AI Act Annex IV technical documentation |
+| **1M-token context** | `executive_chat/` | Entire enterprise briefing loads into one system prompt — no chunking, no retrieval loop |
+| **Citations API** | `compliance_citations/` | Grounds compliance claims in cited regulatory text — auditor-ready evidence trail |
+| **Message Batches API (50% discount)** | `migration_scout/batch_classifier.py`, `finops_intelligence/batch_processor.py` | Bulk 6R classification + bulk FinOps explanation at half list price |
+| **Unified MCP surface (19 tools)** | `mcp_server.py` | Every module is drivable from Claude Code / Claude Desktop without writing integration code |
+
+See [docs/OPUS_4_7_UPGRADE.md](docs/OPUS_4_7_UPGRADE.md) for the full executive brief, token economics, and compliance mapping.
 
 ---
 
