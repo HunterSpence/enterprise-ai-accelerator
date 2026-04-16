@@ -11,3 +11,5 @@ build/
 *.sarif
 htmlcov/
 .coverage
+.eaa_cache/
+*.db

@@ -168,3 +168,110 @@ Breaking changes: **none.** All legacy constructors accept either an
 All capabilities above run on a single open-source codebase on a single
 Claude Opus 4.7 subscription — one contract, one audit trail, one risk
 score.
+
+---
+
+## April 2026 Platform Expansion (v0.2.0)
+
+Commit: `39f1e6d`. Seven parallel capability tracks added. 68 new files,
+16,931 LoC, 15 new OSS dependencies. Zero paid SaaS services introduced.
+
+### Before / After Platform Posture
+
+| Dimension | v0.1.0 (cdb8bdb) | v0.2.0 (39f1e6d) |
+|---|---|---|
+| Cloud discovery | Synthetic/mock data only | Real boto3/azure-mgmt/google-cloud/kubernetes adapters |
+| App intelligence | Not present | 11 languages, 9 dep manifests, OSV CVE, 6R per repo |
+| IaC security | Not present | 20 policies (CIS/PCI/SOC2/HIPAA), SBOM, CVE, drift, SARIF |
+| FinOps depth | FOCUS 1.3 export + anomaly detection | + CUR ingestion, RI/SP optimizer, right-sizer, carbon, savings report |
+| Observability | Coarse duration counters | Full OTEL gen_ai.*, 8 Prometheus metrics, 2 Grafana dashboards, Jaeger |
+| Cost optimization | Prompt caching only | + ModelRouter (~95% savings), ResultCache, BatchCoalescer, CostEstimator |
+| Integrations | None | Slack, Jira, ServiceNow, GitHub, Teams, PagerDuty, SMTP (all free-tier) |
+
+### Track 1 — Multi-Cloud Discovery (`cloud_iq/adapters/`)
+
+Real SDK-backed discovery replaces mock data. `UnifiedDiscovery.auto()`
+probes for credentials across AWS (boto3), Azure (azure-mgmt), GCP
+(google-cloud), and Kubernetes (kubernetes client), then combines all
+reachable inventories. Graceful degradation — missing credentials skip
+that adapter without error.
+
+Before: `cloud_iq.demo` ran on entirely synthetic data.
+After: production deployments can point at real cloud accounts and get a
+live multi-cloud asset inventory in seconds.
+
+### Track 2 — App Portfolio Intelligence (`app_portfolio/`)
+
+New module. Scans any code repository and returns: language composition
+(11 languages), dependency inventory (9 manifest formats), CVE findings
+(OSV.dev, no API key), containerization score, CI maturity score, test
+coverage, and an Opus 4.7 extended-thinking 6R recommendation per repo.
+CLI: `python -m app_portfolio.cli <path>`. Replaces CAST Highlight
+($150K–$600K/yr commercial equivalent) for portfolio-level migration
+scoping.
+
+### Track 3 — Integration Hub (`integrations/`)
+
+New module. Routes platform findings to Slack, Jira Cloud, ServiceNow,
+GitHub Issues, GitHub App PR check-runs (inline annotations), Teams,
+SMTP, and PagerDuty. All adapters use free-tier or webhook endpoints —
+no paid middleware. `WebhookDispatcher` applies exponential-backoff retry
++ circuit-breaker + per-adapter rate limiting. Dry-run mode on all
+adapters.
+
+### Track 4 — IaC Security (`iac_security/`)
+
+New module. Parses Terraform (python-hcl2) and Pulumi IaC, checks 20
+built-in policies (CIS AWS / PCI-DSS / SOC 2 / HIPAA), generates
+CycloneDX SBOM, scans declared dependencies via OSV.dev, detects drift
+between IaC state and live cloud state, and exports SARIF 2.1.0 for the
+GitHub Security tab. Replaces Snyk IaC / Prisma Cloud ($200K+/yr).
+
+### Track 5 — Full Observability (`observability/` + `core/` additions)
+
+`core/telemetry.py` implements the OpenTelemetry gen_ai.* semantic
+conventions. `core/prometheus_exporter.py` exports 8 Prometheus metrics.
+`core/logging.py` provides structlog JSON logging. `core/_hooks.py` wires
+OTEL spans into `AIClient`. `observability/docker-compose.obs.yaml` brings
+up Prometheus + Grafana + Jaeger + OTEL Collector with one command; two
+Grafana dashboards (eaa_platform, eaa_cost) are auto-provisioned.
+
+Before: per-call metrics were coarse duration + finding count.
+After: full distributed traces, token-level attribution, cost counters per
+model, and cache hit rate in Grafana.
+
+### Track 6 — Advanced FinOps (`finops_intelligence/` additions)
+
+Four new components extend the existing FinOps module: `CURIngestor` (AWS
+CUR via DuckDB, Parquet), `RISPOptimizer` (RI/SP with 80% coverage cap),
+`RightSizer` (CloudWatch + 200+ instance types + Graviton), `CarbonTracker`
+(open-source regional grid coefficients), and `SavingsReporter` (CFO
+executive summary). Before, FinOps covered FOCUS 1.3 export and anomaly
+detection. After, the full AWS cost optimization lifecycle is covered in
+a single module.
+
+### Track 7 — Anthropic-Native Cost Optimization Layer (`core/` additions)
+
+Seven new components in `core/` reduce platform operating cost by
+approximately 95% vs. an always-Opus-4.7 baseline:
+
+- `ModelRouter` — complexity-based model selection (Opus/Sonnet/Haiku)
+- `ResultCache` — SQLite TTL cache; identical requests never hit the API twice
+- `BatchCoalescer` — auto-coalescing Batch API submission (50% discount)
+- `StreamHandler` — SSE streaming
+- `FilesAPIClient` — Files API wrapper for document reuse
+- `InterleavedThinkingLoop` — agentic thinking + tool-use loop
+- `CostEstimator` — per-call USD cost with model-specific pricing
+
+Combined effect: a 1,000-workload 6R scan costs ~$7–10 vs. ~$150 at
+all-Opus list price.
+
+### Known Limitations (as of v0.2.0)
+
+- No multi-tenant RBAC — single org/user only
+- No React/web UI — observability via Grafana; no app-layer dashboard
+- Platform itself has not undergone SOC 2 Type II audit
+- No hyperscaler marketplace listing
+- Carbon coefficients are estimates; not suitable for regulatory carbon reporting
+
+See [README.md#roadmap](../README.md#roadmap) for the full gap list.
