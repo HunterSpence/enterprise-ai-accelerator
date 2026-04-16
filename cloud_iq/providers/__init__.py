@@ -4,6 +4,7 @@ from cloud_iq.providers.base import AbstractCloudProvider, ProviderCapabilities
 from cloud_iq.providers.aws import AWSProvider
 from cloud_iq.providers.azure import AzureProvider
 from cloud_iq.providers.gcp import GCPProvider
+from cloud_iq.providers.oci import OCIProvider
 from cloud_iq.providers.multi import MultiCloudAggregator
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "AWSProvider",
     "AzureProvider",
     "GCPProvider",
+    "OCIProvider",
     "MultiCloudAggregator",
 ]
