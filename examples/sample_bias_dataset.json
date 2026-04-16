@@ -1,0 +1,138 @@
+{
+  "dataset_id": "hiring-model-v2.3-eval-2025-q1",
+  "model_name": "CandidateScreener-v2.3",
+  "evaluation_period": "2025-Q1",
+  "task": "binary_classification",
+  "outcome_label": "recommended_for_interview",
+  "total_candidates": 4820,
+  "overall_positive_rate": 0.341,
+  "groups": [
+    {
+      "group_name": "gender",
+      "subgroups": [
+        {
+          "label": "male",
+          "n": 2714,
+          "positive_rate": 0.412,
+          "true_positive_rate": 0.831,
+          "false_positive_rate": 0.118,
+          "precision": 0.774
+        },
+        {
+          "label": "female",
+          "n": 1986,
+          "positive_rate": 0.251,
+          "true_positive_rate": 0.694,
+          "false_positive_rate": 0.087,
+          "precision": 0.801
+        },
+        {
+          "label": "non_binary",
+          "n": 120,
+          "positive_rate": 0.267,
+          "true_positive_rate": 0.711,
+          "false_positive_rate": 0.092,
+          "precision": 0.789
+        }
+      ],
+      "metrics": {
+        "demographic_parity_difference": 0.161,
+        "disparate_impact_ratio": 0.609,
+        "equalized_odds_difference": 0.137,
+        "threshold": 0.5
+      },
+      "violations": [
+        {
+          "metric": "demographic_parity_difference",
+          "value": 0.161,
+          "threshold": 0.10,
+          "severity": "HIGH",
+          "detail": "Female candidates recommended at 25.1% vs 41.2% for male — gap of 16.1 pp exceeds 10 pp threshold."
+        },
+        {
+          "metric": "disparate_impact_ratio",
+          "value": 0.609,
+          "threshold": 0.80,
+          "severity": "CRITICAL",
+          "detail": "Female/male positive rate ratio is 0.61 — well below the 4/5 rule (0.80). Likely adverse impact under EEOC guidelines."
+        }
+      ]
+    },
+    {
+      "group_name": "ethnicity",
+      "subgroups": [
+        {
+          "label": "white",
+          "n": 2108,
+          "positive_rate": 0.389,
+          "true_positive_rate": 0.821,
+          "false_positive_rate": 0.112,
+          "precision": 0.782
+        },
+        {
+          "label": "asian",
+          "n": 986,
+          "positive_rate": 0.371,
+          "true_positive_rate": 0.808,
+          "false_positive_rate": 0.109,
+          "precision": 0.779
+        },
+        {
+          "label": "black",
+          "n": 743,
+          "positive_rate": 0.241,
+          "true_positive_rate": 0.671,
+          "false_positive_rate": 0.098,
+          "precision": 0.759
+        },
+        {
+          "label": "hispanic",
+          "n": 631,
+          "positive_rate": 0.268,
+          "true_positive_rate": 0.694,
+          "false_positive_rate": 0.101,
+          "precision": 0.763
+        },
+        {
+          "label": "other",
+          "n": 352,
+          "positive_rate": 0.312,
+          "true_positive_rate": 0.748,
+          "false_positive_rate": 0.105,
+          "precision": 0.771
+        }
+      ],
+      "metrics": {
+        "demographic_parity_difference": 0.148,
+        "disparate_impact_ratio": 0.620,
+        "equalized_odds_difference": 0.150,
+        "threshold": 0.5
+      },
+      "violations": [
+        {
+          "metric": "disparate_impact_ratio",
+          "value": 0.620,
+          "threshold": 0.80,
+          "severity": "CRITICAL",
+          "detail": "Black candidates recommended at 24.1% vs 38.9% for white — disparate impact ratio 0.62 violates 4/5 rule."
+        },
+        {
+          "metric": "equalized_odds_difference",
+          "value": 0.150,
+          "threshold": 0.10,
+          "severity": "HIGH",
+          "detail": "True positive rate gap of 15 pp between highest (white: 82.1%) and lowest (black: 67.1%) groups."
+        }
+      ]
+    }
+  ],
+  "feature_importance": [
+    {"feature": "years_experience", "importance": 0.31},
+    {"feature": "education_level", "importance": 0.24},
+    {"feature": "previous_employer_tier", "importance": 0.19},
+    {"feature": "skills_match_score", "importance": 0.16},
+    {"feature": "name_embedding", "importance": 0.07},
+    {"feature": "zip_code_cluster", "importance": 0.03}
+  ],
+  "bias_notes": "name_embedding and zip_code_cluster features are likely proxy variables for protected attributes. Recommend removal and model retraining."
+}

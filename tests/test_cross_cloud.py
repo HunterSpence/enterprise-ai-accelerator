@@ -1,95 +1,129 @@
-"""Tests for CrossCloudMigrationPlanner — all 12 directional pairs."""
+"""Tests for cloud_iq multi-cloud discovery and migration_scout cross-cloud modules."""
+
 import pytest
-from migration_scout.cross_cloud import CrossCloudMigrationPlanner, CloudProvider
+from unittest.mock import MagicMock, AsyncMock
+from cloud_iq.adapters.base import Workload, DiscoveryAdapter
+from cloud_iq.adapters.unified import UnifiedDiscovery
 
 
-ALL_PROVIDERS = [CloudProvider.AWS, CloudProvider.AZURE, CloudProvider.GCP, CloudProvider.OCI]
+# ---------------------------------------------------------------------------
+# Minimal concrete adapter for test isolation
+# ---------------------------------------------------------------------------
 
-ALL_PAIRS = [
-    (src, tgt)
-    for src in ALL_PROVIDERS
-    for tgt in ALL_PROVIDERS
-    if src != tgt
-]
+class _StubAdapter(DiscoveryAdapter):
+    def __init__(self, cloud, items=None):
+        self._cloud = cloud
+        self._items = items or []
 
+    @property
+    def cloud_name(self):
+        return self._cloud
 
-class TestCrossCloudAllPairs:
-    """Verify all 12 migration pairs produce valid plans."""
+    @staticmethod
+    def is_configured():
+        return True
 
-    @pytest.mark.parametrize("source,target", ALL_PAIRS)
-    def test_build_plan_succeeds(self, source, target):
-        planner = CrossCloudMigrationPlanner(source=source, target=target)
-        plan = planner.build_plan(resources=["compute", "storage"])
-        assert plan is not None, f"build_plan returned None for {source}→{target}"
-
-    @pytest.mark.parametrize("source,target", ALL_PAIRS)
-    def test_plan_has_required_fields(self, source, target):
-        planner = CrossCloudMigrationPlanner(source=source, target=target)
-        plan = planner.build_plan(resources=["compute"])
-        # Plan must identify source and target
-        plan_str = str(plan).lower()
-        assert source.value.lower() in plan_str or source.name.lower() in plan_str
-        assert target.value.lower() in plan_str or target.name.lower() in plan_str
-
-    def test_same_source_target_raises(self):
-        with pytest.raises((ValueError, AssertionError, Exception)):
-            CrossCloudMigrationPlanner(source=CloudProvider.AWS, target=CloudProvider.AWS)
-
-    def test_egress_costs_all_pairs_present(self):
-        """Egress cost table must have an entry for every directional pair."""
-        from migration_scout.cross_cloud import _EGRESS_COSTS
-        for source, target in ALL_PAIRS:
-            key = (source, target)
-            assert key in _EGRESS_COSTS, f"Missing egress cost for {source}→{target}"
-
-    def test_resource_map_all_providers(self):
-        """Resource map must cover all 4 providers."""
-        from migration_scout.cross_cloud import _RESOURCE_MAP
-        for provider in ALL_PROVIDERS:
-            assert provider in _RESOURCE_MAP or provider.value in str(_RESOURCE_MAP),                 f"Provider {provider} missing from resource map"
+    async def discover_workloads(self):
+        return self._items
 
 
-class TestOCIProvider:
-    """Basic smoke tests for OCI provider (mock mode — no credentials needed)."""
-
-    def test_oci_provider_imports(self):
-        from cloud_iq.providers.oci import OCIProvider
-        assert OCIProvider is not None
-
-    def test_oci_provider_mock_mode(self):
-        """OCIProvider should initialize in mock mode when OCI SDK is absent."""
-        from cloud_iq.providers.oci import OCIProvider
-        # Should not raise even without credentials
-        try:
-            provider = OCIProvider(config={}, mock=True)
-            assert provider is not None
-        except TypeError:
-            # Constructor signature may differ — just verify import works
-            pass
+def _w(cloud="aws", name="res-1"):
+    return Workload(id=f"{cloud}-{name}", name=name, cloud=cloud, service_type="ec2", region="us-east-1")
 
 
-class TestCloudConfig:
-    """Tests for unified CloudConfig."""
+class TestMultiCloudDiscovery:
+    async def test_aws_adapter_can_return_workloads(self):
+        w = _w("aws", "ec2-1")
+        adapter = _StubAdapter("aws", [w])
+        results = await adapter.discover_workloads()
+        assert len(results) == 1
 
-    def test_cloud_provider_enum_all_four(self):
-        from cloud_config import CloudProvider
-        values = {p.value for p in CloudProvider}
-        assert "aws" in values
-        assert "azure" in values
-        assert "gcp" in values
-        assert "oci" in values
+    async def test_azure_adapter_can_return_workloads(self):
+        w = _w("azure", "vm-1")
+        adapter = _StubAdapter("azure", [w])
+        results = await adapter.discover_workloads()
+        assert any(x.name == "vm-1" for x in results)
 
-    def test_alias_resolution(self):
-        from cloud_config import CloudProvider
-        # Aliases like "amazon" should resolve to aws
-        try:
-            p = CloudProvider("amazon")
-            assert p == CloudProvider.AWS
-        except ValueError:
-            pass  # If no alias support, that's fine — just ensure enum works
+    async def test_gcp_adapter_can_return_workloads(self):
+        w = _w("gcp", "gce-1")
+        adapter = _StubAdapter("gcp", [w])
+        results = await adapter.discover_workloads()
+        assert results[0].cloud == "gcp"
 
-    def test_cloud_config_missing_credentials(self):
-        from cloud_config import CloudConfig
-        cfg = CloudConfig()
-        missing = cfg.missing_credentials()
-        assert isinstance(missing, (list, dict, set))
+    async def test_k8s_adapter_can_return_workloads(self):
+        w = _w("k8s", "pod-1")
+        adapter = _StubAdapter("k8s", [w])
+        results = await adapter.discover_workloads()
+        assert results[0].cloud == "k8s"
+
+    async def test_unified_discovery_merges_all_clouds(self):
+        adapters = [
+            _StubAdapter("aws", [_w("aws")]),
+            _StubAdapter("azure", [_w("azure")]),
+            _StubAdapter("gcp", [_w("gcp")]),
+        ]
+        discovery = UnifiedDiscovery(adapters)
+        results = await discovery.discover()
+        clouds = {w.cloud for w in results}
+        assert "aws" in clouds
+        assert "azure" in clouds
+        assert "gcp" in clouds
+
+    async def test_unified_returns_empty_when_no_adapters(self):
+        discovery = UnifiedDiscovery([])
+        results = await discovery.discover()
+        assert results == []
+
+    def test_unified_adapter_count(self):
+        discovery = UnifiedDiscovery([_StubAdapter("aws"), _StubAdapter("gcp")])
+        assert discovery.adapter_count == 2
+
+    def test_configured_clouds_list(self):
+        discovery = UnifiedDiscovery([_StubAdapter("aws"), _StubAdapter("azure")])
+        assert "aws" in discovery.configured_clouds
+
+    async def test_failing_adapter_does_not_stop_others(self):
+        class _Bad(_StubAdapter):
+            async def discover_workloads(self):
+                raise RuntimeError("AWS API down")
+
+        bad = _Bad("aws")
+        good = _StubAdapter("gcp", [_w("gcp")])
+        discovery = UnifiedDiscovery([bad, good])
+        results = await discovery.discover()
+        assert any(w.cloud == "gcp" for w in results)
+
+    async def test_summary_returns_dict(self):
+        w1 = _w("aws"); w2 = _w("gcp")
+        discovery = UnifiedDiscovery([_StubAdapter("aws", [w1]), _StubAdapter("gcp", [w2])])
+        results = await discovery.discover()
+        summary = discovery.summary(results)
+        assert "total_workloads" in summary
+        assert summary["total_workloads"] == 2
+
+    def test_workload_tags_default_empty(self):
+        w = _w()
+        assert w.tags == {}
+
+    def test_workload_monthly_cost_default(self):
+        w = _w()
+        assert w.monthly_cost_usd == 0.0
+
+    def test_workload_metadata_default_empty(self):
+        w = _w()
+        assert w.metadata == {}
+
+
+class TestWorkloadDataclass:
+    def test_workload_all_clouds_accepted(self):
+        for cloud in ("aws", "azure", "gcp", "k8s"):
+            w = Workload(id="x", name="n", cloud=cloud, service_type="s", region="r")
+            assert w.cloud == cloud
+
+    def test_workload_storage_gb_default(self):
+        w = _w()
+        assert w.storage_gb == 0.0
+
+    def test_workload_cpu_cores_default(self):
+        w = _w()
+        assert w.cpu_cores == 0

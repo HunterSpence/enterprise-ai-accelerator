@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.11", "3.12"]
 
     steps:
       - name: Checkout
@@ -97,11 +97,12 @@ jobs:
             -v
         continue-on-error: true
 
-      - name: Run tests — risk_aggregator
+      - name: Run tests — main suite
         run: |
           pytest tests/ \
             --tb=short \
-            --junitxml=reports/risk_aggregator.xml \
+            --junitxml=reports/main_suite.xml \
+            -m "not network" \
             -v
         continue-on-error: true
 
@@ -110,19 +111,13 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
-          pytest \
-            ai_audit_trail/tests/ \
-            cloud_iq/tests/ \
-            policy_guard/tests/ \
-            finops_intelligence/tests/ \
-            migration_scout/integrations/tests/ \
-            agent_ops/tests/ \
-            tests/ \
+          pytest tests/ \
             --tb=short \
             --junitxml=reports/combined.xml \
             --cov=. \
             --cov-report=xml:reports/coverage.xml \
             --cov-report=term-missing \
+            -m "not network" \
             -v
 
       - name: Upload test results

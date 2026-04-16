@@ -1,0 +1,203 @@
+{
+  "architecture_findings": {
+    "summary": "Multi-cloud estate spans 3 providers with 14 workloads. Key concerns: 2 oversized EC2 instances, 1 publicly accessible RDS, missing observability on Azure VMs.",
+    "workload_count": 14,
+    "cloud_distribution": {"aws": 7, "azure": 3, "gcp": 2, "k8s": 2},
+    "findings": [
+      {
+        "id": "ARCH-001",
+        "severity": "HIGH",
+        "resource": "i-0c3d4e5f (m5.4xlarge)",
+        "title": "Severely underutilized compute",
+        "detail": "m5.4xlarge running at avg 12% CPU over 30 days. Rightsizing to m5.xlarge saves ~$657/mo.",
+        "recommendation": "Schedule rightsizing during next maintenance window."
+      },
+      {
+        "id": "ARCH-002",
+        "severity": "HIGH",
+        "resource": "db-0prod001 (RDS postgres-inventory-prod)",
+        "title": "RDS publicly accessible in production",
+        "detail": "publicly_accessible=true on a production database. Violates IAC-013 and SOC 2 CC6.6.",
+        "recommendation": "Set publicly_accessible=false and route via VPC peering or RDS Proxy."
+      },
+      {
+        "id": "ARCH-003",
+        "severity": "MEDIUM",
+        "resource": "app-vm-01, app-vm-02 (Azure)",
+        "title": "No Azure Monitor agent deployed",
+        "detail": "Azure VMs are missing the Azure Monitor agent extension. No metrics flowing to Log Analytics workspace.",
+        "recommendation": "Deploy AzureMonitorWindowsAgent via Azure Policy assignment."
+      },
+      {
+        "id": "ARCH-004",
+        "severity": "LOW",
+        "resource": "gce-backend-02 (GCP staging)",
+        "title": "Staging instance running 24/7",
+        "detail": "Staging VM in europe-west1 has no scheduled shutdown. Estimated $55/mo could be saved with a stop schedule.",
+        "recommendation": "Create a Cloud Scheduler job to stop/start gce-backend-02 outside business hours."
+      }
+    ]
+  },
+  "migration_plan": {
+    "strategy": "Phased lift-and-shift then optimize",
+    "total_workloads": 14,
+    "phases": [
+      {
+        "phase": 1,
+        "name": "Quick wins — Lambda + containerized workloads",
+        "workloads": ["event-processor", "api-gateway"],
+        "estimated_duration_weeks": 4,
+        "risk": "LOW",
+        "six_r": "Retain / Re-platform"
+      },
+      {
+        "phase": 2,
+        "name": "Database modernization",
+        "workloads": ["postgres-inventory-prod", "postgres-analytics-dev"],
+        "estimated_duration_weeks": 8,
+        "risk": "MEDIUM",
+        "six_r": "Re-platform to Aurora Serverless v2"
+      },
+      {
+        "phase": 3,
+        "name": "Legacy EC2 retirement",
+        "workloads": ["legacy-batch-processor", "ml-training-host"],
+        "estimated_duration_weeks": 12,
+        "risk": "HIGH",
+        "six_r": "Re-architect to Step Functions + SageMaker"
+      }
+    ]
+  },
+  "compliance_violations": {
+    "framework": "CIS AWS Foundations Benchmark v1.5 + SOC 2 Type II",
+    "total_controls": 47,
+    "passed": 39,
+    "failed": 8,
+    "violations": [
+      {
+        "control_id": "CIS-2.2",
+        "title": "EBS encryption at rest not enabled",
+        "severity": "HIGH",
+        "resource": "vol-0a1b2c3d (app-data-volume)",
+        "remediation": "Enable EBS default encryption in us-east-1: aws ec2 enable-ebs-encryption-by-default"
+      },
+      {
+        "control_id": "CIS-3.1",
+        "title": "CloudTrail log file validation disabled",
+        "severity": "HIGH",
+        "resource": "main-trail",
+        "remediation": "Enable log file validation: aws cloudtrail update-trail --name main-trail --enable-log-file-validation"
+      },
+      {
+        "control_id": "CIS-1.4",
+        "title": "Root account has active access keys",
+        "severity": "CRITICAL",
+        "resource": "AWS account 123456789012 root",
+        "remediation": "Delete root access keys immediately. Use IAM roles for all programmatic access."
+      },
+      {
+        "control_id": "SOC2-CC6.6",
+        "title": "Production database publicly accessible",
+        "severity": "CRITICAL",
+        "resource": "db-0prod001",
+        "remediation": "Set publicly_accessible=false and restrict security group to application tier CIDR only."
+      },
+      {
+        "control_id": "CIS-4.1",
+        "title": "Security group allows unrestricted SSH",
+        "severity": "HIGH",
+        "resource": "sg-bastion (bastion-sg)",
+        "remediation": "Restrict SSH ingress to corporate IP ranges or use AWS Systems Manager Session Manager."
+      }
+    ]
+  },
+  "finops_anomalies": [
+    {
+      "id": "ANOM-001",
+      "date": "2025-01-18",
+      "service": "AmazonEC2",
+      "resource": "i-0c3d4e5f (m5.4xlarge)",
+      "severity": "HIGH",
+      "description": "EC2 spend spike: $135.94 on 2025-01-18 vs $28.32 daily average (+380%). Likely runaway batch job or misconfigured autoscaling.",
+      "normal_daily_cost_usd": 28.32,
+      "anomaly_cost_usd": 135.94,
+      "delta_pct": 380.0
+    },
+    {
+      "id": "ANOM-002",
+      "date": "2025-01-01",
+      "service": "AmazonRDS",
+      "resource": "db-0dev001",
+      "severity": "MEDIUM",
+      "description": "Dev RDS instance running continuously over the holiday period (Dec 24 – Jan 2). No traffic detected. Estimated $32 wasted.",
+      "normal_daily_cost_usd": 3.21,
+      "anomaly_cost_usd": 3.21,
+      "delta_pct": 0,
+      "note": "Pattern anomaly: should have been stopped during company shutdown."
+    },
+    {
+      "id": "ANOM-003",
+      "date": "2025-01-15",
+      "service": "AmazonS3",
+      "resource": "my-demo-public-data-bucket",
+      "severity": "LOW",
+      "description": "S3 data transfer out jumped 3x on Jan 15. No corresponding application traffic. Possible data exfiltration or misconfigured public endpoint.",
+      "normal_daily_cost_usd": 0.21,
+      "anomaly_cost_usd": 0.64,
+      "delta_pct": 205.0
+    }
+  ],
+  "audit_posture": {
+    "overall_grade": "C+",
+    "ai_decisions_logged": 1284,
+    "decisions_with_full_trace": 891,
+    "decisions_missing_trace": 393,
+    "coverage_pct": 69.4,
+    "recent_incidents": [
+      {
+        "id": "INC-2025-0041",
+        "date": "2025-01-18",
+        "title": "EC2 cost spike — m5.4xlarge runaway process",
+        "severity": "P2",
+        "resolution_time_hours": 3.5,
+        "root_cause": "Batch job loop bug caused 480% CPU spike. No autoscaling cap configured.",
+        "status": "resolved"
+      },
+      {
+        "id": "INC-2025-0038",
+        "date": "2025-01-12",
+        "title": "Production RDS failover — unexpected Multi-AZ promotion",
+        "severity": "P1",
+        "resolution_time_hours": 0.4,
+        "root_cause": "Brief network partition in us-east-1a triggered automatic failover to us-east-1b.",
+        "status": "resolved"
+      },
+      {
+        "id": "INC-2025-0022",
+        "date": "2025-01-05",
+        "title": "API Gateway 502 errors — certificate expiry",
+        "severity": "P2",
+        "resolution_time_hours": 1.2,
+        "root_cause": "TLS certificate on api-gateway expired. Renewal automation was not configured.",
+        "status": "resolved"
+      }
+    ]
+  },
+  "risk_score": {
+    "overall": 68,
+    "max": 100,
+    "grade": "C",
+    "breakdown": {
+      "security": {"score": 52, "weight": 0.35},
+      "reliability": {"score": 74, "weight": 0.25},
+      "cost_efficiency": {"score": 61, "weight": 0.20},
+      "compliance": {"score": 83, "weight": 0.15},
+      "observability": {"score": 59, "weight": 0.05}
+    },
+    "top_risks": [
+      "Root account access keys active (CRITICAL)",
+      "Production RDS publicly accessible (CRITICAL)",
+      "No MFA on 3 IAM users with AdministratorAccess"
+    ]
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "name": "inventory-service-ui",
+  "version": "1.2.0",
+  "description": "React frontend for InventoryService warehouse management",
+  "private": true,
+  "dependencies": {
+    "react": "16.13.0",
+    "react-dom": "16.13.0",
+    "react-scripts": "3.4.1",
+    "axios": "0.19.0",
+    "lodash": "4.17.15",
+    "moment": "2.24.0",
+    "serialize-javascript": "2.1.1"
+  },
+  "devDependencies": {
+    "jest": "24.9.0",
+    "@testing-library/react": "9.5.0",
+    "@testing-library/jest-dom": "4.2.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "browserslist": {
+    "production": [">0.2%", "not dead", "not op_mini all"],
+    "development": ["last 1 chrome version", "last 1 firefox version"]
+  }
+}

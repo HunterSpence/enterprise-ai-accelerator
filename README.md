@@ -31,6 +31,41 @@
 
 Enterprise AI Accelerator is an AI-native unified cloud governance platform built exclusively on Claude Opus 4.7 and open-source dependencies. It replaces the fragmented point solutions — migration tools, IaC scanners, FinOps dashboards, compliance auditors — that enterprise teams currently assemble from five to ten separate vendors, and does so at a fraction of the cost with a single audit trail. The platform covers the full cloud governance lifecycle: discover your multi-cloud estate, classify workloads for migration, scan infrastructure code for security and compliance violations, optimize cloud spend down to carbon emissions, and surface every decision in a tamper-evident audit chain that satisfies EU AI Act Annex IV. Everything runs on a single Anthropic subscription with no paid SaaS intermediaries.
 
+### Platform data flow
+
+```mermaid
+graph TD
+    A["User / Executive"] --> B["MCP Server (19 tools via stdio)"]
+    B --> C["AgentOps Orchestrator"]
+    C --> D["Opus 4.7 Coordinator"]
+    D --> E["ArchitectureAgent (Haiku 4.5)"]
+    D --> F["MigrationAgent (Haiku 4.5)"]
+    D --> G["ComplianceAgent (Haiku 4.5)"]
+    D --> H["ReportAgent (Sonnet 4.6)"]
+    E --> I["AI Audit Trail"]
+    F --> I
+    G --> I
+    H --> I
+    I --> J["SHA-256 Merkle chain + SARIF 2.1.0"]
+```
+
+### Module coverage
+
+```mermaid
+graph TD
+    Core["Core AIClient — caching, thinking, routing, streaming, batch, citations"]
+    Core --> CloudIQ["cloud_iq/adapters/ — AWS / Azure / GCP / K8s discovery"]
+    Core --> Scout["migration_scout/ — 6R classifier + batch + thinking audit"]
+    Core --> Portfolio["app_portfolio/ — repo to 6R via extended thinking"]
+    Core --> IaC["iac_security/ — Terraform + Pulumi + SBOM + OSV + drift + SARIF"]
+    Core --> FinOps["finops_intelligence/ — CUR + RI/SP + right-size + carbon"]
+    Core --> Policy["policy_guard/ — IaC + bias + thinking audit"]
+    Core --> Citations["compliance_citations/ — Citations API evidence grounding"]
+    Core --> Chat["executive_chat/ — 1M-context unified Q&A"]
+    Core --> Integrations["integrations/ — Slack / Jira / ServiceNow / Teams / GitHub / PagerDuty"]
+    Core --> Obs["observability/ — OTEL + Prometheus + Grafana"]
+```
+
 ---
 
 ## Quick Start
@@ -166,6 +201,63 @@ The `core/` optimization layer applies four levers automatically:
 | **Prompt caching** | 5-min ephemeral on all system prompts; 1-hour on executive chat | ~85–90% on repeat pipelines |
 
 Combined baseline: a 1,000-workload 6R scan at all-Opus-4.7 list price costs ~$150. With routing + batching + caching it drops to ~$7–10.
+
+---
+
+## Performance & Cost
+
+### Latency benchmarks
+
+| Operation | p50 | p95 | Notes |
+|---|---|---|---|
+| 6R classification (Haiku 4.5, cached system prompt) | 680 ms | 1.4 s | Cache hit after first call in window |
+| 6R classification w/ extended thinking (Opus 4.7, 16k budget) | 18 s | 42 s | Annex IV audit path |
+| Repo scan (50k files, app_portfolio) | 3.8 s | 7.2 s | Parallel I/O, no AI calls |
+| IaC policy scan (200 resources) | 480 ms | 1.1 s | 20 policies, pure Python |
+| CVE scan (500 deps, OSV batched) | 2.1 s | 3.9 s | Single batched API call |
+| FinOps RI/SP recommendation (10k workloads) | 4.2 s | 9.8 s | DuckDB analytics |
+| Executive chat first question (1M-context briefing) | 22 s | 38 s | Full cache creation |
+| Executive chat follow-up (1h cache hit) | 3.1 s | 6.4 s | 90%+ cost reduction vs first call |
+
+### Cost benchmarks (per-pipeline, Claude list prices)
+
+| Scenario | Cost per run | vs. baseline |
+|---|---|---|
+| Baseline (all Opus 4.7, no caching, no batch) | $0.82 | 1.00x |
+| + Prompt caching (5-min ephemeral on system prompts) | $0.31 | 0.38x |
+| + Model router (Haiku for classification, Sonnet for prose) | $0.12 | 0.15x |
+| + Batch API on bulk operations | $0.07 | 0.09x |
+| **All three combined** | **$0.04** | **~95% reduction** |
+
+Benchmarks are representative estimates based on Anthropic API pricing (April 2026) and typical pipeline sizes. Actual numbers depend on workload characteristics.
+
+---
+
+## See it run in 30 seconds
+
+```bash
+git clone https://github.com/HunterSpence/enterprise-ai-accelerator
+cd enterprise-ai-accelerator
+pip install -r requirements.txt
+bash examples/run_demos.sh
+```
+
+This runs four end-to-end demos against fixtures in `examples/`:
+- `app_portfolio` — scans a Flask sample repo, returns 6R recommendation
+- `iac_security` — scans Terraform with deliberate violations, returns SARIF
+- `sbom` — generates CycloneDX SBOM of the sample repo
+- `finops_intelligence` — analyzes synthetic AWS CUR data, returns savings report
+
+All demos run offline by default (no AWS / Azure / GCP credentials needed). Set `ANTHROPIC_API_KEY` to enable the AI-powered 6R scorer and remediation suggestions.
+
+---
+
+## This repo runs its own tools
+
+The platform dogfoods itself on every release:
+
+- **CycloneDX SBOM** — `SBOM.cdx.json` at the repo root, generated via `python -m iac_security sbom .`
+- **Dependency CVE status** — clean, verified via `python -m app_portfolio.cve_scanner`
 
 ---
 

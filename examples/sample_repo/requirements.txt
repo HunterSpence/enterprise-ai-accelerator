@@ -1,0 +1,12 @@
+# NOTE: These are intentionally pinned to old versions for demo/CVE scanning.
+# In production, always use latest patched releases.
+flask==1.0.2
+flask-sqlalchemy==2.3.2
+requests==2.20.0
+sqlalchemy==1.3.0
+werkzeug==0.15.5
+jinja2==2.10.1
+markupsafe==1.1.1
+click==7.0
+itsdangerous==1.1.0
+gunicorn==19.9.0
