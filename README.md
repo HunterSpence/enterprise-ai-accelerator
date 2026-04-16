@@ -31,6 +31,52 @@
 
 Enterprise AI Accelerator is an AI-native unified cloud governance platform built exclusively on Claude Opus 4.7 and open-source dependencies. It replaces the fragmented point solutions — migration tools, IaC scanners, FinOps dashboards, compliance auditors — that enterprise teams currently assemble from five to ten separate vendors, and does so at a fraction of the cost with a single audit trail. The platform covers the full cloud governance lifecycle: discover your multi-cloud estate, classify workloads for migration, scan infrastructure code for security and compliance violations, optimize cloud spend down to carbon emissions, and surface every decision in a tamper-evident audit chain that satisfies EU AI Act Annex IV. Everything runs on a single Anthropic subscription with no paid SaaS intermediaries.
 
+---
+
+## What This Replaces
+
+> **Bottom line.** A Big 6 cloud-transformation engagement delivers a PowerPoint in 12–18 months for **$3.2M–$12M**. This platform ships equivalent technical surface area today for **$25K–$80K / year** — one Anthropic subscription, zero paid SaaS, a single tamper-evident audit trail.
+
+### Big 6 consulting platforms
+
+| Firm / Platform | Engagement | What they ship | What this platform ships instead |
+|---|---:|---|---|
+| **Accenture** — MyNav | $500K–$5M | 2019-era recommendation engine with GPT-4 wrappers; no persisted reasoning traces | Native Opus 4.7 reasoning; extended-thinking traces as Annex IV audit evidence; source-available |
+| **Deloitte** — CloudCompass / Converge | $400K–$3M + $200K/yr | Tableau + Excel + PowerPoint automation; human-curated compliance content | Agentic decision engine; Citations API grounds every compliance claim in cited regulation text; SARIF 2.1.0 export |
+| **PwC** — Cloud Transformation Suite | $300K–$2M | LLMs used only for summarization; assessment-heavy | Frontier-model decision engine; tamper-evident Merkle audit chain; integrated carbon tracking |
+| **EY** — Nexus for Cloud | $400K–$2M | Thin glue over AWS Migration Hub / Azure Migrate; PowerPoint deliverables | Unified 6R + compliance + FinOps on one audit trail; structured tool-use JSON output |
+| **KPMG** — Powered Enterprise Cloud | $500K–$4M | SAP-centric; light on cloud-native / K8s / serverless | Multi-cloud adapters (AWS / Azure / GCP / K8s); IaC drift detection; open-source carbon model |
+| **Cognizant** — CloudVue / Cloud Steps | $200K–$1.5M | Pattern-matching over rules tables | Genuine extended-thinking reasoning; prompt caching; Anthropic-native architecture |
+| **Capgemini** — eAPM + Migration Factory | $300K–$2M | Rules-based app portfolio analysis | AI-native 6R scoring; 1M-context executive chat; interleaved thinking + tool-use |
+
+**Where the Big 6 still win.** Brand trust with boards, regulatory sign-off at Fortune 500 scale, and the organizational change-management muscle a 200-person program office provides. This platform is the technical substrate — not a replacement for that program office.
+
+### Commercial point tools
+
+| Tool | Category | List price | Replaced by |
+|---|---|---:|---|
+| CAST Highlight / vFunction | App portfolio + refactoring | $150K–$600K/yr | `app_portfolio/` |
+| Snyk IaC / Prisma Cloud | IaC security | $200K–$1M/yr | `iac_security/` |
+| IBM OpenPages AI Governance | AI risk + compliance | $500K–$2M/yr | `ai_audit_trail/` + `policy_guard/` + `compliance_citations/` |
+| Credo AI | Bias + AI compliance | $180K/yr | `policy_guard/thinking_audit.py` |
+| ServiceNow IRM + AIOps | GRC + ops | $300K–$2M/yr | `integrations/` + `executive_chat/` |
+| Apptio Cloudability / CloudZero | FinOps | $100K–$1M/yr | `finops_intelligence/` |
+| Flexera One / Turbonomic | Cloud cost + optimization | $100K–$2M/yr | `cloud_iq/adapters/` + `finops_intelligence/right_sizer.py` |
+| Datadog / New Relic | Observability | $50K–$500K/yr | `observability/` (OSS OTEL + Prometheus + Grafana) |
+| Cloud Carbon Footprint | Sustainability | Free | `finops_intelligence/carbon_tracker.py` |
+
+### 3-year TCO — 10,000-workload enterprise
+
+| Approach | Year 1 | Year 3 cumulative |
+|---|---:|---:|
+| Big 6 engagement + licensed tools | $3.2M–$12M | $6M–$25M |
+| Best-of-breed commercial tools, assembled in-house | $1.5M–$4M | $4.5M–$12M |
+| **This platform** (Anthropic API + self-hosted) | **$25K–$80K** | **$75K–$240K** |
+
+---
+
+## Platform diagrams
+
 ### Platform data flow
 
 ```mermaid
@@ -258,58 +304,6 @@ The platform dogfoods itself on every release:
 
 - **CycloneDX SBOM** — `SBOM.cdx.json` at the repo root, generated via `python -m iac_security sbom .`
 - **Dependency CVE status** — clean, verified via `python -m app_portfolio.cve_scanner`
-
----
-
-## What This Replaces
-
-### Big 6 Consulting Platform Comparison
-
-The Big 6 global system integrators — Accenture, Deloitte, PwC, EY, KPMG, Cognizant, Capgemini — sell cloud-transformation engagements on $400K–$5M, 6–18 month terms. Their platforms are pre-GenAI (2019–2022 vintage), retrofitted with ML, and built to sell billable hours rather than to reason autonomously.
-
-| Firm / Platform | Engagement Price | Where They Win | Where We Win |
-|---|---|---|---|
-| **Accenture MyNav** | $500K–$5M / 6–18 mo | 1000s of F500 deployments, ServiceNow/SAP/Oracle integrations, legal + regulatory team, 20 yrs IP | Built on 2019-era recommendation engine retrofit with GPT-4 wrappers — not native frontier-model reasoning. No reasoning traces persisted as audit evidence. No extended thinking. No 1M-context executive chat. No Citations API for compliance grounding. Black-box proprietary code; ours is source-available. |
-| **Deloitte CloudCompass / Converge** | $400K–$3M engagement + $200K/yr | Methodology maturity, Big-4 audit practice adjacency, regulatory interpretation | Largely Tableau + Excel + PowerPoint automation — no AI-native agentic reasoning. No native multi-cloud adapter layer. No Anthropic tool-use structured output. No SARIF 2.1.0 export. Compliance content curated by humans; we use Citations API to ground every claim in the cited regulation text. |
-| **PwC Cloud Transformation Suite** | $300K–$2M engagement | SAP / Oracle / Salesforce accelerators, global delivery network | Manual assessment-heavy. Uses LLMs only for summarization, not as decision-engine. No EU AI Act Article 12 Annex IV architecture. No tamper-evident Merkle audit chain. No carbon tracking. |
-| **EY Nexus for Cloud** | $400K–$2M engagement | AWS + Azure partner depth, ERP transformation focus | Methodology-first (the tool is thin glue over AWS Migration Hub / Azure Migrate). No integrated 6R + compliance + FinOps on a single audit trail. No native tool-use output — results are PowerPoint, not structured JSON. |
-| **KPMG Powered Enterprise Cloud** | $500K–$4M engagement | SAP-centric, audit-adjacency trust with CFOs | Built for Big-ERP migrations; thin on cloud-native / K8s / serverless. No AI reasoning layer beyond template generation. No IaC-vs-cloud drift detection. No open-source emissions coefficient carbon model. |
-| **Cognizant CloudVue / Cloud Steps** | $200K–$1.5M engagement | Offshore delivery cost efficiency, mid-market scale | Pattern-matching engine over rules tables — not genuine AI reasoning. No extended thinking. No prompt caching. No multi-provider fallback-free Anthropic-native architecture. Lower-tier tooling vs. Big-4 competitors. |
-| **Capgemini eAPM + Migration Factory** | $300K–$2M engagement | eAPM is a real app-portfolio product with 10+ yrs of heuristics | Closest analog to our `app_portfolio/` — but rules-based, not AI-native. No 1M-context exec chat. No native tool-use schema-validated output. No interleaved thinking+tool-use loop. |
-
-**Our position:** A Big 6 engagement delivers an 18-month PowerPoint deliverable with rules-based 2019-era ML behind a login portal. We deliver equivalent technical surface area — cloud discovery, 6R classification, compliance audit, FinOps optimization, carbon tracking, unified executive chat — as auditable, streamable, schema-validated output on Claude Opus 4.7, with ~95% lower run-cost via Anthropic-native prompt caching + Batch API + complexity-based model routing, and zero paid SaaS intermediaries. The entire stack runs on one Anthropic subscription.
-
-### Commercial Tool Comparison
-
-Point solutions in the cloud governance space, and what replaces them here:
-
-| Commercial Tool | Category | List Price | Replaced By |
-|---|---|---|---|
-| CAST Highlight | App portfolio analysis | $150K–$600K/yr | `app_portfolio/` — OSV CVE + containerization + CI maturity + Opus 4.7 extended-thinking 6R score |
-| vFunction | App refactoring ML | $150K–$400K/yr | `app_portfolio/six_r_scorer.py` |
-| Snyk IaC / Prisma Cloud | IaC security | $200K–$1M/yr | `iac_security/` — 20 built-in policies with CIS/PCI-DSS/SOC 2 refs + CycloneDX SBOM + OSV scan + SARIF export |
-| Checkov (OSS) | IaC policies | Free | `iac_security/policies.py` — with AI-generated remediation via Haiku 4.5 |
-| IBM OpenPages AI Governance | AI risk + compliance | $500K–$2M/yr | `ai_audit_trail/` + `policy_guard/` + `compliance_citations/` |
-| Credo AI | Bias + AI compliance | $180K/yr | `policy_guard/thinking_audit.py` — 9 bias types + EU AI Act article refs |
-| ServiceNow IRM + AIOps | GRC + ops | $300K–$2M/yr | `integrations/` + `ai_audit_trail/` + `executive_chat/` |
-| Apptio Cloudability | FinOps | $200K–$1M/yr | `finops_intelligence/cur_ingestor.py` + `ri_sp_optimizer.py` + `right_sizer.py` |
-| CloudZero | Unit economics FinOps | $100K–$500K/yr | `finops_intelligence/savings_reporter.py` |
-| Flexera One | Cloud cost + SAM | $250K–$2M/yr | `cloud_iq/adapters/` + `finops_intelligence/` |
-| Turbonomic (IBM) | App resource optimization | $100K–$500K/yr | `finops_intelligence/right_sizer.py` |
-| AWS Migration Hub / Azure Migrate | Migration discovery | "Free" with cloud spend | `cloud_iq/adapters/{aws,azure}.py` — with AI 6R layered on top |
-| Cloud Carbon Footprint (OSS) | Sustainability | Free | `finops_intelligence/carbon_tracker.py` — with migration recommendations |
-| Datadog / New Relic | Observability | $50K–$500K/yr | `observability/` — OSS OTEL + Prometheus + Grafana self-hosted |
-| Anthropic Workbench + custom scripts | AI chat + RAG | $100K+/yr | `executive_chat/` (1M-context) + `compliance_citations/` |
-
-**Stack cost comparison for a 10,000-workload F500 enterprise:**
-
-| Approach | Year 1 Cost | Year 3 Cost |
-|---|---|---|
-| Big 6 consulting engagement + licensed tools | **$3.2M–$12M** | $6M–$25M |
-| Best-of-breed commercial tools assembled in-house | **$1.5M–$4M/yr** | $4.5M–$12M |
-| This platform (Anthropic API + self-hosted) | **$25K–$80K/yr** | $75K–$240K |
-
-Zero paid SaaS intermediaries. One audit trail. One model contract.
 
 ---
 
