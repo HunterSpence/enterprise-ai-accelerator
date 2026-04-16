@@ -51,6 +51,31 @@ pytest>=8.0.0
 pytest-asyncio>=0.23.0
 pytest-cov>=5.0.0
 
+# GitHub App JWT signing (integrations/github_app.py)
+PyJWT>=2.8.0
+cryptography>=42.0.0
+
 # Linting / type-checking (dev)
 ruff>=0.4.0
 mypy>=1.10.0
+
+# Multi-cloud discovery adapters (cloud_iq/adapters/)
+azure-identity>=1.16.0
+azure-mgmt-resourcegraph>=8.0.0
+azure-mgmt-costmanagement>=4.0.0
+google-cloud-asset>=3.25.0
+google-cloud-billing>=1.13.0
+
+# Observability — OpenTelemetry + Prometheus (opt-in; all OSS, self-hostable)
+opentelemetry-api>=1.27.0
+opentelemetry-sdk>=1.27.0
+opentelemetry-exporter-otlp>=1.27.0
+opentelemetry-instrumentation-fastapi>=0.48b0
+opentelemetry-instrumentation-httpx>=0.48b0
+opentelemetry-instrumentation-asyncpg>=0.48b0
+prometheus-client>=0.20.0
+
+# IaC Security + SBOM + CVE (iac_security/)
+python-hcl2>=4.3.3
+cyclonedx-python-lib>=7.3.0
+packageurl-python>=0.15.0

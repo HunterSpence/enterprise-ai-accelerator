@@ -1,0 +1,86 @@
+# observability/otel-collector.yaml
+# ==================================
+# OpenTelemetry Collector configuration for the Enterprise AI Accelerator.
+#
+# Receivers: OTLP (gRPC 4317, HTTP 4318)
+# Processors: batch (reduce export overhead)
+# Exporters: prometheus (scrape target), jaeger (traces), file (offline backup)
+#
+# Start with docker-compose.obs.yaml — this file is mounted at
+# /etc/otelcol-contrib/config.yaml inside the otel-collector container.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 5s
+    send_batch_size: 1024
+    send_batch_max_size: 2048
+
+  # Add resource attributes to every span/metric
+  resource:
+    attributes:
+      - key: deployment.environment
+        value: local
+        action: upsert
+
+  # Memory limiter — prevents OOM under heavy load
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+exporters:
+  # Prometheus — collector exposes /metrics on :8889 for Prometheus to scrape
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: eaa
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Jaeger — traces visible at http://localhost:16686
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # File exporter — useful for offline analysis and CI test assertions
+  file:
+    path: /tmp/otel-traces.jsonl
+    rotation:
+      max_megabytes: 50
+      max_days: 7
+
+  # Debug exporter — prints to collector stdout (disable in production)
+  debug:
+    verbosity: basic
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [jaeger, file, debug]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, debug]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [file, debug]
