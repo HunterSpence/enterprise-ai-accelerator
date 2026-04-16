@@ -5,8 +5,41 @@
 [![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Multi-Cloud](https://img.shields.io/badge/clouds-AWS%20%7C%20Azure%20%7C%20GCP%20%7C%20OCI-blue.svg)](#multi-cloud-support)
 [![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Article%2012%20compliant-orange.svg)](#ai-audit-trail)
 [![FOCUS 1.3](https://img.shields.io/badge/FOCUS-1.3%20compliant-purple.svg)](#finops-intelligence)
+
+---
+
+## Why This Beats Every Competitor
+
+> The only open-source platform covering all four major clouds, AI-powered assessment, cross-cloud migration, and EU AI Act compliance in one unified risk score.
+
+| Feature | **Enterprise AI Accelerator** | AWS Migration Hub | Azure Migrate | GCP Migration Center | Oracle Lift Services | CloudEndure (AWS) | Carbonite Migrate | Zerto | VMware HCX | Turbonomic | Apptio Cloudability |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Multi-cloud support (all 4)** | ✅ AWS+Azure+GCP+OCI | ❌ AWS only | ❌ Azure only | ❌ GCP only | ❌ OCI only | ❌ AWS only | ⚠️ 2-3 clouds | ⚠️ partial | ⚠️ VMware-centric | ⚠️ partial | ⚠️ partial |
+| **Any source→any target** | ✅ 12 directional pairs | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **AI-powered assessment** | ✅ Claude AI (Anthropic) | ❌ Rule-based | ❌ Rule-based | ❌ Rule-based | ❌ Manual | ❌ | ❌ | ❌ | ⚠️ ML-based | ⚠️ ML-based | ❌ |
+| **EU AI Act compliance** | ✅ Art.12+62, SARIF | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Constitutional AI safety** | ✅ (Anthropic Claude) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Automated remediation** | ✅ + Terraform IaC | ⚠️ manual | ⚠️ manual | ⚠️ manual | ❌ manual | ⚠️ replication | ❌ | ❌ | ⚠️ vMotion | ⚠️ partial | ❌ |
+| **FinOps / cost optimization** | ✅ FOCUS 1.3 + AI | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ (paid, narrow) | ✅ (paid, narrow) |
+| **Open source / self-hosted** | ✅ MIT license | ❌ AWS-hosted | ❌ Azure-hosted | ❌ GCP-hosted | ❌ Oracle-hosted | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **No vendor lock-in** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Unified risk score** | ✅ (0–100, 4 dimensions) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ⚠️ partial | ❌ |
+| **6R workload classification** | ✅ AI-native + Monte Carlo | ⚠️ basic | ⚠️ basic | ⚠️ basic | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **SARIF 2.1.0 export** | ✅ GitHub Security tab | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Free tier / zero cost** | ✅ fully free (MIT) | ❌ pay-per-use | ❌ pay-per-use | ❌ pay-per-use | ❌ engagement fee | ❌ paid | ❌ paid | ❌ paid | ❌ paid | ❌ $$$$ | ❌ $$$$ |
+| **Setup time** | ✅ **3 commands / minutes** | ⚠️ hours | ⚠️ hours | ⚠️ hours | ❌ weeks | ⚠️ hours | ⚠️ days | ⚠️ days | ❌ weeks | ❌ weeks | ❌ weeks |
+
+**Key:** ✅ Full support  ⚠️ Partial/limited  ❌ Not supported
+
+**Where we genuinely win and why:**
+- **Multi-cloud**: Every competitor is either single-cloud or heavily biased toward one vendor. We support all four major providers with equal depth.
+- **AI-powered**: Claude (Anthropic) provides Constitutional AI safety guarantees that ML-based scoring (Turbonomic, IBM) cannot match. No other migration tool uses a foundation model for 6R classification.
+- **Open source**: Zero vendor lock-in. Deploy in your own VPC, air-gapped, or on-prem. Every competitor is SaaS or cloud-native to one vendor.
+- **EU AI Act**: No migration, FinOps, or cloud tool in this list offers Article 12 compliance. We're the only one because we're the only one that also governs AI systems.
+- **Setup time**: Three commands vs weeks of professional services. AWS Migration Hub and Oracle Lift require engagement teams.
 
 ---
 
@@ -20,35 +53,124 @@ This platform closes all four gaps.
 
 ---
 
+## Multi-Cloud Support
+
+The accelerator runs **on** any of the four major clouds and migrates **between** any combination of them.
+
+### Supported Providers
+
+| Provider | Scan | Migrate FROM | Migrate TO | Terraform | Auth Method |
+|---|:---:|:---:|:---:|:---:|---|
+| **AWS** | ✅ | ✅ | ✅ | ✅ | Access Key / Instance Profile / SSO |
+| **Azure** | ✅ | ✅ | ✅ | ✅ | Service Principal / Managed Identity |
+| **GCP** | ✅ | ✅ | ✅ | ✅ | Service Account Key / ADC |
+| **OCI** | ✅ | ✅ | ✅ | ✅ | API Key / ~/.oci/config |
+
+### Cross-Cloud Migration Pairs (all 12 supported)
+
+```
+AWS  → Azure    AWS  → GCP    AWS  → OCI
+Azure → AWS     Azure → GCP   Azure → OCI
+GCP  → AWS      GCP  → Azure  GCP  → OCI
+OCI  → AWS      OCI  → Azure  OCI  → GCP
+```
+
+### Quick Start (Multi-Cloud)
+
+**Single-cloud assessment (any provider):**
+```bash
+# AWS (default)
+SOURCE_CLOUD=aws python -m cloud_iq.demo
+
+# Azure
+SOURCE_CLOUD=azure python -m cloud_iq.demo
+
+# GCP
+SOURCE_CLOUD=gcp python -m cloud_iq.demo
+
+# OCI
+SOURCE_CLOUD=oci python -m cloud_iq.demo
+```
+
+**Cross-cloud migration plan:**
+```bash
+# AWS → OCI migration plan
+SOURCE_CLOUD=aws TARGET_CLOUD=oci python -m migration_scout.demo
+
+# Azure → GCP
+SOURCE_CLOUD=azure TARGET_CLOUD=gcp python -m migration_scout.demo
+
+# GCP → AWS
+SOURCE_CLOUD=gcp TARGET_CLOUD=aws python -m migration_scout.demo
+```
+
+**Python SDK — any source/target combination:**
+```python
+from migration_scout.cross_cloud import CrossCloudMigrationPlanner
+
+planner = CrossCloudMigrationPlanner(source="aws", target="oci")
+plan = planner.build_plan(
+    resource_types=["EC2 Instance", "Amazon RDS", "S3 Bucket"],
+    data_size_tb=42.0,
+    workload_count=75,
+)
+
+print(f"Strategy: {plan.strategy}")
+print(f"Complexity: {plan.complexity}")
+print(f"Duration: {plan.estimated_duration_weeks} weeks")
+print(f"Egress cost: ${plan.egress_estimate.total_cost_usd:,.0f}")
+for step in plan.runbook_steps:
+    print(f"  {step}")
+```
+
+**Multi-cloud cost aggregation:**
+```python
+import asyncio
+from cloud_iq.providers import AWSProvider, AzureProvider, GCPProvider, OCIProvider, MultiCloudAggregator
+
+agg = MultiCloudAggregator([
+    AWSProvider(mock=True),
+    AzureProvider(subscription_id="demo", mock=True),
+    GCPProvider(project_id="demo", billing_account_id="demo", mock=True),
+    OCIProvider(mock=True),
+])
+
+summary = asyncio.run(agg.get_unified_summary())
+print(f"Total monthly: ${summary['total_monthly_cost_usd']:,.0f}")
+print(f"Total waste: ${summary['total_waste_usd']:,.0f} ({summary['total_waste_pct']}%)")
+for p in summary['providers']:
+    print(f"  {p['provider']}: ${p['monthly_cost_usd']:,.0f}/mo — waste ${p['waste_usd']:,.0f}")
+```
+
+**Terraform — deploy to any cloud(s):**
+```bash
+cd terraform
+
+# Single cloud
+terraform apply -var='enabled_clouds=["aws"]'
+
+# All four clouds simultaneously
+terraform apply -var='enabled_clouds=["aws","azure","gcp","oci"]'
+
+# Cross-cloud migration (source=AWS, target=OCI)
+terraform apply \
+  -var='enabled_clouds=["aws","oci"]' \
+  -var='source_cloud=aws' \
+  -var='target_cloud=oci'
+```
+
+---
+
 ## Six Modules, One Risk Score
 
 | Module | What It Does | Key Differentiator | Run |
 |---|---|---|---|
 | **AIAuditTrail** | Tamper-evident AI decision logging with EU AI Act Article 12/62 compliance + NIST AI RMF | Only OSS tool combining OTEL + SARIF 2.1.0 + Article 12. IBM OpenPages costs $500K/yr. | `python -m ai_audit_trail.demo` |
-| **FinOps Intelligence** | Multi-cloud cost tracking, anomaly detection, commitment optimization | Only OSS tool combining FOCUS 1.3 billing normalization + AI/LLM model cost tracking | `python -m finops_intelligence.demo` |
-| **MigrationScout** | AI-native 6R workload classification, dependency mapping, Monte Carlo wave planning | Only OSS tool with AI-native 6R + Monte Carlo wave planning. AWS Migration Hub closed Nov 2025. | `python -m migration_scout.demo` |
+| **FinOps Intelligence** | Multi-cloud cost tracking (AWS+Azure+GCP+OCI), anomaly detection, commitment optimization | Only OSS tool combining FOCUS 1.3 billing normalization + AI/LLM model cost tracking | `python -m finops_intelligence.demo` |
+| **MigrationScout** | AI-native 6R workload classification, cross-cloud planning, Monte Carlo wave planning | Any source→any target across all 12 directional cloud pairs. AWS Migration Hub closed Nov 2025. | `python -m migration_scout.demo` |
 | **PolicyGuard** | Compliance scanning across EU AI Act, HIPAA, SOC 2, PCI-DSS, CIS AWS, NIST SP 800-53 | Multi-framework cross-mapping: one implementation covers 3 regulatory frameworks | `python -m policy_guard.demo` |
-| **CloudIQ** | AWS infrastructure analysis — security score, cost waste identification, right-sizing | $47K/month waste identified in a single AcmeCorp demo without AWS credentials | `python -m cloud_iq.demo` |
+| **CloudIQ** | Multi-cloud infrastructure analysis — security score, cost waste, right-sizing (all 4 providers) | AWS+Azure+GCP+OCI provider adapters with unified MultiCloudAggregator | `python -m cloud_iq.demo` |
 | **Risk Aggregator** | Unified 0–100 risk score correlating signals from all five modules | No competitor correlates security findings + FinOps waste + migration complexity + AI governance in one score | `python risk_aggregator.py` |
-
----
-
-## How We Compare
-
-| Feature | enterprise-ai-accelerator | AgentLedger | AIR Blackbox | ai-trace-auditor | Aulite | Langfuse | Credo AI |
-|---------|--------------------------|-------------|--------------|------------------|--------|----------|----------|
-| EU AI Act Art.12 | Yes (full) | Yes | Yes (6 articles) | Yes (Art.11-13,25) | Yes | No | Yes |
-| SARIF 2.1.0 export | Yes | No | No | No | No | No | No |
-| OpenTelemetry | Yes (native) | No | Yes (proxy) | Yes (consumer) | No | Yes (v3) | No |
-| Tamper-proof chain | SHA-256 Merkle | SHA-256 SQLite | HMAC-SHA256 | No | No | No | Unknown |
-| Python SDK | Yes | Yes | Yes | CLI only | No (TypeScript) | Yes | SaaS |
-| Streamlit UI | Yes | No | No | No | No | Yes (web) | Yes (SaaS) |
-| Test suite | 418 tests | Unknown | Unknown | Unknown | Unknown | Yes | N/A |
-| License | MIT | MIT | Apache 2.0 | Unknown | Unknown | MIT (core) | Proprietary |
-| Cost | Free | Free | Free | Free | Free | Free (self-host) | $50K+/yr |
-| GitHub stars | New | ~5 | 12 | ~10 | 26 | 24,677 | N/A |
-
-The SARIF 2.1.0 + OpenTelemetry + Article 12 combination is unique in the open-source ecosystem. No other tool produces GitHub Security tab-compatible compliance findings while also generating OTEL traces for enterprise observability stacks. Commercial alternatives like Credo AI and Holistic AI cover compliance but cost $50K–$500K/year and are closed-source.
 
 ---
 
@@ -60,15 +182,26 @@ The Risk Aggregator is the connective layer. Each module produces structured out
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        Entry Points                                 │
 │     CLI  ·  FastAPI (per module, ports 8001–8005)  ·  Python SDK    │
+│     SOURCE_CLOUD / TARGET_CLOUD env vars  ·  Terraform IaC          │
 └────┬──────────────┬──────────────┬──────────────┬───────────────────┘
      │              │              │              │
 ┌────▼────┐  ┌──────▼──────┐  ┌───▼───────┐  ┌──▼──────────────────┐
 │ CloudIQ │  │  FinOps     │  │Migration  │  │   PolicyGuard        │
 │         │  │Intelligence │  │  Scout    │  │  (+ BiasDetector)    │
 │AWS scan │  │FOCUS 1.3    │  │6R + Monte │  │EU AI Act · HIPAA     │
-│cost IDs │  │AI cost track│  │Carlo waves│  │SOC2 · PCI-DSS · NIST │
+│Azure    │  │AWS+Azure    │  │Carlo waves│  │SOC2 · PCI-DSS · NIST │
+│GCP scan │  │GCP+OCI cost │  │Cross-cloud│  │                      │
+│OCI scan │  │AI cost track│  │12 pairs   │  │                      │
 └────┬────┘  └──────┬──────┘  └───┬───────┘  └──┬──────────────────┘
      │              │              │              │
+     │    cloud_iq/providers/       │              │
+     │    ┌──────────────────────┐  │              │
+     │    │ AWSProvider          │  │              │
+     │    │ AzureProvider        │  │              │
+     │    │ GCPProvider          │  │              │
+     │    │ OCIProvider     NEW  │  │              │
+     │    │ MultiCloudAggregator │  │              │
+     │    └──────────────────────┘  │              │
      └──────────────┴──────────────┴──────────────┘
                               │
                  ┌────────────▼────────────┐
@@ -99,6 +232,8 @@ The Risk Aggregator is the connective layer. Each module produces structured out
 
 **Data flow:** Each module runs independently or as a pipeline. CloudIQ and FinOps Intelligence feed MigrationScout's TCO calculator. PolicyGuard's SARIF output uploads directly to GitHub's Security tab. AIAuditTrail wraps any module's output in a tamper-evident log entry. The Risk Aggregator accepts output from any combination of modules — all fields optional.
 
+**Multi-cloud data flow:** CloudConfig (cloud_config.py) resolves SOURCE_CLOUD and TARGET_CLOUD from env vars or CLI args. Auth helpers in auth/ load credentials per provider. cloud_iq/providers/ fans out scans to all configured clouds in parallel via asyncio.gather(). migration_scout/cross_cloud.py maps resource types between any two providers and generates the migration runbook.
+
 ---
 
 ## Quick Start
@@ -128,9 +263,18 @@ python -m policy_guard.demo
 
 # AWS infrastructure analysis ($47,200/month waste identified)
 python -m cloud_iq.demo
+
+# Multi-cloud: all four providers simultaneously
+SOURCE_CLOUD=aws python -m cloud_iq.demo
+SOURCE_CLOUD=azure python -m cloud_iq.demo
+SOURCE_CLOUD=gcp python -m cloud_iq.demo
+SOURCE_CLOUD=oci python -m cloud_iq.demo
+
+# Cross-cloud migration plan (AWS → OCI)
+SOURCE_CLOUD=aws TARGET_CLOUD=oci python -m migration_scout.demo
 ```
 
-**All demos run on synthetic data. No AWS credentials, no Anthropic API key required to see output.**
+**All demos run on synthetic data. No cloud credentials, no Anthropic API key required to see output.**
 
 For the FastAPI module servers:
 
@@ -143,6 +287,24 @@ python scripts/run_all.py
 ```
 
 Docker support: each module has its own `Dockerfile` and `docker-compose.yml`.
+
+---
+
+## How We Compare (vs AI Governance Competitors)
+
+| Feature | enterprise-ai-accelerator | AgentLedger | AIR Blackbox | ai-trace-auditor | Aulite | Langfuse | Credo AI |
+|---------|--------------------------|-------------|--------------|------------------|--------|----------|----------|
+| EU AI Act Art.12 | Yes (full) | Yes | Yes (6 articles) | Yes (Art.11-13,25) | Yes | No | Yes |
+| SARIF 2.1.0 export | Yes | No | No | No | No | No | No |
+| OpenTelemetry | Yes (native) | No | Yes (proxy) | Yes (consumer) | No | Yes (v3) | No |
+| Tamper-proof chain | SHA-256 Merkle | SHA-256 SQLite | HMAC-SHA256 | No | No | No | Unknown |
+| Python SDK | Yes | Yes | Yes | CLI only | No (TypeScript) | Yes | SaaS |
+| Streamlit UI | Yes | No | No | No | No | Yes (web) | Yes (SaaS) |
+| Test suite | 418 tests | Unknown | Unknown | Unknown | Unknown | Yes | N/A |
+| License | MIT | MIT | Apache 2.0 | Unknown | Unknown | MIT (core) | Proprietary |
+| Cost | Free | Free | Free | Free | Free | Free (self-host) | $50K+/yr |
+
+The SARIF 2.1.0 + OpenTelemetry + Article 12 combination is unique in the open-source ecosystem. No other tool produces GitHub Security tab-compatible compliance findings while also generating OTEL traces for enterprise observability stacks. Commercial alternatives like Credo AI and Holistic AI cover compliance but cost $50K–$500K/year and are closed-source.
 
 ---
 
@@ -184,6 +346,7 @@ Multi-cloud cost intelligence with FOCUS 1.3 billing normalization and AI/LLM to
 - Natural language query interface: ask cost questions in plain English against the DuckDB-backed analytics engine.
 - Unit economics engine: cost-per-user, cost-per-transaction, cost-per-API-call breakdowns.
 - CFO-ready report generation.
+- **Multi-cloud:** AWS + Azure + GCP + OCI all normalised to FOCUS 1.3 format.
 
 **Competitor gap:** OpenCost (6.4K GitHub stars) is Kubernetes-only with no FOCUS support. LiteLLM tracks AI model costs but has no billing normalization. No OSS tool combines both.
 
@@ -199,16 +362,20 @@ AI-native cloud migration planning. 75-workload RetailCo demo: 6 migration waves
 
 **What it actually does:**
 - 6R classification per workload (Rehost, Replatform, Repurchase, Refactor, Retire, Retain) with AI reasoning for each decision.
+- **Cross-cloud migration planner:** `CrossCloudMigrationPlanner` handles all 12 directional pairs across AWS, Azure, GCP, and OCI — resource type mapping, egress cost estimation, migration runbook generation, and complexity scoring.
 - Dependency mapper: identifies circular dependency loops (SCC — Strongly Connected Components resolution) and proposes containerize-first workarounds.
 - Monte Carlo wave planner: probabilistic effort estimation with confidence intervals, not deterministic point estimates.
 - TCO calculator: 3-year total cost of ownership including license elimination, managed service migration, and RI coverage.
-- Runbook generator: produces migration runbooks per wave.
+- Runbook generator: produces migration runbooks per wave and per cross-cloud pair.
 - AWS MAP alignment: Assess / Mobilize / Migrate phase mapping.
 
-**Market context:** AWS Migration Hub closed to new customers November 7, 2025. AWS Transform (its replacement) handles only .NET and mainframe code modernization — no general-purpose 6R classification or wave planning. Azure Copilot Migration Agent is Azure-only. MigrationScout is the only open-source tool filling this gap.
+**Resource type mapping covers:** Compute (EC2/VM/GCE/OCI), Object Storage (S3/Blob/GCS/OCI OS), Kubernetes (EKS/AKS/GKE/OKE), Managed DB (RDS/Azure SQL/Cloud SQL/Autonomous DB), Serverless (Lambda/Functions), Networking (VPC/VNet/VCN), Identity (IAM/Entra/GCP IAM/OCI IAM).
+
+**Market context:** AWS Migration Hub closed to new customers November 7, 2025. AWS Transform handles only .NET and mainframe code modernization — no general-purpose 6R classification or wave planning. Azure Copilot Migration Agent is Azure-only. GCP Migration Center is GCP-only. MigrationScout is the only open-source tool supporting any-to-any migration.
 
 ```bash
 python -m migration_scout.demo
+# SOURCE_CLOUD=aws TARGET_CLOUD=oci python -m migration_scout.demo
 # --no-ai flag skips Claude API calls for CI runs
 # --waves 3 runs first 3 waves only
 ```
@@ -240,19 +407,25 @@ python -m policy_guard.demo
 
 ### CloudIQ
 
-AWS infrastructure analysis: security posture, cost waste identification, right-sizing, and compliance pre-checks.
+Multi-cloud infrastructure analysis: security posture, cost waste identification, right-sizing, and compliance pre-checks across all four providers.
 
 **What it actually does:**
-- Scans EC2, EBS, RDS, S3, ECS, EKS, Lambda, ElastiCache, VPC, and Elastic IP resources.
+- **AWS:** Scans EC2, EBS, RDS, S3, ECS, EKS, Lambda, ElastiCache, VPC, and Elastic IP resources.
+- **Azure:** Virtual Machines, Blob Storage, Azure SQL, AKS, Functions, VNet via AzureProvider.
+- **GCP:** Compute Engine, Cloud Storage, Cloud SQL, GKE, Cloud Functions via GCPProvider.
+- **OCI:** Compute Instances, Object Storage, Autonomous Database, Block Volume via OCIProvider (new).
 - Identifies $47,200/month in waste for AcmeCorp demo (right-sizing, orphaned volumes, idle capacity, Shadow IT).
 - Natural language query interface (NL query engine) for ad hoc analysis.
-- Terraform generator: produces right-sized replacement configs.
+- Terraform generator: produces right-sized replacement configs for all four clouds.
 - ML-based anomaly detection for cost spikes and configuration drift.
-- K8s analyzer for container workload optimization.
-- Multi-provider support: AWS, Azure, GCP provider modules.
+- MultiCloudAggregator fans out all provider queries in parallel using asyncio.gather().
+
+**Adding a new cloud provider:** Implement `AbstractCloudProvider` (cloud_iq/providers/base.py) — no changes to any other file required by design.
 
 ```bash
 python -m cloud_iq.demo
+# SOURCE_CLOUD=azure python -m cloud_iq.demo
+# SOURCE_CLOUD=oci python -m cloud_iq.demo
 ```
 
 ---
@@ -296,6 +469,8 @@ print(score.executive_narrative)
 
 **FOCUS 1.3 adoption:** The FinOps Foundation's Open Cost and Usage Specification is now the basis for multi-cloud billing normalization across enterprise FinOps platforms. Organizations without FOCUS-compliant tooling face manual data transformation across every cloud billing export.
 
+**Multi-cloud reality:** 87% of enterprises now use more than one cloud provider (Flexera 2025 State of the Cloud). Every single-cloud migration tool leaves 2–3 cloud estates unexamined.
+
 ---
 
 ## Competitive Landscape
@@ -310,7 +485,7 @@ print(score.executive_narrative)
 | **Multi-framework compliance** | EU AI Act + HIPAA + SOC 2 + PCI-DSS + NIST | Varies by engagement | SOC 2 / GRC focus | No | No |
 | **Cross-module risk score** | Yes (Risk Aggregator) | No | No | No | No |
 | **Time to first output** | Minutes (demo, no credentials) | 6–12 weeks | Weeks of setup | Hours (K8s only) | Minutes |
-| **Cloud provider** | AWS + Azure + GCP | All | All | K8s (cloud-agnostic) | All |
+| **Cloud provider** | **AWS + Azure + GCP + OCI** | All | All | K8s (cloud-agnostic) | All |
 
 ---
 
@@ -320,11 +495,11 @@ If you're an AI practice lead at Accenture, Deloitte, Cognizant, PwC, Infosys, o
 
 **Pre-engagement scoping:** Feed a client's architecture description into CloudIQ before the kickoff call. Walk in with preliminary findings instead of blank slides.
 
-**Migration assessment acceleration:** MigrationScout classifies a 75-workload inventory in minutes with dependency-resolved wave plans. The activity that normally consumes 3 weeks of workshops runs as a pipeline.
+**Migration assessment acceleration:** MigrationScout classifies a 75-workload inventory in minutes with dependency-resolved wave plans and any-to-any cloud runbooks. The activity that normally consumes 3 weeks of workshops runs as a pipeline.
 
 **EU AI Act readiness:** PolicyGuard + AIAuditTrail give clients a compliance posture and audit-ready logging before your formal assessment begins. The Article 62 incident response module is production-ready today.
 
-**Cost justification:** FinOps Intelligence quantifies the financial case in FOCUS 1.3 format — the billing standard your clients' procurement and FinOps teams already understand.
+**Cost justification:** FinOps Intelligence quantifies the financial case in FOCUS 1.3 format — the billing standard your clients' procurement and FinOps teams already understand — across all four cloud providers simultaneously.
 
 **The platform handles the 80% that is pattern-matching.** Human expertise still owns stakeholder management, change leadership, and edge-case judgment. This is acceleration infrastructure, not a replacement.
 
@@ -344,12 +519,35 @@ Per-module dependencies (heavier ML/data libraries) are listed in each module's 
 
 For FinOps Intelligence: `duckdb`, `pandas` (analytical engine). For PolicyGuard: `fastapi`, `uvicorn` (API server). Full dependency list: see `docs/QUICKSTART.md`.
 
+Optional cloud SDK dependencies (only needed for live scanning, not demos):
+- AWS: `boto3>=1.34.0` (already in requirements.txt)
+- Azure: `azure-mgmt-compute>=30.0.0 azure-mgmt-resource>=23.0.0 azure-identity>=1.16.0`
+- GCP: `google-cloud-compute>=1.14.0 google-cloud-billing>=1.11.0`
+- OCI: `oci>=2.120.0`
+
+All demos run on synthetic data without any cloud SDK installed.
+
 ---
 
 ## Repository Structure
 
 ```
 enterprise-ai-accelerator/
+├── cloud_config.py          Unified cloud provider config (SOURCE_CLOUD / TARGET_CLOUD)
+├── auth/                    Per-provider auth helpers
+│   ├── aws_auth.py          AWS credential loader (env → profile → instance metadata)
+│   ├── azure_auth.py        Azure Service Principal credential loader
+│   ├── gcp_auth.py          GCP Service Account / ADC credential loader
+│   └── oci_auth.py          OCI API key / ~/.oci/config loader
+├── terraform/               Cloud-agnostic IaC for all four providers
+│   ├── main.tf              Root module (var.enabled_clouds selects providers)
+│   ├── variables.tf         All provider variables with defaults
+│   ├── outputs.tf           Unified outputs across all clouds
+│   └── modules/
+│       ├── aws/             VPC, EC2, S3, RDS, IAM
+│       ├── azure/           Resource Group, VNet, VM, Storage Account
+│       ├── gcp/             VPC, Compute Engine, GCS, Cloud SQL
+│       └── oci/             VCN, Compute Instance, Object Storage, Autonomous DB
 ├── ai_audit_trail/          EU AI Act logging + NIST AI RMF + incident management
 │   ├── chain.py             SHA-256 Merkle hash chain (stdlib only)
 │   ├── eu_ai_act.py         Article 12/62 compliance engine
@@ -357,13 +555,14 @@ enterprise-ai-accelerator/
 │   ├── incident_manager.py  P0-P3 severity + Article 62 deadline tracking
 │   ├── decorators.py        Drop-in SDK integrations (5 frameworks)
 │   └── demo.py              3-scenario enterprise demo
-├── finops_intelligence/     FOCUS 1.3 FinOps + AI cost tracking
+├── finops_intelligence/     FOCUS 1.3 FinOps + AI cost tracking (4 clouds)
 │   ├── focus_exporter.py    FOCUS 1.3 schema (all 33 columns + AI rows)
 │   ├── analytics_engine.py  DuckDB-backed cost analytics
 │   ├── anomaly_detector_v2.py  Ensemble anomaly detection
 │   ├── commitment_optimizer.py RI/SP recommendations
 │   └── demo.py              TechCorp $340K/month scenario
-├── migration_scout/         6R classification + wave planning
+├── migration_scout/         6R classification + cross-cloud wave planning
+│   ├── cross_cloud.py       CrossCloudMigrationPlanner (all 12 pairs)  NEW
 │   ├── assessor.py          AI-native 6R workload classifier
 │   ├── dependency_mapper.py SCC circular dependency resolution
 │   ├── wave_planner.py      Monte Carlo migration wave planner
@@ -375,8 +574,15 @@ enterprise-ai-accelerator/
 │   ├── sarif_exporter.py    SARIF 2.1.0 → GitHub Security tab
 │   ├── incident_response.py P0-P3 severity + SLA tracking
 │   └── demo.py              Hiring AI + Healthcare AI scenarios
-├── cloud_iq/                AWS infrastructure analysis
-│   ├── scanner.py           Multi-resource AWS scanner
+├── cloud_iq/                Multi-cloud infrastructure analysis (AWS+Azure+GCP+OCI)
+│   ├── providers/
+│   │   ├── base.py          AbstractCloudProvider interface
+│   │   ├── aws.py           AWS provider adapter
+│   │   ├── azure.py         Azure provider adapter
+│   │   ├── gcp.py           GCP provider adapter
+│   │   ├── oci.py           OCI provider adapter  NEW
+│   │   └── multi.py         MultiCloudAggregator (asyncio.gather fan-out)
+│   ├── scanner.py           Multi-resource scanner
 │   ├── cost_analyzer.py     Waste identification + right-sizing
 │   ├── ml_detector.py       Anomaly detection
 │   └── demo.py              AcmeCorp $47K/month waste scenario
