@@ -136,4 +136,94 @@ FinOps Intelligence is that tool.
 
 ---
 
+## v0.2.0 Additions — Advanced FinOps Track
+
+The following components were added in the April 2026 platform expansion:
+
+### `CURIngestor` (`cur_ingestor.py`)
+
+AWS Cost and Usage Report ingestion via DuckDB. Reads Parquet CUR files from S3 (or a local path) and registers them as a DuckDB table for SQL analytics.
+
+```python
+from finops_intelligence.cur_ingestor import CURIngestor
+
+ingestor = CURIngestor(s3_bucket="my-cur-bucket", s3_prefix="cur/")
+df = ingestor.load_month("2026-04")
+# Returns a DuckDB relation — query with SQL or .to_pandas()
+```
+
+Supports: Parquet CUR v2, legacy CSV CUR, FOCUS 1.3 export format.
+
+### `RISPOptimizer` (`ri_sp_optimizer.py`)
+
+Reserved Instance and Savings Plan optimizer. Analyzes on-demand spend patterns and recommends RI/SP purchases with an 80% coverage cap to avoid over-commitment.
+
+```python
+from finops_intelligence.ri_sp_optimizer import RISPOptimizer
+
+optimizer = RISPOptimizer()
+recommendations = optimizer.optimize(usage_df=df)
+
+for rec in recommendations:
+    print(rec.type, rec.term, rec.monthly_savings, rec.breakeven_months)
+```
+
+The 80% cap is intentional: committing beyond 80% of baseline usage creates waste when workloads scale down. Configurable via `coverage_cap` parameter.
+
+### `RightSizer` (`right_sizer.py`)
+
+CloudWatch metrics + curated AWS instance catalog right-sizer. Fetches CPU/memory utilization for EC2 instances and compares against a catalog of 200+ AWS instance types to find the optimal size.
+
+```python
+from finops_intelligence.right_sizer import RightSizer
+
+sizer = RightSizer()
+opportunities = sizer.analyze(instance_ids=["i-abc123", "i-def456"])
+
+for opp in opportunities:
+    print(opp.instance_id, opp.current_type, opp.recommended_type,
+          f"${opp.monthly_savings:.0f}/mo")
+```
+
+Includes Graviton comparison — suggests ARM-based instances where the workload is compatible.
+
+### `CarbonTracker` (`carbon_tracker.py`)
+
+Carbon emissions tracker using open-source regional grid carbon intensity coefficients (based on Electricity Maps / Our World in Data data, periodically updated).
+
+```python
+from finops_intelligence.carbon_tracker import CarbonTracker
+
+tracker = CarbonTracker()
+emissions = tracker.estimate(
+    usage_df=df,   # CUR-format dataframe with region and instance hours
+)
+
+print(f"Total estimated emissions: {emissions.total_kg_co2e:.0f} kg CO2e/month")
+print(f"Top emitting region: {emissions.top_region}")
+```
+
+Coefficients cover all AWS, Azure, and GCP regions where published data exists. Regions without published data use a conservative global average.
+
+### `SavingsReporter` (`savings_reporter.py`)
+
+Aggregates RI/SP optimizer, right-sizer, anomaly findings, and carbon data into a CFO-ready executive savings report. Output: structured `SavingsReport` object + optional HTML export.
+
+```python
+from finops_intelligence.savings_reporter import SavingsReporter
+
+reporter = SavingsReporter()
+report = reporter.generate(
+    ri_sp_recommendations=recommendations,
+    rightsizing_opportunities=opportunities,
+    anomalies=anomalies,
+    carbon_emissions=emissions,
+)
+
+print(f"Total annualized savings opportunity: ${report.total_annual_savings:,.0f}")
+reporter.export_html(report, "savings_report.html")
+```
+
+---
+
 Part of [enterprise-ai-accelerator](https://github.com/HunterSpence/enterprise-ai-accelerator) — production-grade AI modules for cloud infrastructure.

@@ -1,0 +1,94 @@
+# Cloud Carbon Footprint Emissions Coefficients
+# Source: Cloud Carbon Footprint open dataset (https://www.cloudcarbonfootprint.org)
+# License: Apache 2.0
+# Values represent kgCO2e per unit per hour at average utilization.
+# kgCO2e_per_vcpu_hour: grid-average carbon intensity × PUE × compute coefficient
+# kgCO2e_per_gb_ram_hour: grid-average carbon intensity × PUE × memory coefficient
+# Grid intensity sourced from IEA 2023 regional averages.
+# PUE values: AWS ~1.15, Azure ~1.20, GCP ~1.10 (vendor disclosed).
+# Last updated: 2025-Q1
+cloud,region,region_display,instance_family,kgCO2e_per_vcpu_hour,kgCO2e_per_gb_ram_hour,grid_intensity_gco2_kwh,pue
+AWS,us-east-1,US East (N. Virginia),t3,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),m5,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),m6i,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),c5,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),c6i,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),r5,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),r6i,0.000379,0.000047,0.000378,1.15
+AWS,us-east-1,US East (N. Virginia),g4dn,0.000379,0.000047,0.000378,1.15
+AWS,us-east-2,US East (Ohio),t3,0.000289,0.000036,0.000288,1.15
+AWS,us-east-2,US East (Ohio),m5,0.000289,0.000036,0.000288,1.15
+AWS,us-east-2,US East (Ohio),m6i,0.000289,0.000036,0.000288,1.15
+AWS,us-east-2,US East (Ohio),c5,0.000289,0.000036,0.000288,1.15
+AWS,us-east-2,US East (Ohio),c6i,0.000289,0.000036,0.000288,1.15
+AWS,us-east-2,US East (Ohio),r5,0.000289,0.000036,0.000288,1.15
+AWS,us-east-2,US East (Ohio),r6i,0.000289,0.000036,0.000288,1.15
+AWS,us-west-1,US West (N. California),t3,0.000184,0.000023,0.000183,1.15
+AWS,us-west-1,US West (N. California),m5,0.000184,0.000023,0.000183,1.15
+AWS,us-west-1,US West (N. California),m6i,0.000184,0.000023,0.000183,1.15
+AWS,us-west-1,US West (N. California),c5,0.000184,0.000023,0.000183,1.15
+AWS,us-west-1,US West (N. California),c6i,0.000184,0.000023,0.000183,1.15
+AWS,us-west-1,US West (N. California),r5,0.000184,0.000023,0.000183,1.15
+AWS,us-west-2,US West (Oregon),t3,0.000157,0.000020,0.000156,1.15
+AWS,us-west-2,US West (Oregon),m5,0.000157,0.000020,0.000156,1.15
+AWS,us-west-2,US West (Oregon),m6i,0.000157,0.000020,0.000156,1.15
+AWS,us-west-2,US West (Oregon),c5,0.000157,0.000020,0.000156,1.15
+AWS,us-west-2,US West (Oregon),c6i,0.000157,0.000020,0.000156,1.15
+AWS,us-west-2,US West (Oregon),r5,0.000157,0.000020,0.000156,1.15
+AWS,us-west-2,US West (Oregon),r6i,0.000157,0.000020,0.000156,1.15
+AWS,eu-west-1,EU (Ireland),t3,0.000233,0.000029,0.000232,1.15
+AWS,eu-west-1,EU (Ireland),m5,0.000233,0.000029,0.000232,1.15
+AWS,eu-west-1,EU (Ireland),m6i,0.000233,0.000029,0.000232,1.15
+AWS,eu-west-1,EU (Ireland),c5,0.000233,0.000029,0.000232,1.15
+AWS,eu-west-1,EU (Ireland),c6i,0.000233,0.000029,0.000232,1.15
+AWS,eu-west-1,EU (Ireland),r5,0.000233,0.000029,0.000232,1.15
+AWS,eu-central-1,EU (Frankfurt),t3,0.000311,0.000039,0.000310,1.15
+AWS,eu-central-1,EU (Frankfurt),m5,0.000311,0.000039,0.000310,1.15
+AWS,eu-central-1,EU (Frankfurt),m6i,0.000311,0.000039,0.000310,1.15
+AWS,eu-central-1,EU (Frankfurt),c5,0.000311,0.000039,0.000310,1.15
+AWS,eu-central-1,EU (Frankfurt),c6i,0.000311,0.000039,0.000310,1.15
+AWS,eu-central-1,EU (Frankfurt),r5,0.000311,0.000039,0.000310,1.15
+AWS,ap-southeast-1,Asia Pacific (Singapore),t3,0.000432,0.000054,0.000431,1.15
+AWS,ap-southeast-1,Asia Pacific (Singapore),m5,0.000432,0.000054,0.000431,1.15
+AWS,ap-southeast-1,Asia Pacific (Singapore),m6i,0.000432,0.000054,0.000431,1.15
+AWS,ap-southeast-1,Asia Pacific (Singapore),c5,0.000432,0.000054,0.000431,1.15
+AWS,ap-southeast-1,Asia Pacific (Singapore),c6i,0.000432,0.000054,0.000431,1.15
+AWS,ap-northeast-1,Asia Pacific (Tokyo),t3,0.000476,0.000060,0.000475,1.15
+AWS,ap-northeast-1,Asia Pacific (Tokyo),m5,0.000476,0.000060,0.000475,1.15
+AWS,ap-northeast-1,Asia Pacific (Tokyo),m6i,0.000476,0.000060,0.000475,1.15
+AWS,ap-northeast-1,Asia Pacific (Tokyo),c5,0.000476,0.000060,0.000475,1.15
+AWS,ap-southeast-2,Asia Pacific (Sydney),t3,0.000693,0.000087,0.000692,1.15
+AWS,ap-southeast-2,Asia Pacific (Sydney),m5,0.000693,0.000087,0.000692,1.15
+AWS,ap-southeast-2,Asia Pacific (Sydney),m6i,0.000693,0.000087,0.000692,1.15
+AWS,ap-south-1,Asia Pacific (Mumbai),t3,0.000708,0.000089,0.000707,1.15
+AWS,ap-south-1,Asia Pacific (Mumbai),m5,0.000708,0.000089,0.000707,1.15
+AWS,ap-south-1,Asia Pacific (Mumbai),m6i,0.000708,0.000089,0.000707,1.15
+AWS,ca-central-1,Canada (Central),t3,0.000121,0.000015,0.000120,1.15
+AWS,ca-central-1,Canada (Central),m5,0.000121,0.000015,0.000120,1.15
+AWS,ca-central-1,Canada (Central),m6i,0.000121,0.000015,0.000120,1.15
+AWS,ca-central-1,Canada (Central),c6i,0.000121,0.000015,0.000120,1.15
+AWS,sa-east-1,South America (Sao Paulo),t3,0.000099,0.000012,0.000098,1.15
+AWS,sa-east-1,South America (Sao Paulo),m5,0.000099,0.000012,0.000098,1.15
+AWS,me-south-1,Middle East (Bahrain),t3,0.000535,0.000067,0.000534,1.15
+AWS,me-south-1,Middle East (Bahrain),m5,0.000535,0.000067,0.000534,1.15
+Azure,eastus,East US,D-series,0.000395,0.000049,0.000378,1.20
+Azure,eastus,East US,F-series,0.000395,0.000049,0.000378,1.20
+Azure,eastus,East US,E-series,0.000395,0.000049,0.000378,1.20
+Azure,westeurope,West Europe,D-series,0.000259,0.000032,0.000232,1.20
+Azure,westeurope,West Europe,F-series,0.000259,0.000032,0.000232,1.20
+Azure,northeurope,North Europe,D-series,0.000198,0.000025,0.000178,1.20
+Azure,northeurope,North Europe,E-series,0.000198,0.000025,0.000178,1.20
+Azure,southeastasia,Southeast Asia,D-series,0.000518,0.000065,0.000431,1.20
+Azure,australiaeast,Australia East,D-series,0.000831,0.000104,0.000692,1.20
+GCP,us-central1,US Central (Iowa),n2,0.000144,0.000018,0.000143,1.10
+GCP,us-central1,US Central (Iowa),n2d,0.000144,0.000018,0.000143,1.10
+GCP,us-central1,US Central (Iowa),c2,0.000144,0.000018,0.000143,1.10
+GCP,us-east4,US East (N. Virginia),n2,0.000370,0.000046,0.000369,1.10
+GCP,us-east4,US East (N. Virginia),n2d,0.000370,0.000046,0.000369,1.10
+GCP,europe-west1,EU West (Belgium),n2,0.000176,0.000022,0.000175,1.10
+GCP,europe-west1,EU West (Belgium),n2d,0.000176,0.000022,0.000175,1.10
+GCP,europe-west4,EU West (Netherlands),n2,0.000312,0.000039,0.000311,1.10
+GCP,asia-east1,Asia East (Taiwan),n2,0.000532,0.000067,0.000531,1.10
+GCP,asia-southeast1,Asia Southeast (Singapore),n2,0.000473,0.000059,0.000472,1.10
+GCP,australia-southeast1,Australia Southeast (Sydney),n2,0.000756,0.000095,0.000755,1.10
+GCP,northamerica-northeast1,Canada (Montreal),n2,0.000117,0.000015,0.000116,1.10

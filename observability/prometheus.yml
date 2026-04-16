@@ -1,0 +1,52 @@
+# observability/prometheus.yml
+# ============================
+# Prometheus scrape configuration for the Enterprise AI Accelerator.
+#
+# Two scrape targets:
+#   1. The FastAPI app itself at :8000/metrics  (primary — prometheus-client)
+#   2. The OTEL Collector Prometheus exporter at :8889/metrics
+#
+# Used by docker-compose.obs.yaml.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    monitor: eaa-prometheus
+    environment: local
+
+# Alerting rules (optional — point at Alertmanager when deployed)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+# Recording rules — pre-aggregate expensive queries
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  # --- FastAPI application /metrics endpoint ---
+  - job_name: eaa_app
+    static_configs:
+      - targets:
+          - host.docker.internal:8000   # adjust if app runs inside compose network
+    metrics_path: /metrics
+    scrape_interval: 15s
+    honor_labels: true
+
+  # --- OTEL Collector Prometheus exporter ---
+  - job_name: otel_collector
+    static_configs:
+      - targets:
+          - otel-collector:8889
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # --- Prometheus self-monitoring ---
+  - job_name: prometheus
+    static_configs:
+      - targets:
+          - localhost:9090
+    scrape_interval: 30s

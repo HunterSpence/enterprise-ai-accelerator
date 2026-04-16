@@ -1,0 +1,232 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": { "list": [] },
+  "description": "Enterprise AI Accelerator — Platform Overview",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 100,
+      "title": "LLM Calls",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 1 },
+      "id": 1,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "sum(rate(eaa_llm_calls_total[5m])) by (model)",
+          "legendFormat": "{{model}}"
+        }
+      ],
+      "title": "LLM Call Rate by Model (calls/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "reqps" },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 1 },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "sum(rate(eaa_llm_calls_total{outcome!=\"success\"}[5m])) by (module, outcome)",
+          "legendFormat": "{{module}} / {{outcome}}"
+        }
+      ],
+      "title": "Error Rate by Module",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 8 },
+      "id": 101,
+      "title": "Token Consumption",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 9 },
+      "id": 3,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "sum(rate(eaa_llm_tokens_total[5m])) by (model, direction)",
+          "legendFormat": "{{model}} {{direction}}"
+        }
+      ],
+      "title": "Token Consumption by Model & Direction (tokens/s)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.3 },
+              { "color": "green", "value": 0.6 }
+            ]
+          },
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 9 },
+      "id": 4,
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "showThresholdLabels": false, "showThresholdMarkers": true },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "eaa_cache_hit_ratio",
+          "legendFormat": "Cache Hit Ratio"
+        }
+      ],
+      "title": "Prompt Cache Hit Ratio",
+      "type": "gauge"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 16 },
+      "id": 102,
+      "title": "Latency",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 17 },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "histogram_quantile(0.50, sum(rate(eaa_llm_latency_seconds_bucket[5m])) by (le, model))",
+          "legendFormat": "p50 {{model}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "histogram_quantile(0.95, sum(rate(eaa_llm_latency_seconds_bucket[5m])) by (le, model))",
+          "legendFormat": "p95 {{model}}"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "histogram_quantile(0.99, sum(rate(eaa_llm_latency_seconds_bucket[5m])) by (le, model))",
+          "legendFormat": "p99 {{model}}"
+        }
+      ],
+      "title": "LLM Latency Percentiles (p50/p95/p99) by Model",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 24 },
+      "id": 103,
+      "title": "Findings & Audit",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "critical" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "high" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 25 },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "sum(rate(eaa_findings_total[5m])) by (module, severity)",
+          "legendFormat": "{{module}} / {{severity}}"
+        }
+      ],
+      "title": "Findings Rate by Module & Severity",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "color": { "mode": "palette-classic" } },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 25 },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "eaa_audit_chain_length",
+          "legendFormat": "Chain Length"
+        }
+      ],
+      "title": "Audit Chain Growth",
+      "type": "timeseries"
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 },
+      "id": 104,
+      "title": "Pipeline",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit", "min": 0, "max": 1 },
+        "overrides": []
+      },
+      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 33 },
+      "id": 8,
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
+          "expr": "sum(rate(eaa_pipeline_runs_total{status=\"success\"}[5m])) / sum(rate(eaa_pipeline_runs_total[5m]))",
+          "legendFormat": "Success Rate"
+        }
+      ],
+      "title": "Pipeline Success Rate",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["eaa", "llm", "observability"],
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "EAA Platform Overview",
+  "uid": "eaa-platform-v1",
+  "version": 1
+}
