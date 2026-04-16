@@ -5,6 +5,13 @@
 # AI
 anthropic>=0.40.0
 
+# MCP SDK — 1.3.0+ required for SSE transport, resources, and prompts
+# (mcp 1.27.0 installed; SseServerTransport is in mcp.server.sse)
+mcp>=1.3.0
+# SSE server support (transitive via mcp, made explicit for clarity)
+sse-starlette>=1.6.0
+starlette>=0.37.0
+
 # Web framework (shared by all API modules)
 fastapi>=0.111.0
 uvicorn[standard]>=0.29.0

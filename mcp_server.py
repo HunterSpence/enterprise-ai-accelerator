@@ -1,6 +1,6 @@
 """
-Enterprise AI Accelerator MCP Server — stdio transport
-======================================================
+Enterprise AI Accelerator MCP Server — MCP 2.0 (stdio + SSE)
+=============================================================
 
 Exposes the full capability surface of the platform as MCP tools so any
 Claude client (Claude Code, Claude Desktop, IDE extensions) can drive:
@@ -20,10 +20,26 @@ Every tool that talks to Claude routes through ``core.AIClient`` so prompt
 caching, tool-use structured output, and extended thinking are enabled by
 default.
 
+MCP 2.0 additions (2026-04):
+  - SSE transport  (``--transport sse --host 0.0.0.0 --port 8765``)
+  - Resources      (audit trail, scan results, compliance frameworks, policy catalog)
+  - Prompts        (audit-terraform, classify-workload-6r, assess-bias, executive-briefing)
+
 Opus 4.7 upgrade (2026-04): expanded from 4 tools (AIAuditTrail-only) to
 19 tools spanning all six modules + executive chat + compliance citations.
 
-Claude Desktop config::
+Transport selection::
+
+    # stdio (default — Claude Code / Claude Desktop local)
+    python mcp_server.py
+
+    # SSE (network-accessible — remote Claude Desktop, CI agents)
+    python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
+
+    # SSE on custom interface
+    python mcp_server.py --transport sse --host 127.0.0.1 --port 9000
+
+Claude Desktop stdio config::
 
     {
       "mcpServers": {
@@ -31,6 +47,17 @@ Claude Desktop config::
           "command": "python",
           "args": ["mcp_server.py"],
           "cwd": "/path/to/enterprise-ai-accelerator"
+        }
+      }
+    }
+
+Claude Desktop SSE config::
+
+    {
+      "mcpServers": {
+        "enterprise-ai-accelerator": {
+          "url": "http://localhost:8765/sse",
+          "transport": "sse"
         }
       }
     }
@@ -51,7 +78,17 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import (
+    AnyUrl,
+    GetPromptResult,
+    Prompt,
+    PromptArgument,
+    PromptMessage,
+    Resource,
+    TextContent,
+    TextResourceContents,
+    Tool,
+)
 
 from ai_audit_trail.chain import AuditChain, DecisionType, RiskTier
 from ai_audit_trail.eu_ai_act import check_article_12_compliance, enforcement_status
@@ -371,6 +408,310 @@ _TOOLS: list[Tool] = [
         },
     ),
 ]
+
+
+# ---------------------------------------------------------------------------
+# MCP Resources
+# ---------------------------------------------------------------------------
+
+_RESOURCES: list[Resource] = [
+    Resource(
+        uri=AnyUrl("audit-trail://recent"),
+        name="Recent Audit Decisions",
+        description="Last 50 AI decision entries from the tamper-evident audit chain, as JSON.",
+        mimeType="application/json",
+    ),
+    Resource(
+        uri=AnyUrl("audit-trail://chain-verify"),
+        name="Audit Chain Verification",
+        description="Merkle chain integrity verification result for the full audit trail.",
+        mimeType="application/json",
+    ),
+    Resource(
+        uri=AnyUrl("compliance://frameworks"),
+        name="Supported Compliance Frameworks",
+        description="List of supported regulatory frameworks: CIS AWS, SOC 2, GDPR, PCI-DSS, EU AI Act, NIST AI RMF, HIPAA.",
+        mimeType="application/json",
+    ),
+    Resource(
+        uri=AnyUrl("policy-catalog://iac"),
+        name="IaC Policy Catalog",
+        description="The 20-policy IaC compliance catalog covering CIS AWS, SOC 2, GDPR, and PCI-DSS controls.",
+        mimeType="application/json",
+    ),
+]
+
+# scan-results://{scan_id} is a template resource — clients provide the scan_id.
+# Registered via list_resource_templates; read_resource handles the URI pattern.
+
+_SCAN_RESULTS_CACHE: dict[str, Any] = {}  # scan_id → result (populated by policyguard_scan_iac tool)
+
+_IAC_POLICY_CATALOG: list[dict[str, Any]] = [
+    # CIS AWS (5 policies)
+    {"id": "CIS-AWS-1.1",  "framework": "CIS AWS", "title": "Avoid root account usage",                    "severity": "critical", "control": "1.1"},
+    {"id": "CIS-AWS-2.1",  "framework": "CIS AWS", "title": "S3 buckets not publicly accessible",          "severity": "high",     "control": "2.1"},
+    {"id": "CIS-AWS-3.1",  "framework": "CIS AWS", "title": "CloudTrail enabled in all regions",           "severity": "high",     "control": "3.1"},
+    {"id": "CIS-AWS-4.1",  "framework": "CIS AWS", "title": "SSH access restricted from 0.0.0.0/0",        "severity": "critical", "control": "4.1"},
+    {"id": "CIS-AWS-4.2",  "framework": "CIS AWS", "title": "RDP access restricted from 0.0.0.0/0",        "severity": "critical", "control": "4.2"},
+    # SOC 2 (5 policies)
+    {"id": "SOC2-CC6.1",   "framework": "SOC 2",   "title": "Encryption at rest for sensitive data",       "severity": "high",     "control": "CC6.1"},
+    {"id": "SOC2-CC6.6",   "framework": "SOC 2",   "title": "Encryption in transit (TLS 1.2+)",            "severity": "high",     "control": "CC6.6"},
+    {"id": "SOC2-CC7.1",   "framework": "SOC 2",   "title": "Vulnerability scanning enabled",              "severity": "medium",   "control": "CC7.1"},
+    {"id": "SOC2-CC8.1",   "framework": "SOC 2",   "title": "Change management process documented",        "severity": "medium",   "control": "CC8.1"},
+    {"id": "SOC2-CC9.1",   "framework": "SOC 2",   "title": "Backup and recovery tested annually",         "severity": "medium",   "control": "CC9.1"},
+    # GDPR (5 policies)
+    {"id": "GDPR-ART32",   "framework": "GDPR",    "title": "Technical measures for data security (Art 32)","severity": "critical", "control": "Article 32"},
+    {"id": "GDPR-ART25",   "framework": "GDPR",    "title": "Data protection by design and default (Art 25)","severity": "high",    "control": "Article 25"},
+    {"id": "GDPR-ART35",   "framework": "GDPR",    "title": "DPIA for high-risk processing (Art 35)",      "severity": "high",     "control": "Article 35"},
+    {"id": "GDPR-ART17",   "framework": "GDPR",    "title": "Right to erasure — PII retention controls",  "severity": "medium",   "control": "Article 17"},
+    {"id": "GDPR-ART33",   "framework": "GDPR",    "title": "72-hour breach notification capability",      "severity": "high",     "control": "Article 33"},
+    # PCI-DSS (5 policies)
+    {"id": "PCI-REQ2",     "framework": "PCI-DSS", "title": "No vendor-supplied default passwords",        "severity": "critical", "control": "Req 2.1"},
+    {"id": "PCI-REQ6",     "framework": "PCI-DSS", "title": "Secure systems and applications patching",    "severity": "high",     "control": "Req 6.3"},
+    {"id": "PCI-REQ7",     "framework": "PCI-DSS", "title": "Restrict access to system components",        "severity": "high",     "control": "Req 7.1"},
+    {"id": "PCI-REQ10",    "framework": "PCI-DSS", "title": "Log and monitor all access to system components","severity": "medium", "control": "Req 10.2"},
+    {"id": "PCI-REQ11",    "framework": "PCI-DSS", "title": "Regularly test security systems and processes", "severity": "medium", "control": "Req 11.2"},
+]
+
+_COMPLIANCE_FRAMEWORKS: list[dict[str, Any]] = [
+    {"id": "cis_aws",    "name": "CIS AWS Foundations Benchmark", "version": "1.5.0", "controls": 58},
+    {"id": "soc2",       "name": "SOC 2 Type II",                 "version": "2017",   "controls": 64},
+    {"id": "gdpr",       "name": "GDPR",                          "version": "2018",   "controls": 99},
+    {"id": "pci_dss",    "name": "PCI-DSS",                       "version": "4.0",    "controls": 250},
+    {"id": "eu_ai_act",  "name": "EU AI Act",                     "version": "2024",   "controls": 113},
+    {"id": "nist_ai_rmf","name": "NIST AI RMF",                   "version": "1.0",    "controls": 72},
+    {"id": "hipaa",      "name": "HIPAA Security Rule",           "version": "2013",   "controls": 45},
+]
+
+
+@server.list_resources()
+async def list_resources() -> list[Resource]:
+    return _RESOURCES
+
+
+@server.list_resource_templates()
+async def list_resource_templates():
+    from mcp.types import ResourceTemplate
+    return [
+        ResourceTemplate(
+            uriTemplate="scan-results://{scan_id}",
+            name="IaC Scan Result",
+            description="Full PolicyGuard IaC scan result for a given scan_id.",
+            mimeType="application/json",
+        )
+    ]
+
+
+@server.read_resource()
+async def read_resource(uri: AnyUrl) -> str | bytes:
+    uri_str = str(uri)
+
+    if uri_str == "audit-trail://recent":
+        chain = _get_chain()
+        entries = chain.query(limit=50)
+        data = [
+            {
+                "entry_id": e.entry_id, "timestamp": e.timestamp,
+                "system_id": e.system_id, "model": e.model,
+                "decision_type": e.decision_type, "risk_tier": e.risk_tier,
+                "entry_hash": e.entry_hash,
+            }
+            for e in entries
+        ]
+        return json.dumps(data, indent=2, default=str)
+
+    if uri_str == "audit-trail://chain-verify":
+        chain = _get_chain()
+        result = chain.verify_chain()
+        return json.dumps({
+            "is_valid": result.is_valid,
+            "confidence": result.confidence,
+            "merkle_root": result.merkle_root,
+            "total_entries": result.total_entries,
+            "tampered_count": len(result.tampered_entries),
+            "verified_at": result.verified_at,
+        }, indent=2, default=str)
+
+    if uri_str == "compliance://frameworks":
+        return json.dumps(_COMPLIANCE_FRAMEWORKS, indent=2)
+
+    if uri_str == "policy-catalog://iac":
+        return json.dumps({
+            "catalog_version": "1.0.0",
+            "total_policies": len(_IAC_POLICY_CATALOG),
+            "frameworks": ["CIS AWS", "SOC 2", "GDPR", "PCI-DSS"],
+            "policies": _IAC_POLICY_CATALOG,
+        }, indent=2)
+
+    # scan-results://{scan_id}
+    if uri_str.startswith("scan-results://"):
+        scan_id = uri_str.removeprefix("scan-results://")
+        result = _SCAN_RESULTS_CACHE.get(scan_id)
+        if result is None:
+            return json.dumps({"error": f"Scan result not found: {scan_id}", "available_ids": list(_SCAN_RESULTS_CACHE.keys())}, indent=2)
+        return json.dumps(result, indent=2, default=str)
+
+    return json.dumps({"error": f"Unknown resource URI: {uri_str}"}, indent=2)
+
+
+# ---------------------------------------------------------------------------
+# MCP Prompts
+# ---------------------------------------------------------------------------
+
+_PROMPTS: list[Prompt] = [
+    Prompt(
+        name="audit-terraform",
+        description="Scan a Terraform directory and narrate findings in plain language with compliance references.",
+        arguments=[
+            PromptArgument(name="path", description="Filesystem path to the Terraform directory.", required=True),
+            PromptArgument(name="environment", description="Deployment environment (e.g., production, staging).", required=True),
+        ],
+    ),
+    Prompt(
+        name="classify-workload-6r",
+        description="Classify a workload using the 6R migration framework (Retire, Retain, Rehost, Replatform, Repurchase, Refactor).",
+        arguments=[
+            PromptArgument(name="workload_json", description="JSON object describing the workload (name, runtime, dependencies, business_criticality, etc.).", required=True),
+        ],
+    ),
+    Prompt(
+        name="assess-bias",
+        description="Produce an extended-thinking bias audit on a dataset or model output, referencing EU AI Act Article 10.",
+        arguments=[
+            PromptArgument(name="dataset_summary", description="Summary of the dataset or model output to assess.", required=True),
+        ],
+    ),
+    Prompt(
+        name="executive-briefing",
+        description="Generate a CTO-level executive briefing from platform scan results.",
+        arguments=[
+            PromptArgument(name="scan_results_json", description="JSON object containing scan results from one or more platform modules.", required=True),
+        ],
+    ),
+]
+
+
+@server.list_prompts()
+async def list_prompts() -> list[Prompt]:
+    return _PROMPTS
+
+
+@server.get_prompt()
+async def get_prompt(name: str, arguments: dict[str, str] | None) -> GetPromptResult:
+    args = arguments or {}
+
+    if name == "audit-terraform":
+        path = args.get("path", "<terraform-directory>")
+        env = args.get("environment", "production")
+        return GetPromptResult(
+            description=f"Audit Terraform at {path} for {env} environment.",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"You are a cloud security engineer. Use the `policyguard_scan_iac` tool "
+                            f"to scan the Terraform configuration at `{path}` targeting the "
+                            f"`{env}` environment.\n\n"
+                            "After the scan completes:\n"
+                            "1. Summarise the overall risk posture in two sentences.\n"
+                            "2. List every violation grouped by compliance framework (CIS AWS, SOC 2, GDPR, PCI-DSS).\n"
+                            "3. For each CRITICAL or HIGH finding, provide a concrete remediation code snippet.\n"
+                            "4. Cite the specific control ID for every finding (e.g., CIS-AWS-4.1, GDPR-ART32).\n"
+                            "5. Output a compliance score out of 100.\n\n"
+                            "Format: structured markdown with severity badges. "
+                            "Do not omit any violation — completeness is required for EU AI Act Annex IV."
+                        ),
+                    ),
+                ),
+            ],
+        )
+
+    if name == "classify-workload-6r":
+        workload_json = args.get("workload_json", "{}")
+        return GetPromptResult(
+            description="6R classification prompt for the supplied workload.",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            "You are a cloud migration architect. Classify the following workload "
+                            "using the 6R framework. Use the `migration_assess_workload` tool with "
+                            "`extended_thinking: true` for an audit-grade reasoning trace.\n\n"
+                            f"Workload:\n```json\n{workload_json}\n```\n\n"
+                            "Your output must include:\n"
+                            "- Recommended 6R strategy with confidence score (0-100)\n"
+                            "- Rationale (3-5 bullet points referencing workload attributes)\n"
+                            "- Blockers that could prevent the chosen strategy\n"
+                            "- Alternative strategy if primary is blocked\n"
+                            "- Estimated migration complexity: LOW / MEDIUM / HIGH / VERY HIGH\n\n"
+                            "Be specific. Reference the workload attributes by name."
+                        ),
+                    ),
+                ),
+            ],
+        )
+
+    if name == "assess-bias":
+        dataset_summary = args.get("dataset_summary", "")
+        return GetPromptResult(
+            description="EU AI Act Article 10 bias audit for the supplied dataset.",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            "You are an AI ethics auditor. Use the `policyguard_audit_bias` tool "
+                            "to perform an extended-thinking bias assessment on the following dataset.\n\n"
+                            f"Dataset summary:\n{dataset_summary}\n\n"
+                            "Your audit report must cover:\n"
+                            "1. Bias types detected (selection, confirmation, measurement, algorithmic, representation)\n"
+                            "2. Affected demographic groups with evidence\n"
+                            "3. Severity: NONE / LOW / MEDIUM / HIGH / CRITICAL\n"
+                            "4. EU AI Act Article 10 compliance status (data governance requirements)\n"
+                            "5. Concrete mitigation steps with priority ranking\n"
+                            "6. Annex IV documentation requirements for this AI system\n\n"
+                            "Include the extended-thinking reasoning trace in the audit record."
+                        ),
+                    ),
+                ),
+            ],
+        )
+
+    if name == "executive-briefing":
+        scan_results_json = args.get("scan_results_json", "{}")
+        return GetPromptResult(
+            description="CTO-level executive briefing from platform scan results.",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            "You are a Chief Technology Officer briefing the board. Use the "
+                            "`executive_ask` tool with the following scan results as the briefing "
+                            "bundle. Enable `extended_thinking: true` for a board-grade response.\n\n"
+                            f"Scan results:\n```json\n{scan_results_json}\n```\n\n"
+                            "Structure your briefing as:\n"
+                            "## Executive Summary (3 sentences max)\n"
+                            "## Risk Posture (unified score + top 3 risks)\n"
+                            "## Compliance Status (EU AI Act, SOC 2, GDPR — RAG status)\n"
+                            "## Cost Optimisation Opportunities (FinOps top savings)\n"
+                            "## Migration Readiness (wave plan summary)\n"
+                            "## Recommended Board Actions (3 items, 30/60/90 day timeline)\n\n"
+                            "Language: non-technical, board-appropriate. "
+                            "Avoid jargon. Quantify every risk in business impact terms."
+                        ),
+                    ),
+                ),
+            ],
+        )
+
+    raise ValueError(f"Unknown prompt: {name}")
 
 
 @server.list_tools()
@@ -715,7 +1056,7 @@ async def _policyguard_scan(args: dict[str, Any]) -> dict[str, Any]:
     from agent_ops.agents import ComplianceAgent
     agent = ComplianceAgent(_get_ai())
     result = await agent.run({"iac_config": args.get("iac_config", {})})
-    return {
+    scan_result = {
         "status": result.status.value if hasattr(result.status, "value") else str(result.status),
         "violations": result.metadata.get("violations", []),
         "compliance_score": result.metadata.get("compliance_score", 0),
@@ -723,6 +1064,12 @@ async def _policyguard_scan(args: dict[str, Any]) -> dict[str, Any]:
         "frameworks_checked": result.metadata.get("frameworks_checked", []),
         "model": result.model,
     }
+    # Cache the scan so it can be fetched via the scan-results://{scan_id} resource.
+    scan_id = str(uuid.uuid4())
+    _SCAN_RESULTS_CACHE[scan_id] = scan_result
+    scan_result["scan_id"] = scan_id
+    scan_result["resource_uri"] = f"scan-results://{scan_id}"
+    return scan_result
 
 
 async def _policyguard_audit_policy(args: dict[str, Any]) -> dict[str, Any]:
@@ -886,8 +1233,43 @@ def _normalize_score(data: dict[str, Any]) -> float:
 # ---------------------------------------------------------------------------
 
 async def main() -> None:
-    async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description="Enterprise AI Accelerator MCP Server",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Examples:\n"
+            "  python mcp_server.py                          # stdio (Claude Code default)\n"
+            "  python mcp_server.py --transport sse          # SSE on 0.0.0.0:8765\n"
+            "  python mcp_server.py --transport sse --port 9000  # custom port\n"
+        ),
+    )
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "sse"],
+        default="stdio",
+        help="Transport to use: 'stdio' (default) or 'sse'.",
+    )
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="Host/interface to bind when using SSE transport (default: 0.0.0.0).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8765,
+        help="Port to listen on when using SSE transport (default: 8765).",
+    )
+    args = parser.parse_args()
+
+    from mcp_transports import run_stdio, run_sse
+
+    if args.transport == "sse":
+        await run_sse(server, host=args.host, port=args.port)
+    else:
+        await run_stdio(server)
 
 
 if __name__ == "__main__":

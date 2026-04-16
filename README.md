@@ -35,7 +35,7 @@ Enterprise AI Accelerator is an AI-native unified cloud governance platform buil
 
 ```mermaid
 graph TD
-    A["User / Executive"] --> B["MCP Server (19 tools via stdio)"]
+    A["User / Executive"] --> B["MCP Server (18 tools + 4 resources + 4 prompts, stdio + SSE)"]
     B --> C["AgentOps Orchestrator"]
     C --> D["Opus 4.7 Coordinator"]
     D --> E["ArchitectureAgent (Haiku 4.5)"]
@@ -171,7 +171,7 @@ All module demos include synthetic data. No cloud credentials required to run an
 | **integrations/** | Notification + ticketing | `FindingRouter`, `WebhookDispatcher`, `SlackAdapter`, `JiraAdapter`, `ServiceNowAdapter`, `GitHubAppAdapter`, `TeamsAdapter`, `PagerDutyAdapter`, `SMTPAdapter` | Retry / circuit-breaker / rate-limit on all adapters; PR check-runs with inline annotations |
 | **observability/** | Full OTEL stack | `TelemetryClient`, `PrometheusExporter`, Grafana dashboards | gen_ai.* conventions, 8 Prometheus metrics, Grafana platform + cost dashboards, Jaeger traces |
 | **risk_aggregator.py** | Cross-module risk score | `WorkloadRiskAggregator`, `RiskInput` | Unified 0–100 score from any combination of module outputs |
-| **mcp_server.py** | MCP surface | 19 tools | Every module drivable from Claude Code / Claude Desktop without integration code |
+| **mcp_server.py** | MCP surface | 18 tools + 4 resources + 4 prompts | Every module drivable from Claude Code / Claude Desktop; stdio + SSE transports |
 
 ---
 
@@ -445,7 +445,8 @@ enterprise-ai-accelerator/
 │   └── docker-compose.obs.yaml One-command observability stack
 ├── agent_ops/                  Multi-agent orchestrator
 ├── risk_aggregator.py          Cross-module 0–100 risk score
-└── mcp_server.py               19 MCP tools (Claude Code / Desktop)
+└── mcp_server.py               18 MCP tools + 4 resources + 4 prompts (stdio + SSE)
+└── mcp_transports.py           Transport helpers: run_stdio(), run_sse(), SSE health endpoint
 ```
 
 ---
@@ -474,8 +475,14 @@ python -m cloud_iq.demo
 # Bring up full observability stack (Prometheus + Grafana + Jaeger)
 cd observability && docker compose -f docker-compose.obs.yaml up -d
 
-# MCP server (for Claude Code / Claude Desktop)
+# MCP server — stdio (Claude Code / Claude Desktop local)
 python mcp_server.py
+
+# MCP server — SSE transport (remote / CI agent access)
+python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
+
+# Health check (SSE mode only)
+curl http://localhost:8765/health
 ```
 
 See [docs/DEMO.md](docs/DEMO.md) for the 5-minute exec demo, 15-minute technical walkthrough, and 3-minute interview pitch.
@@ -502,6 +509,73 @@ anthropic>=0.69.0
 Full dependency list: `requirements.txt`. Key additions in v0.2.0: `boto3`, `azure-mgmt-compute`, `azure-mgmt-resource`, `google-cloud-compute`, `kubernetes`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp`, `prometheus-client`, `python-hcl2`, `cyclonedx-python-lib`, `packageurl-python`, `PyJWT`, `cryptography`, `slack-sdk`, `jira`.
 
 All dependencies are OSS (Apache 2.0 / MIT). Zero paid SaaS services.
+
+---
+
+## MCP 2.0 Surface
+
+The MCP server exposes three capability tiers:
+
+### Tools (18 — callable by the client)
+
+| Tool | Module |
+|------|--------|
+| `audit_log_decision`, `get_compliance_status`, `export_sarif`, `get_audit_chain` | AIAuditTrail |
+| `cloudiq_analyze_environment` | CloudIQ |
+| `migration_assess_workload`, `migration_bulk_classify`, `migration_generate_wave_plan` | MigrationScout |
+| `finops_explain_anomaly`, `finops_bulk_explain` | FinOps |
+| `policyguard_scan_iac`, `policyguard_audit_policy`, `policyguard_audit_bias` | PolicyGuard |
+| `executive_ask` | ExecutiveChat |
+| `compliance_cite_question` | ComplianceCitations |
+| `list_models`, `platform_capabilities`, `risk_aggregate_score` | Platform |
+
+### Resources (4 — streamable, not inlined)
+
+| URI | Content |
+|-----|---------|
+| `audit-trail://recent` | Last 50 audit decisions as JSON |
+| `audit-trail://chain-verify` | Merkle chain verification result |
+| `scan-results://{scan_id}` | Full IaC scan result by ID (populated by `policyguard_scan_iac`) |
+| `compliance://frameworks` | Supported regulatory frameworks (7 total) |
+| `policy-catalog://iac` | 20-policy IaC catalog (CIS AWS, SOC 2, GDPR, PCI-DSS) |
+
+### Prompts (4 — reusable templates)
+
+| Prompt | Args | Purpose |
+|--------|------|---------|
+| `audit-terraform` | `path`, `environment` | Scan + narrate IaC findings |
+| `classify-workload-6r` | `workload_json` | 6R classification with reasoning trace |
+| `assess-bias` | `dataset_summary` | EU AI Act Article 10 bias audit |
+| `executive-briefing` | `scan_results_json` | Board-level CTO briefing |
+
+### Transports
+
+```
+# stdio (default — Claude Code, Claude Desktop local)
+python mcp_server.py
+
+# SSE (network-accessible — remote Claude Desktop, CI pipelines)
+python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
+```
+
+Claude Desktop SSE config:
+
+```json
+{
+  "mcpServers": {
+    "enterprise-ai-accelerator": {
+      "url": "http://localhost:8765/sse",
+      "transport": "sse"
+    }
+  }
+}
+```
+
+SSE mode exposes `GET /health`:
+
+```json
+{"status": "ok", "tools": 18, "resources": 5, "prompts": 4, "uptime_s": 42.1}
+```
 
 ---
 
