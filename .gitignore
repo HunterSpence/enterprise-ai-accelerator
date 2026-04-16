@@ -1,15 +1,50 @@
+# Python
 __pycache__/
-*.pyc
-*.pyo
-.env
-.venv/
+*.py[cod]
+*$py.class
 *.egg-info/
+*.egg
 dist/
 build/
+wheels/
+
+# Virtual environments
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+
+# Test / coverage artifacts
 .pytest_cache/
 .mypy_cache/
-*.sarif
-htmlcov/
+.ruff_cache/
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/
+reports/
+*.cover
+
+# Platform artifacts
+*.sarif
+*.sbom.json
 .eaa_cache/
 *.db
+*.sqlite
+*.sqlite3
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Secrets (extra safety — never commit keys)
+*.pem
+*.key
+credentials.json
+secrets.yaml

@@ -266,11 +266,11 @@ class Dashboard:
         status_table.add_column("Detail", width=40)
 
         model_map = {
-            "Coordinator": "claude-opus-4-6",
-            "ArchitectureAgent": "haiku-4-5",
-            "MigrationAgent": "haiku-4-5",
-            "ComplianceAgent": "haiku-4-5",
-            "ReportAgent": "haiku-4-5",
+            "Coordinator": "claude-opus-4-7",
+            "ArchitectureAgent": "claude-haiku-4-5",
+            "MigrationAgent": "claude-haiku-4-5",
+            "ComplianceAgent": "claude-haiku-4-5",
+            "ReportAgent": "claude-haiku-4-5",
         }
 
         for name, state in self._agents.items():

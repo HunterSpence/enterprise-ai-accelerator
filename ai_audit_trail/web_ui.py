@@ -80,9 +80,9 @@ _DEMO_SYSTEMS = [
 ]
 
 _MODELS = [
+    "claude-opus-4-7",
     "claude-sonnet-4-6",
     "claude-haiku-4-5",
-    "claude-opus-4-6",
     "gpt-4o",
     "gpt-4o-mini",
 ]
@@ -91,9 +91,9 @@ _RISK_TIERS = [RiskTier.HIGH, RiskTier.HIGH, RiskTier.LIMITED, RiskTier.MINIMAL]
 _DECISION_TYPES = list(DecisionType)
 
 _COSTS = {
+    "claude-opus-4-7": 0.015,
     "claude-sonnet-4-6": 0.003,
     "claude-haiku-4-5": 0.0008,
-    "claude-opus-4-6": 0.015,
     "gpt-4o": 0.005,
     "gpt-4o-mini": 0.0006,
 }

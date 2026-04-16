@@ -26,99 +26,32 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      # Install root shared deps
-      - name: Install shared dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Install each module's own requirements (some have extras not in root)
-      - name: Install module dependencies
-        run: |
-          pip install -r ai_audit_trail/requirements.txt
-          pip install -r cloud_iq/requirements_v2.txt
-          pip install -r finops_intelligence/requirements.txt
-          pip install -r migration_scout/requirements.txt
-          pip install -r policy_guard/requirements.txt
-          pip install -r agent_ops/requirements.txt
-
-      # Run all test suites, collecting JUnit XML for artifact upload
-      - name: Run tests — ai_audit_trail
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          pytest ai_audit_trail/tests/ \
-            --tb=short \
-            --junitxml=reports/ai_audit_trail.xml \
-            -v
-        continue-on-error: true
-
-      - name: Run tests — cloud_iq
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          pytest cloud_iq/tests/ \
-            --tb=short \
-            --junitxml=reports/cloud_iq.xml \
-            -v
-        continue-on-error: true
-
-      - name: Run tests — policy_guard
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          pytest policy_guard/tests/ \
-            --tb=short \
-            --junitxml=reports/policy_guard.xml \
-            -v
-        continue-on-error: true
-
-      - name: Run tests — finops_intelligence
-        run: |
-          pytest finops_intelligence/tests/ \
-            --tb=short \
-            --junitxml=reports/finops_intelligence.xml \
-            -v
-        continue-on-error: true
-
-      - name: Run tests — migration_scout
-        run: |
-          pytest migration_scout/integrations/tests/ \
-            --tb=short \
-            --junitxml=reports/migration_scout.xml \
-            -v
-        continue-on-error: true
-
-      - name: Run tests — agent_ops
-        run: |
-          pytest agent_ops/tests/ \
-            --tb=short \
-            --junitxml=reports/agent_ops.xml \
-            -v
-        continue-on-error: true
-
-      - name: Run tests — main suite
+      # Canonical test suite — 380+ tests across all modules, fully mocked,
+      # no network or API calls. This is the required gate.
+      - name: Run canonical suite (tests/)
         run: |
           pytest tests/ \
             --tb=short \
             --junitxml=reports/main_suite.xml \
-            -m "not network" \
-            -v
-        continue-on-error: true
-
-      # Collect all results in a single combined run (for badge status)
-      - name: Run all tests (combined — badge target)
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: |
-          pytest tests/ \
-            --tb=short \
-            --junitxml=reports/combined.xml \
             --cov=. \
             --cov-report=xml:reports/coverage.xml \
             --cov-report=term-missing \
             -m "not network" \
             -v
+
+      # Per-module legacy tests — informational only. Some require live APIs
+      # and are excluded from the main gate.
+      - name: Run ai_audit_trail legacy tests (informational)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          pytest ai_audit_trail/tests/ --tb=line -q || true
+        continue-on-error: true
 
       - name: Upload test results
         if: always()
@@ -136,14 +69,25 @@ jobs:
           path: reports/coverage.xml
           retention-days: 30
 
+  lint:
+    name: lint / ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: |
+          pip install ruff>=0.4.0
+          ruff check . --output-format=github --exit-zero
+        continue-on-error: true
+
   docker-validate:
     name: docker-compose validate
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Validate docker-compose config
         run: |
           docker compose -f docker-compose.yml config --quiet
