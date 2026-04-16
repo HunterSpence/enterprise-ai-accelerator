@@ -29,17 +29,27 @@ from policy_guard.frameworks.eu_ai_act import EUAIActScanner, EUAIActReport
 from policy_guard.frameworks.nist_ai_rmf import NISTAIRMFScanner, NISTAIRMFReport
 from policy_guard.frameworks.soc2 import SOC2Scanner, SOC2Report
 from policy_guard.frameworks.hipaa import HIPAAScanner, HIPAAReport
+from policy_guard.frameworks.iso_42001 import ISO42001Scanner, ISO42001Report
+from policy_guard.frameworks.dora import DORAScanner, DORAReport
+from policy_guard.frameworks.fedramp_rev5 import FedRAMPRev5Scanner, FedRAMPReport, MODERATE as FEDRAMP_MODERATE
+from policy_guard.frameworks.pci_dss_40 import PCIScanner, PCIReport
+from policy_guard.frameworks import mapping as fw_mapping
 
 console = Console()
 
 # Risk weights — how much each framework contributes to total score.
 # EU AI Act and CIS AWS are weighted highest for most enterprise contexts.
+# New frameworks are additive; weights sum to 1.0 across enabled frameworks.
 FRAMEWORK_WEIGHTS: dict[str, float] = {
-    "cis_aws": 0.25,
-    "eu_ai_act": 0.30,
-    "nist_ai_rmf": 0.20,
-    "soc2": 0.15,
-    "hipaa": 0.10,
+    "cis_aws": 0.20,
+    "eu_ai_act": 0.20,
+    "nist_ai_rmf": 0.15,
+    "soc2": 0.10,
+    "hipaa": 0.07,
+    "iso_42001": 0.08,
+    "dora": 0.08,
+    "fedramp": 0.07,
+    "pci_dss_40": 0.05,
 }
 
 
@@ -58,6 +68,11 @@ class ScanConfig:
     run_nist_ai_rmf: bool = True
     run_soc2: bool = True
     run_hipaa: bool = True
+    run_iso_42001: bool = True
+    run_dora: bool = True
+    run_fedramp: bool = True
+    fedramp_baseline: str = FEDRAMP_MODERATE
+    run_pci_dss_40: bool = True
 
     # AI system metadata (for EU AI Act + NIST)
     ai_systems: list[dict] = field(default_factory=list)
@@ -95,6 +110,10 @@ class ComplianceReport:
     nist_ai_rmf: Optional[NISTAIRMFReport] = None
     soc2: Optional[SOC2Report] = None
     hipaa: Optional[HIPAAReport] = None
+    iso_42001: Optional[ISO42001Report] = None
+    dora: Optional[DORAReport] = None
+    fedramp: Optional[FedRAMPReport] = None
+    pci_dss_40: Optional[PCIReport] = None
 
     # Aggregated scores
     framework_scores: list[FrameworkScore] = field(default_factory=list)
@@ -143,6 +162,30 @@ class ComplianceReport:
                 self.high_findings += self.hipaa.high_count
                 self.medium_findings += self.hipaa.medium_count
                 self.low_findings += self.hipaa.low_count
+            elif fs.framework == "iso_42001" and self.iso_42001:
+                self.total_findings += self.iso_42001.total_findings
+                self.critical_findings += self.iso_42001.critical_count
+                self.high_findings += self.iso_42001.high_count
+                self.medium_findings += self.iso_42001.medium_count
+                self.low_findings += self.iso_42001.low_count
+            elif fs.framework == "dora" and self.dora:
+                self.total_findings += self.dora.total_findings
+                self.critical_findings += self.dora.critical_count
+                self.high_findings += self.dora.high_count
+                self.medium_findings += self.dora.medium_count
+                self.low_findings += self.dora.low_count
+            elif fs.framework == "fedramp" and self.fedramp:
+                self.total_findings += self.fedramp.total_findings
+                self.critical_findings += self.fedramp.critical_count
+                self.high_findings += self.fedramp.high_count
+                self.medium_findings += self.fedramp.medium_count
+                self.low_findings += self.fedramp.low_count
+            elif fs.framework == "pci_dss_40" and self.pci_dss_40:
+                self.total_findings += self.pci_dss_40.total_findings
+                self.critical_findings += self.pci_dss_40.critical_count
+                self.high_findings += self.pci_dss_40.high_count
+                self.medium_findings += self.pci_dss_40.medium_count
+                self.low_findings += self.pci_dss_40.low_count
 
         if self.framework_scores:
             self.overall_score = sum(
@@ -193,7 +236,7 @@ class ComplianceScanner:
             transient=False,
         ) as progress:
             master = progress.add_task(
-                "[bold cyan]PolicyGuard — Scanning frameworks...", total=5
+                "[bold cyan]PolicyGuard — Scanning frameworks...", total=9
             )
 
             async def run_framework(name: str, coro) -> tuple[str, object]:
@@ -249,6 +292,25 @@ class ComplianceScanner:
                     run_framework("hipaa", scanner.scan())
                 )
 
+            if self.config.run_iso_42001:
+                scanner = ISO42001Scanner(mock=self.config.mock_mode)
+                active_tasks.append(run_framework("iso_42001", scanner.scan()))
+
+            if self.config.run_dora:
+                scanner = DORAScanner(mock=self.config.mock_mode)
+                active_tasks.append(run_framework("dora", scanner.scan()))
+
+            if self.config.run_fedramp:
+                scanner = FedRAMPRev5Scanner(
+                    baseline=self.config.fedramp_baseline,
+                    mock=self.config.mock_mode,
+                )
+                active_tasks.append(run_framework("fedramp", scanner.scan()))
+
+            if self.config.run_pci_dss_40:
+                scanner = PCIScanner(mock=self.config.mock_mode)
+                active_tasks.append(run_framework("pci_dss_40", scanner.scan()))
+
             results = await asyncio.gather(*active_tasks)
 
         # Attach per-framework reports
@@ -263,6 +325,14 @@ class ComplianceScanner:
                 report.soc2 = result
             elif name == "hipaa":
                 report.hipaa = result
+            elif name == "iso_42001":
+                report.iso_42001 = result
+            elif name == "dora":
+                report.dora = result
+            elif name == "fedramp":
+                report.fedramp = result
+            elif name == "pci_dss_40":
+                report.pci_dss_40 = result
 
         # Build per-framework scores
         for fw_name, weight in FRAMEWORK_WEIGHTS.items():
@@ -322,9 +392,13 @@ class ComplianceScanner:
         framework_labels = {
             "cis_aws": "CIS AWS Foundations",
             "eu_ai_act": "EU AI Act",
-            "nist_ai_rmf": "NIST AI RMF",
+            "nist_ai_rmf": "NIST AI RMF 2.0",
             "soc2": "SOC 2 Type II",
             "hipaa": "HIPAA",
+            "iso_42001": "ISO/IEC 42001:2023",
+            "dora": "DORA (EU) 2022/2554",
+            "fedramp": "FedRAMP Rev 5",
+            "pci_dss_40": "PCI DSS 4.0",
         }
 
         for fs in report.framework_scores:

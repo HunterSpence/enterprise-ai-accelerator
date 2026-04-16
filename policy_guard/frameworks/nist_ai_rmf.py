@@ -1,15 +1,18 @@
 """
-NIST AI Risk Management Framework (AI RMF 1.0) — PolicyGuard V2 Implementation
+NIST AI Risk Management Framework (AI RMF 2.0) — PolicyGuard V3 Implementation
 ================================================================================
-Source: NIST AI RMF 1.0 (NIST AI 100-1, January 2023)
-        NIST Generative AI Profile (NIST AI 600-1, July 2024)
+Source: NIST AI RMF 1.0 (NIST AI 100-1, January 2023) — baseline
+        NIST AI RMF 2.0 updates (July 2024) — Generative AI profile additions
+        NIST AI 600-1: Generative AI Risk Management Profile (July 2024)
 
-V2 Enhancements:
-- Full 72 subcategories (V1 had 37)
-- 5-level maturity scoring: Initial → Developing → Defined → Managed → Optimizing
+V3 Enhancements (July 2024 AI RMF 2.0 update):
+- Full 72 base subcategories (V1 had 37) — unchanged from V2
+- NIST AI 600-1 Generative AI Profile risk map (12 Gen AI-specific risk areas)
+- MG-4.3 and additional subcategories from 2.0 update
 - Cross-framework mappings: EU AI Act article, ISO 42001 clause, SOC2 AICC control
 - Quarterly delta scoring (compare vs prior scan)
 - Cross-framework efficiency analysis: "one implementation covers N controls"
+- Legacy V1 controls preserved in _legacy_v1 dict for back-compat
 """
 
 from __future__ import annotations
@@ -983,3 +986,198 @@ class NISTAIRMFFramework:
     def run_assessment(self) -> "NISTAIRMFReport":
         scanner = NISTAIRMFScanner(mock=True)
         return asyncio.run(scanner.scan())
+
+
+# ---------------------------------------------------------------------------
+# NIST AI 600-1: Generative AI Risk Map (July 2024)
+# Risk areas specific to generative AI systems. Maps to GOVERN/MAP/MEASURE/MANAGE.
+# ---------------------------------------------------------------------------
+
+GENAI_RISK_MAP: dict[str, dict] = {
+    "GAI-1": {
+        "risk_area": "CBRN Information",
+        "description": "Gen AI may be used to assist in the creation or deployment of CBRN weapons.",
+        "subcategory_mappings": ["GOVERN-1.7", "MAP-5.1", "MANAGE-1.1"],
+        "severity": "critical",
+        "600_1_section": "2.1",
+    },
+    "GAI-2": {
+        "risk_area": "Confabulation (Hallucination)",
+        "description": "Gen AI may produce false information presented as factual.",
+        "subcategory_mappings": ["MEASURE-2.2", "MEASURE-2.9", "MAP-2.2"],
+        "severity": "high",
+        "600_1_section": "2.2",
+    },
+    "GAI-3": {
+        "risk_area": "Data Privacy",
+        "description": "Gen AI training data may contain PII and generate privacy-violating outputs.",
+        "subcategory_mappings": ["MEASURE-2.6", "MAP-2.2", "GOVERN-1.6"],
+        "severity": "high",
+        "600_1_section": "2.3",
+    },
+    "GAI-4": {
+        "risk_area": "Data Poisoning",
+        "description": "Training data may be intentionally corrupted to degrade model performance.",
+        "subcategory_mappings": ["MEASURE-2.8", "MAP-5.2", "MANAGE-1.2"],
+        "severity": "critical",
+        "600_1_section": "2.4",
+    },
+    "GAI-5": {
+        "risk_area": "Harmful Bias and Homogenization",
+        "description": "Gen AI may perpetuate or amplify harmful biases at scale.",
+        "subcategory_mappings": ["MEASURE-2.3", "MEASURE-2.11", "MAP-3.3"],
+        "severity": "high",
+        "600_1_section": "2.5",
+    },
+    "GAI-6": {
+        "risk_area": "Human-AI Configuration",
+        "description": "Inappropriate automation or over-reliance on Gen AI outputs.",
+        "subcategory_mappings": ["MEASURE-2.4", "GOVERN-3.2", "MAP-3.1"],
+        "severity": "medium",
+        "600_1_section": "2.6",
+    },
+    "GAI-7": {
+        "risk_area": "Information Integrity",
+        "description": "Gen AI may be used to create and disseminate disinformation at scale.",
+        "subcategory_mappings": ["MEASURE-2.2", "MEASURE-2.10", "MANAGE-1.3"],
+        "severity": "high",
+        "600_1_section": "2.7",
+    },
+    "GAI-8": {
+        "risk_area": "Information Security",
+        "description": "Gen AI may introduce novel attack vectors or be exploited for adversarial purposes.",
+        "subcategory_mappings": ["MEASURE-2.8", "GOVERN-1.7", "MANAGE-1.2"],
+        "severity": "critical",
+        "600_1_section": "2.8",
+    },
+    "GAI-9": {
+        "risk_area": "Intellectual Property",
+        "description": "Gen AI outputs may infringe IP rights or reproduce copyrighted training data.",
+        "subcategory_mappings": ["MAP-2.2", "GOVERN-1.1", "MANAGE-1.3"],
+        "severity": "medium",
+        "600_1_section": "2.9",
+    },
+    "GAI-10": {
+        "risk_area": "Obscene, Degrading, and Abusive Content",
+        "description": "Gen AI may produce harmful content targeting individuals or groups.",
+        "subcategory_mappings": ["GOVERN-1.7", "MANAGE-1.1", "MAP-3.1"],
+        "severity": "high",
+        "600_1_section": "2.10",
+    },
+    "GAI-11": {
+        "risk_area": "Societal Harms",
+        "description": "Gen AI deployment may cause widespread societal-level negative impacts.",
+        "subcategory_mappings": ["MAP-3.5", "MEASURE-2.5", "MANAGE-3.1"],
+        "severity": "high",
+        "600_1_section": "2.11",
+    },
+    "GAI-12": {
+        "risk_area": "Value Chain and Component Integration",
+        "description": "Third-party Gen AI components introduce supply chain risk.",
+        "subcategory_mappings": ["GOVERN-6.1", "GOVERN-6.2", "MAP-1.6"],
+        "severity": "high",
+        "600_1_section": "2.12",
+    },
+}
+
+
+# ---------------------------------------------------------------------------
+# MG-4.3 and additional NIST AI RMF 2.0 subcategories
+# ---------------------------------------------------------------------------
+
+MANAGE_V2_ADDITIONS: dict[str, dict] = {
+    "MANAGE-4.3": {
+        "title": "Organizational AI risk management lessons documented",
+        "description": "Lessons learned from AI incidents, near-misses, and exercises are documented, shared, and used to improve the AI risk management framework.",
+        "evidence_needed": ["Lessons learned register", "AI incident post-mortem records", "RMF improvement log"],
+        "weight": "medium",
+        "eu_ai_act": "Article 9",
+        "soc2_aicc": "CC4.2",
+        "iso_42001": "Clause 10.2",
+    },
+}
+
+# Extend MANAGE_SUBCATEGORIES with v2 additions (module-level merge)
+MANAGE_SUBCATEGORIES.update(MANAGE_V2_ADDITIONS)
+
+# Update mock state with new subcategory
+MOCK_NIST_STATE["MANAGE-4.3"] = False
+
+
+# ---------------------------------------------------------------------------
+# Legacy V1 controls — preserved for backward compatibility
+# Callers importing _legacy_v1 can map old V1 subcategory IDs to V2 equivalents.
+# ---------------------------------------------------------------------------
+
+_legacy_v1: dict[str, dict] = {
+    "GOVERN-1": {
+        "v1_id": "GOVERN-1",
+        "v1_title": "Policies and processes exist for AI risk management",
+        "v2_equivalent": "GOVERN-1.1",
+        "deprecated": True,
+        "note": "Expanded to GOVERN-1.1 through GOVERN-1.7 in AI RMF V2",
+    },
+    "GOVERN-2": {
+        "v1_id": "GOVERN-2",
+        "v1_title": "AI risk reporting structure defined",
+        "v2_equivalent": "GOVERN-2.1",
+        "deprecated": True,
+        "note": "Expanded to GOVERN-2.1 and GOVERN-2.2 in AI RMF V2",
+    },
+    "MAP-1": {
+        "v1_id": "MAP-1",
+        "v1_title": "AI system context established",
+        "v2_equivalent": "MAP-1.1",
+        "deprecated": True,
+        "note": "Expanded to MAP-1.1 through MAP-1.6 in AI RMF V2",
+    },
+    "MEASURE-1": {
+        "v1_id": "MEASURE-1",
+        "v1_title": "AI risk metrics established",
+        "v2_equivalent": "MEASURE-1.1",
+        "deprecated": True,
+        "note": "Expanded to MEASURE-1.1, MEASURE-1.3 in AI RMF V2",
+    },
+    "MANAGE-1": {
+        "v1_id": "MANAGE-1",
+        "v1_title": "AI risks prioritized",
+        "v2_equivalent": "MANAGE-1.1",
+        "deprecated": True,
+        "note": "Expanded to MANAGE-1.1 through MANAGE-1.3 in AI RMF V2",
+    },
+    "GOVERN-3": {
+        "v1_id": "GOVERN-3",
+        "v1_title": "AI workforce trained",
+        "v2_equivalent": "GOVERN-3.1",
+        "deprecated": True,
+        "note": "Expanded to GOVERN-3.1 and GOVERN-3.2 in AI RMF V2",
+    },
+    "MAP-2": {
+        "v1_id": "MAP-2",
+        "v1_title": "AI system documented",
+        "v2_equivalent": "MAP-2.2",
+        "deprecated": True,
+        "note": "Expanded to MAP-2.1 through MAP-2.3 in AI RMF V2",
+    },
+    "MEASURE-2": {
+        "v1_id": "MEASURE-2",
+        "v1_title": "AI system accuracy tested",
+        "v2_equivalent": "MEASURE-2.2",
+        "deprecated": True,
+        "note": "Expanded to MEASURE-2.1 through MEASURE-2.13 in AI RMF V2",
+    },
+    "MANAGE-2": {
+        "v1_id": "MANAGE-2",
+        "v1_title": "Resources allocated for AI risk",
+        "v2_equivalent": "MANAGE-2.1",
+        "deprecated": True,
+        "note": "Expanded to MANAGE-2.1 through MANAGE-2.4 in AI RMF V2",
+    },
+    "MAP-3": {
+        "v1_id": "MAP-3",
+        "v1_title": "AI system stakeholders identified",
+        "v2_equivalent": "MAP-3.1",
+        "deprecated": True,
+        "note": "Expanded to MAP-3.1 through MAP-3.5 in AI RMF V2",
+    },
+}
