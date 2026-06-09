@@ -64,4 +64,4 @@ azure-identity>=1.16.0
 google-cloud-billing>=1.13.0
 oci>=2.120.0
 
-respx>=0.21.0
+respx>=0.23.1
