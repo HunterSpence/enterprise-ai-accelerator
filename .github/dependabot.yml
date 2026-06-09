@@ -1,0 +1,46 @@
+version: 2
+
+updates:
+  # Python dependencies (main codebase)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # examples/sample_repo uses intentionally old pinned deps for demo/scanning
+      # purposes — see examples/sample_repo/README.md
+      - dependency-name: "*"
+        update-types: ["version-update:semver-patch"]
+
+  # npm dependencies — main codebase only
+  # examples/sample_repo intentionally pins old vulnerable versions for demo
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Suppress ALL Dependabot updates for the intentional vulnerable fixture
+  # This path exists to demonstrate security scanning capabilities of the platform.
+  # See examples/sample_repo/README.md: "Pinned dependency versions are intentionally
+  # old for demo/scanning purposes."
+  - package-ecosystem: "npm"
+    directory: "/examples/sample_repo"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
+
+  - package-ecosystem: "pip"
+    directory: "/examples/sample_repo"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
+          - "version-update:semver-patch"
