@@ -27,13 +27,13 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import anthropic
 
@@ -46,7 +46,7 @@ from agent_ops.agents import (
     ReportAgent,
 )
 from agent_ops.otel_tracer import AgentOpsTracer
-from core import AIClient, MODEL_COORDINATOR
+from core import MODEL_COORDINATOR, AIClient
 from core.guardrails import BudgetExceededError, BudgetGuard
 
 logger = logging.getLogger(__name__)
@@ -105,9 +105,9 @@ class AgentActivity:
     detail: str = ""
 
     @classmethod
-    def now(cls, agent: str, event: str, detail: str = "") -> "AgentActivity":
+    def now(cls, agent: str, event: str, detail: str = "") -> AgentActivity:
         return cls(
-            timestamp=datetime.now(timezone.utc).strftime("%H:%M:%S.%f")[:-3],
+            timestamp=datetime.now(UTC).strftime("%H:%M:%S.%f")[:-3],
             agent=agent,
             event=event,
             detail=detail,
@@ -262,7 +262,7 @@ def _write_checkpoint(
     data = {
         "run_id": run_id,
         "stage": stage,
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "completed": completed_results,
     }
     path = _checkpoint_path(run_id)

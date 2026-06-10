@@ -29,11 +29,10 @@ from typing import Any
 import anthropic
 
 from core import (
-    AIClient,
     MODEL_REPORTER,
     MODEL_WORKER,
+    AIClient,
 )
-
 
 # ---------------------------------------------------------------------------
 # Shared types

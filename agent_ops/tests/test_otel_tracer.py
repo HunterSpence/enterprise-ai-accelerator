@@ -15,23 +15,21 @@ if _REPO_ROOT not in sys.path:
     sys.path.insert(0, _REPO_ROOT)
 
 from agent_ops.otel_tracer import (
-    AgentOpsTracer,
-    SimpleSpan,
-    ATTR_SERVICE_NAME,
-    ATTR_SERVICE_VERSION,
+    ATTR_AGENT_FINDINGS,
     ATTR_AGENT_NAME,
     ATTR_EU_AI_ARTICLE,
-    ATTR_EU_AI_SYSTEM,
     ATTR_EU_AI_HUMAN_OVERSIGHT,
-    ATTR_GEN_AI_SYSTEM,
-    ATTR_PIPELINE_TASK,
-    ATTR_PIPELINE_STATUS,
-    ATTR_AGENT_FINDINGS,
-    ATTR_GEN_AI_MODEL,
+    ATTR_EU_AI_SYSTEM,
     ATTR_GEN_AI_INPUT_TOKENS,
+    ATTR_GEN_AI_MODEL,
     ATTR_GEN_AI_OUTPUT_TOKENS,
+    ATTR_GEN_AI_SYSTEM,
+    ATTR_PIPELINE_STATUS,
+    ATTR_PIPELINE_TASK,
+    ATTR_SERVICE_NAME,
+    AgentOpsTracer,
+    SimpleSpan,
 )
-
 
 # ---------------------------------------------------------------------------
 # SimpleSpan tests

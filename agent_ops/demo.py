@@ -23,7 +23,6 @@ from rich.panel import Panel
 from agent_ops.dashboard import Dashboard
 from agent_ops.orchestrator import Orchestrator
 
-
 # ---------------------------------------------------------------------------
 # Sample enterprise data (realistic but fictional)
 # ---------------------------------------------------------------------------

@@ -49,11 +49,11 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, AsyncGenerator, Optional
-
+from datetime import UTC, datetime
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Lightweight span implementation (zero-dependency fallback)
@@ -67,11 +67,11 @@ class SimpleSpan:
     """
     trace_id: str
     span_id: str
-    parent_span_id: Optional[str]
+    parent_span_id: str | None
     operation_name: str
     service_name: str
     start_time_ns: int = field(default_factory=lambda: time.time_ns())
-    end_time_ns: Optional[int] = None
+    end_time_ns: int | None = None
     attributes: dict[str, Any] = field(default_factory=dict)
     events: list[dict[str, Any]] = field(default_factory=list)
     status: str = "OK"          # OK | ERROR
@@ -80,7 +80,7 @@ class SimpleSpan:
     def set_attribute(self, key: str, value: Any) -> None:
         self.attributes[key] = value
 
-    def add_event(self, name: str, attributes: Optional[dict] = None) -> None:
+    def add_event(self, name: str, attributes: dict | None = None) -> None:
         self.events.append({
             "name": name,
             "timestamp_ns": time.time_ns(),
@@ -176,8 +176,8 @@ class AgentOpsTracer:
         service_name: str = "enterprise-ai-accelerator",
         service_version: str = "2.0.0",
         export_mode: str = "console",      # "console" | "file" | "otlp"
-        otlp_endpoint: Optional[str] = None,  # e.g., "http://localhost:4317"
-        trace_file: Optional[str] = None,      # for "file" mode
+        otlp_endpoint: str | None = None,  # e.g., "http://localhost:4317"
+        trace_file: str | None = None,      # for "file" mode
         eu_ai_act_mode: bool = False,           # attach Article 12 attributes
         ai_system_name: str = "",
     ) -> None:
@@ -200,10 +200,10 @@ class AgentOpsTracer:
         """Initialize OpenTelemetry SDK if available."""
         try:
             from opentelemetry import trace
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+            from opentelemetry.sdk.resources import Resource
             from opentelemetry.sdk.trace import TracerProvider
             from opentelemetry.sdk.trace.export import BatchSpanProcessor
-            from opentelemetry.sdk.resources import Resource
-            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
             resource = Resource.create({
                 ATTR_SERVICE_NAME: self.service_name,
@@ -250,8 +250,8 @@ class AgentOpsTracer:
     def start_span(
         self,
         operation_name: str,
-        parent_span: Optional[SimpleSpan] = None,
-        attributes: Optional[dict[str, Any]] = None,
+        parent_span: SimpleSpan | None = None,
+        attributes: dict[str, Any] | None = None,
     ) -> SimpleSpan:
         """
         Start a new tracing span.
@@ -287,7 +287,7 @@ class AgentOpsTracer:
 
         return span
 
-    def finish_span(self, span: SimpleSpan, error: Optional[Exception] = None) -> None:
+    def finish_span(self, span: SimpleSpan, error: Exception | None = None) -> None:
         """Finish a span and export it."""
         if error:
             span.set_status("ERROR", str(error))
@@ -298,7 +298,7 @@ class AgentOpsTracer:
     async def trace_pipeline(
         self,
         task: str,
-        config: Optional[dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
     ) -> AsyncGenerator[SimpleSpan, None]:
         """
         Async context manager that wraps a full pipeline execution in a root span.
@@ -333,7 +333,7 @@ class AgentOpsTracer:
     def trace_agent(
         self,
         agent_name: str,
-        parent_span: Optional[SimpleSpan] = None,
+        parent_span: SimpleSpan | None = None,
     ) -> SimpleSpan:
         """
         Create a child span for a single agent execution.
@@ -467,6 +467,6 @@ class AgentOpsTracer:
             "spans": [s.to_dict() for s in spans],
             "exportMode": self.export_mode,
             "otlpEndpoint": self.otlp_endpoint or "",
-            "generatedAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            "generatedAt": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "euAiActCompliant": self.eu_ai_act_mode,
         }

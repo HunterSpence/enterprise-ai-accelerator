@@ -15,14 +15,8 @@ import asyncio
 import json
 import os
 import sys
-import tempfile
 import uuid
-from dataclasses import dataclass
-from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
-
-import pytest
 
 _REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 if _REPO_ROOT not in sys.path:
@@ -32,16 +26,9 @@ from agent_ops.agents import AgentResult, AgentStatus
 from agent_ops.orchestrator import (
     ApprovalRequest,
     Orchestrator,
-    PipelineResult,
-    _CHECKPOINT_DIR,
-    _checkpoint_path,
-    _is_transient,
-    _read_checkpoint,
-    _write_checkpoint,
     _agent_result_from_dict,
+    _is_transient,
 )
-from core.guardrails import BudgetExceededError, BudgetGuard
-
 
 # ---------------------------------------------------------------------------
 # Helpers / stubs
@@ -224,7 +211,6 @@ class TestRunAgentRetry:
 class TestBudgetAbort:
     def _make_orchestrator(self, tmp_path=None):
         """Return an Orchestrator wired to null stubs — no real API calls."""
-        import agent_ops.orchestrator as orch_mod
         orch = object.__new__(Orchestrator)
         orch._on_activity = lambda _: None
         orch._tracer = _null_tracer()
@@ -345,7 +331,6 @@ class TestCheckpointAndResume:
             pass
 
     def test_agent_result_from_dict_roundtrip(self):
-        from agent_ops.orchestrator import _agent_result_from_dict
         d = {
             "agent_name": "TestAgent",
             "status": "done",

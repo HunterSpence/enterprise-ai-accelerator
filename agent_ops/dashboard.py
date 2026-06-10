@@ -8,23 +8,19 @@ Shows live agent status, progress, activity log, and final results.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from rich import box
-from rich.columns import Columns
 from rich.console import Console
-from rich.layout import Layout
 from rich.live import Live
 from rich.panel import Panel
-from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from agent_ops.agents import AgentStatus
 import core.models as _models
-
+from agent_ops.agents import AgentStatus
 
 # ---------------------------------------------------------------------------
 # Theme
