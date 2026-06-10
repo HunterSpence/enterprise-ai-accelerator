@@ -195,7 +195,7 @@ def record_gen_ai_call(
     Args:
         span:             An OTEL ``Span`` object or our ``SimpleSpan`` proxy.
                           Pass ``None`` to skip silently.
-        model:            Model identifier, e.g. ``"claude-opus-4-7"``.
+        model:            Model identifier, e.g. ``"claude-fable-5"``.
         input_tokens:     Billable input tokens (excluding cache tokens).
         output_tokens:    Output tokens generated.
         cache_read:       Tokens read from Anthropic prompt cache (50% cost).

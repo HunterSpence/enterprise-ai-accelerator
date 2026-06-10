@@ -250,7 +250,7 @@ if FASTAPI_AVAILABLE:
         description=(
             "AI Governance and Cloud Compliance API. "
             "Covers EU AI Act, NIST AI RMF, SOC 2 AICC, CIS AWS, and HIPAA. "
-            "High-risk enforcement deadline: August 2, 2026."
+            "High-risk enforcement deadline: December 2, 2027 (deferred from August 2, 2026 by the Digital Omnibus)."
         ),
         version="2.0.0",
         docs_url="/docs",

@@ -1,3 +1,5 @@
+> **DEPRECATED (v0.4.0, 2026-06-10):** Opus 4.7 has been superseded by Claude Fable 5 (`claude-fable-5`) as the platform flagship. See [`docs/FABLE_5_UPGRADE.md`](FABLE_5_UPGRADE.md) for the current model reference. This document is retained for historical context only.
+
 # Opus 4.7 Executive Upgrade — April 2026
 
 > **TL;DR for the C-suite.** The Enterprise AI Accelerator now runs on
@@ -11,7 +13,7 @@
 
 ## Why this release matters
 
-The EU AI Act enters its enforcement window on **August 2, 2026**. On that
+The EU AI Act enters its high-risk enforcement window on **December 2, 2027** (deferred from August 2, 2026 by the EU Digital Omnibus). On that
 date, any high-risk AI system operating in the EU market must produce —
 on demand — a full Annex IV technical documentation record for every
 decision, including a reasoning trace, the model used, the input

@@ -11,6 +11,63 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.0] — 2026-06-10
+
+Six parallel capability tracks: model refresh to Claude Fable 5, a first-party offline eval
+harness with a CI gate, a first-party guardrail layer, MCP Streamable HTTP + audited tool
+calls, compliance currency to June 2026 law (11 frameworks), and a governance/pricing
+documentation pack. **Zero new runtime dependencies** — evals and guardrails are first-party
+code; `mcp>=1.27.0` (already a runtime requirement) is now correctly declared in
+`pyproject.toml`.
+
+### Changed — Model Refresh + Packaging (W1)
+- `core/models.py` — `MODEL_FABLE_5 = "claude-fable-5"` is the flagship/coordinator model, overridable via `EAA_FLAGSHIP_MODEL`; `MODEL_OPUS_4_7` retained as a deprecated alias resolving to Fable 5 so existing imports keep working; Sonnet 4.6 / Haiku 4.5 worker tiers unchanged
+- `core/model_router.py` + `core/cost_estimator.py` — pricing tables updated to June 2026 list prices: Fable 5 $10/$50 per MTok (cache read $1, cache write $12.50, batch −50%), Sonnet 4.6 $3/$15, Haiku 4.5 $1/$5
+- Stale model-ID strings updated across `core/`, `cloud_iq/`, `finops_intelligence/`, `agent_ops/`, `observability/` (Grafana cost dashboard re-priced), `.env.example` (was two generations stale), and module READMEs
+- `pyproject.toml` — version 0.4.0; `mcp>=1.27.0` added to dependencies (was missing — clean installs could not start the MCP server); `anthropic>=0.69.0,<1.0`; pytest `testpaths` now includes all six test directories (per-module suites were silently excluded)
+- **Fixed:** `cloud_iq` demo mode made live (billable) API calls — demo mode now never calls the Anthropic API; the two affected tests pass offline
+- `cloud_iq/models.py` — Pydantic V1 `@validator` migrated to V2 `@field_validator`
+- `finops_intelligence/README.md` — FOCUS 1.4 (June 2026, AI token-economics columns) noted on roadmap; exporter remains FOCUS 1.3-conformant
+- **Tokenizer caveat:** the Fable 5 tokenizer counts up to ~35% more tokens for identical text than the Opus 4.7-era tokenizer; pre-v0.4.0 benchmark token counts and dollar figures are stale. See `docs/FABLE_5_UPGRADE.md`.
+
+### Added — Eval Harness + CI (W2)
+- `evals/` — first-party, offline-first eval harness (no third-party eval dependency): JSONL golden datasets (`six_r_classification` 23 cases, `iac_policy_detection` 20 cases incl. true-negatives, `prompt_injection_redteam` 25 cases), deterministic scorers, per-suite thresholds, JSON + markdown reports
+- The IaC suite scores the real `iac_security.PolicyEngine`: F1 0.894 against a 0.85 gate at release
+- `python -m evals.run --offline` exits non-zero below threshold — wired into CI as a quality gate
+- Optional live mode (`ANTHROPIC_API_KEY` set, `--offline` omitted) runs 6R golden cases through the real model path
+- `.github/workflows/ci.yml` — first CI for the repo: full offline test suite + the eval gate on every push/PR
+- `evals/tests/` — 40 harness self-tests
+
+### Added — Guardrails + Orchestrator Hardening (W3)
+- `core/guardrails.py` — first-party `GuardrailEngine` with input rail (prompt-injection detection: instruction-override, role-smuggling, suspicious encodings, unicode direction/zero-width tricks, tool-arg smuggling), output rail (secret/PII redaction), execution rail (tool allowlists + call caps); `BudgetGuard` (per-run token/USD caps); `GuardedAIClient` wrapper; mapped to OWASP LLM Top 10 2025 in the module docstring; 77 offline tests
+- `agent_ops/orchestrator.py` — exponential-backoff retries on transient API errors; per-run token/cost budgets via `BudgetGuard` with clean partial-results abort; stage checkpoints persisted to `.eaa_checkpoints/` with `Orchestrator.resume(run_id)`; optional human-in-the-loop `approval_handler` gate with auto-approvals recorded in result telemetry; 52 new tests
+
+### Changed — MCP Modernization + Security (W4)
+- `mcp_transports.py` — Streamable HTTP transport added via the official SDK (`StreamableHTTPSessionManager`, endpoint `/mcp`) per MCP spec 2025-03-26; SSE retained but labeled legacy; stdio unchanged as default
+- Bearer-token auth on both network transports via `EAA_MCP_AUTH_TOKEN` (constant-time compare; `/health` exempt; stdio exempt)
+- Every MCP tool invocation is appended to the platform's own Merkle chain (`.eaa_audit/mcp_tools.db`): tool name, SHA-256 of args, duration, status — fail-open, default on, opt-out via `EAA_MCP_AUDIT` (OWASP MCP08)
+- Argument validation before dispatch: path-traversal rejection, enum and numeric-bounds checks, clean MCP errors (OWASP MCP03/05)
+- `tests/test_mcp_server.py` — 26 new tests (transports, auth, audit chain, validation); 74 total passing
+
+### Added — Compliance Currency + ML-BOM (W5)
+- `policy_guard/` — **Colorado SB 24-205 was repealed**; coverage added for its replacement **SB 26-189** (signed May 14, 2026, effective Jan 1, 2027) and for **Texas TRAIGA** (effective Jan 1, 2026; penalties $10K–$200K per violation) — 15 controls each. Framework count: 9 → 11, cross-framework traceability updated
+- `ai_audit_trail/chain.py` — the placeholder blockchain anchor is gone; replaced by a real `AnchorBackend` protocol with `FileAnchor` (append-only, fsync'd, thread-safe) and `WebhookAnchor` (POST with retry) implementations
+- `ai_audit_trail/web_ui.py` — NIST AI RMF MANAGE 2.2 (human-oversight events from the audit chain) and GOVERN 5.2 (third-party AI inventory from the ML-BOM + model registry) implemented; TODO markers removed
+- `iac_security/` — CycloneDX 1.7 **ML-BOM** generation: `python -m iac_security mlbom` emits machine-learning-model components for the platform's model stack (provider, version, API ID)
+- EU AI Act timeline updated to the Digital Omnibus reality: high-risk (Annex III) enforcement December 2, 2027 (deferred from August 2, 2026); GPAI obligations in force since August 2025
+
+### Added — Documentation (W6)
+- `GOVERNANCE.md` — solo maintainer model, decision process, release cadence, security report handling, bus-factor mitigation, contribution acceptance criteria
+- `PRICING.md` — OSS Core (free); Accelerator Cloud ($299–$799/mo, roadmap); Enterprise Self-Hosted Support ($25K–$80K/yr); Fixed-Scope Services ($15K–$50K); FinOps outcome pricing (10% of realized savings, month 6); 3-year TCO contrast vs Big-6
+- `ROADMAP.md` — NOW / NEXT / LATER horizon buckets with per-item rationale and status
+- `docs/FABLE_5_UPGRADE.md` — v0.4.0 model refresh reference: Fable 5 pricing, tokenizer caveat, Opus 4.8 alternative, migration guide; `docs/OPUS_4_7_UPGRADE.md` carries a deprecation banner
+- `docs/EU_AI_ACT_EVIDENCE_PACK.md` — Annex IV evidence walkthrough; Articles 9–15 mapped to platform commands and artifacts; Digital Omnibus timeline (high-risk: Dec 2, 2027)
+- `docs/SOVEREIGN_DEPLOYMENT.md` — all computation in the client's cloud; Anthropic API as sole external call; no telemetry; air-gap notes; Bedrock/Vertex routing flagged as unconfirmed options to evaluate
+- `README.md` — full rewrite: problem-first positioning, verifiability table, lock-in answer, time-to-value quickstart, pricing, corrected regulatory dates
+- `docs/RESUME_TALKING_POINTS.md` — removed from the repository (interview-preparation content does not belong in a product repo)
+
+---
+
 ## [0.2.0] — 2026-04-16
 
 Seven parallel capability tracks. 68 new files. 16,931 lines of code added.
@@ -140,6 +197,7 @@ Initial Opus 4.7 executive upgrade. Commit: `cdb8bdb`.
 
 ---
 
-[Unreleased]: https://github.com/HunterSpence/enterprise-ai-accelerator/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/HunterSpence/enterprise-ai-accelerator/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/HunterSpence/enterprise-ai-accelerator/compare/v0.2.0...v0.4.0
 [0.2.0]: https://github.com/HunterSpence/enterprise-ai-accelerator/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/HunterSpence/enterprise-ai-accelerator/releases/tag/v0.1.0

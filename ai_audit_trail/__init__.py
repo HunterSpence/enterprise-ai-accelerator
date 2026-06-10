@@ -1,7 +1,7 @@
 """
 AIAuditTrail V2 — Immutable AI decision logging for EU AI Act compliance.
 
-EU AI Act enforcement for HIGH-RISK AI systems: August 2, 2026.
+EU AI Act enforcement for HIGH-RISK AI systems: December 2, 2027 (deferred from August 2, 2026 by the EU Digital Omnibus).
 IBM OpenPages: $500K/yr. Credo AI: $180K/yr. This: $0.
 
 V2 additions:

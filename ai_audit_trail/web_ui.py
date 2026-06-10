@@ -80,7 +80,7 @@ _DEMO_SYSTEMS = [
 ]
 
 _MODELS = [
-    "claude-opus-4-7",
+    "claude-fable-5",
     "claude-sonnet-4-6",
     "claude-haiku-4-5",
     "gpt-4o",
@@ -91,9 +91,9 @@ _RISK_TIERS = [RiskTier.HIGH, RiskTier.HIGH, RiskTier.LIMITED, RiskTier.MINIMAL]
 _DECISION_TYPES = list(DecisionType)
 
 _COSTS = {
-    "claude-opus-4-7": 0.015,
+    "claude-fable-5": 0.010,
     "claude-sonnet-4-6": 0.003,
-    "claude-haiku-4-5": 0.0008,
+    "claude-haiku-4-5": 0.001,
     "gpt-4o": 0.005,
     "gpt-4o-mini": 0.0006,
 }
@@ -349,7 +349,7 @@ def render_eu_ai_act(chain: AuditChain, filters: dict[str, Any]) -> None:
     if days_left > 0:
         st.warning(
             f"⏰ **{days_left} days** until Article 6/7 High-Risk AI enforcement "
-            f"(August 2, 2026). Begin conformity assessment now."
+            f"(Dec 2, 2027). Begin conformity assessment now."
         )
     else:
         st.error("🚨 High-risk AI obligations (Articles 8-25) are **now in force**.")
@@ -414,7 +414,7 @@ def render_eu_ai_act(chain: AuditChain, filters: dict[str, Any]) -> None:
             '<span style="color:red">❌ **Notified body assessment: NOT STARTED**</span>',
             unsafe_allow_html=True,
         )
-        st.caption("Required for Annex III high-risk systems before August 2, 2026")
+        st.caption("Required for Annex III high-risk systems before December 2, 2027")
     with col2:
         st.markdown("📋 Technical documentation (Article 11): ⚠️ Draft")
         st.markdown("🔍 Conformity declaration (Article 47): ❌ Not prepared")
@@ -488,8 +488,8 @@ def render_nist_rmf(chain: AuditChain) -> None:
         ("MEASURE 2.5", "DONE ✅", "EU Art. 12.2", "SHA-256 Merkle chain"),
         ("MEASURE 2.6", "IN PROGRESS ⏳", "EU Art. 12(d)", "Add model perf metrics"),
         ("MANAGE 1.3", "DONE ✅", "EU Art. 62", "IncidentManager playbooks"),
-        ("MANAGE 2.2", "TODO ❌", "EU Art. 14", "Human oversight workflow"),
-        ("GOVERN 5.2", "TODO ❌", "EU Art. 28", "Third-party AI tracking"),
+        ("MANAGE 2.2", "DONE ✅", "EU Art. 14", "Human oversight workflow"),
+        ("GOVERN 5.2", "DONE ✅", "EU Art. 28", "Third-party AI inventory"),
     ]
     st.table(
         {
@@ -499,6 +499,124 @@ def render_nist_rmf(chain: AuditChain) -> None:
             "Notes": [r[3] for r in roadmap_data],
         }
     )
+
+    st.divider()
+
+    # ------------------------------------------------------------------
+    # MANAGE 2.2 — Human oversight workflow (EU AI Act Art. 14)
+    # ------------------------------------------------------------------
+    st.markdown("### MANAGE 2.2 — Human Oversight Workflow")
+    st.caption("EU AI Act Article 14 · Surfaces human-approval and auto-approval events from the audit chain.")
+
+    try:
+        # Query entries whose metadata contains approval signals
+        all_entries = list(chain.query(limit=2000))
+        human_approved: list[dict[str, Any]] = []
+        auto_approved: list[dict[str, Any]] = []
+        for entry in all_entries:
+            meta: dict[str, Any] = {}
+            if isinstance(entry.metadata, str):
+                try:
+                    meta = json.loads(entry.metadata)
+                except Exception:
+                    pass
+            elif isinstance(entry.metadata, dict):
+                meta = entry.metadata
+            oversight = meta.get("oversight") or meta.get("human_oversight") or ""
+            approval = meta.get("approval") or meta.get("approved_by") or ""
+            if oversight == "human_approved" or approval not in ("", None):
+                human_approved.append({
+                    "entry_id": entry.entry_id[:12] + "…",
+                    "timestamp": entry.timestamp[:19],
+                    "system_id": entry.system_id,
+                    "approved_by": approval or oversight,
+                    "risk_tier": entry.risk_tier,
+                })
+            elif oversight == "auto_approved" or meta.get("auto_approved"):
+                auto_approved.append({
+                    "entry_id": entry.entry_id[:12] + "…",
+                    "timestamp": entry.timestamp[:19],
+                    "system_id": entry.system_id,
+                    "risk_tier": entry.risk_tier,
+                })
+
+        col_h, col_a = st.columns(2)
+        with col_h:
+            st.metric("Human-approved decisions", len(human_approved))
+        with col_a:
+            st.metric("Auto-approved decisions", len(auto_approved))
+
+        if human_approved:
+            st.markdown("**Human-approved events (most recent 20)**")
+            st.dataframe(human_approved[-20:], use_container_width=True)
+        elif auto_approved:
+            st.info("No human-approved events recorded. Auto-approved events shown below.")
+            st.dataframe(auto_approved[-20:], use_container_width=True)
+        else:
+            st.info(
+                "No approval events recorded yet. "
+                "Log entries with metadata fields `oversight='human_approved'` or "
+                "`approved_by='<name>'` to surface them here."
+            )
+    except Exception as exc:
+        st.warning(f"Could not load oversight events: {exc}")
+
+    st.divider()
+
+    # ------------------------------------------------------------------
+    # GOVERN 5.2 — Third-party AI inventory (EU AI Act Art. 28)
+    # ------------------------------------------------------------------
+    st.markdown("### GOVERN 5.2 — Third-Party AI Inventory")
+    st.caption("EU AI Act Article 28 · Model inventory sourced from core model registry and ML-BOM.")
+
+    try:
+        from core.models import (
+            MODEL_FABLE_5,
+            MODEL_SONNET_4_6,
+            MODEL_HAIKU_4_5,
+            MODEL_COORDINATOR,
+            MODEL_REPORTER,
+            MODEL_WORKER,
+        )
+        inventory = [
+            {
+                "model_id": MODEL_FABLE_5,
+                "role": "coordinator / high-stakes classifier",
+                "provider": "Anthropic",
+                "source": "core.models.MODEL_FABLE_5",
+                "risk_notes": "Flagship — extended thinking; EU Art. 51 GPAI obligations apply",
+            },
+            {
+                "model_id": MODEL_SONNET_4_6,
+                "role": "report writer / medium-stakes summarizer",
+                "provider": "Anthropic",
+                "source": "core.models.MODEL_SONNET_4_6",
+                "risk_notes": "General purpose; Art. 52 transparency obligations apply",
+            },
+            {
+                "model_id": MODEL_HAIKU_4_5,
+                "role": "high-volume worker (bulk scans, anomaly explanations)",
+                "provider": "Anthropic",
+                "source": "core.models.MODEL_HAIKU_4_5",
+                "risk_notes": "Lightweight worker; standard transparency obligations",
+            },
+        ]
+        # De-duplicate role aliases that map to the same model_id
+        seen_ids: set[str] = set()
+        deduped_inventory = []
+        for item in inventory:
+            if item["model_id"] not in seen_ids:
+                seen_ids.add(item["model_id"])
+                deduped_inventory.append(item)
+
+        st.markdown(f"**{len(deduped_inventory)} third-party AI models registered** (source: `core.models`)")
+        st.dataframe(deduped_inventory, use_container_width=True)
+        st.caption(
+            "For a full machine-readable inventory export run: "
+            "`python -m iac_security mlbom --output mlbom.json`"
+        )
+    except ImportError as exc:
+        st.warning(f"core.models not importable — cannot render inventory: {exc}")
 
 
 # ---------------------------------------------------------------------------

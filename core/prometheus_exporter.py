@@ -26,7 +26,7 @@ Call helpers from anywhere::
 
     from core.prometheus_exporter import record_llm_call, record_pipeline, record_finding
 
-    record_llm_call(model="claude-opus-4-7", module="migration_scout",
+    record_llm_call(model="claude-fable-5", module="migration_scout",
                     outcome="success", input_tokens=1200, output_tokens=450,
                     cache_read=800, latency_seconds=2.3)
 """
@@ -158,7 +158,7 @@ def record_llm_call(
     """Record a completed LLM call across all relevant metrics.
 
     Args:
-        model:            Model identifier string (e.g. ``"claude-opus-4-7"``).
+        model:            Model identifier string (e.g. ``"claude-fable-5"``).
         module:           Platform module name (e.g. ``"migration_scout"``).
         outcome:          ``"success"`` | ``"error"`` | ``"timeout"``.
         input_tokens:     Standard (non-cached) input tokens.

@@ -31,7 +31,7 @@ python -m app_portfolio.cli .
 
 **What to show:** Language breakdown, CVE count, containerization score, 6R recommendation with confidence.
 
-**What to say:** "This scanned the entire repo in under 10 seconds. CAST Highlight charges $150K–$600K a year and takes weeks to set up. We get the same output instantly. The 6R recommendation — Replatform, confidence 0.84 — comes from Opus 4.7 reading the actual dependency tree, not a static decision tree."
+**What to say:** "This scanned the entire repo in under 10 seconds. CAST Highlight charges $150K–$600K a year and takes weeks to set up. We get the same output instantly. The 6R recommendation — Replatform, confidence 0.84 — comes from Fable 5 reading the actual dependency tree, not a static decision tree."
 
 ### Step 2 — IaC Security Scan (60 seconds)
 
@@ -65,7 +65,7 @@ python -m ai_audit_trail.demo
 
 **What to show:** Merkle chain verification output + the tamper-detection step.
 
-**What to say:** "Every AI decision logged with a SHA-256 Merkle chain. Any modification is detected in O(log n). SARIF 2.1.0 export goes straight to GitHub. EU AI Act enforcement hits August 2, 2026 — 113 days. IBM OpenPages costs $500K a year for this. This is MIT licensed."
+**What to say:** "Every AI decision logged with a SHA-256 Merkle chain. Any modification is detected in O(log n). SARIF 2.1.0 export goes straight to GitHub. EU AI Act high-risk enforcement lands December 2, 2027 — and Annex IV evidence packs take a year-plus to assemble, so the build window is now. IBM OpenPages costs $500K a year for this. This is MIT licensed."
 
 ### Step 5 — Executive Chat (30 seconds)
 
@@ -90,7 +90,7 @@ print(response.answer)
 ### Section 1 — Architecture walkthrough (3 min)
 
 Walk through `README.md` ASCII diagram. Explain the three-tier model structure:
-- Opus 4.7 for coordination, extended thinking, executive chat
+- Fable 5 (`claude-fable-5`) for coordination, extended thinking, executive chat
 - Sonnet 4.6 for report synthesis
 - Haiku 4.5 for high-volume worker tasks
 
@@ -175,7 +175,7 @@ Show `mcp-config-example.json`. Explain: 19 tools, every module drivable from Cl
 
 "Enterprise cloud governance is fragmented. A typical enterprise buys Snyk for IaC security, Apptio for FinOps, CAST for app portfolio, IBM OpenPages for AI governance, and a consulting firm for migration planning. That's $1–2M a year, five vendor relationships, and five separate audit trails.
 
-I built a unified platform on Claude Opus 4.7 that covers all five areas. The architecture has three layers: a core optimization layer that handles model routing, result caching, and batch API coalescing — that gets you ~95% cost savings vs. always using the most capable model. Above that is the module layer — multi-cloud discovery, app portfolio scanning, IaC security, FinOps, and EU AI Act compliance. At the top is the integration and observability layer — OTEL traces with gen_ai.* conventions, Prometheus metrics, Grafana dashboards, and webhook-based routing to Slack, Jira, ServiceNow, GitHub.
+I built a unified platform on Claude Fable 5 that covers all five areas. The architecture has three layers: a core optimization layer that handles model routing, result caching, and batch API coalescing — that gets you ~95% cost savings vs. always using the most capable model. Above that is the module layer — multi-cloud discovery, app portfolio scanning, IaC security, FinOps, and EU AI Act compliance. At the top is the integration and observability layer — OTEL traces with gen_ai.* conventions, Prometheus metrics, Grafana dashboards, and webhook-based routing to Slack, Jira, ServiceNow, GitHub.
 
 The technical decisions I'm proud of: using complexity-based model routing so you never pay Opus prices for a task Haiku handles fine; using the Anthropic Batch API for 50% discounts on bulk scoring jobs; wiring the extended-thinking reasoning trace into the audit trail as EU AI Act Annex IV evidence; and building SARIF 2.1.0 output so security findings go directly to the GitHub Security tab without custom tooling.
 

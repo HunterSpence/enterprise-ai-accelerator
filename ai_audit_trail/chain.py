@@ -6,8 +6,9 @@ V2 upgrades over V1:
 - Root hash checkpointed every 1,000 entries for O(log n) single-entry proof
 - Tamper evidence returns WHICH entries were tampered + confidence level
 - Chain export: JSON Lines (SIEM-ready), CSV, structured diff
-- Immutable anchoring: hourly Merkle root printed to stdout (structured for
-  Ethereum/Polygon integration — swap _anchor_root() for on-chain call)
+- Immutable anchoring: hourly Merkle root written to a FileAnchor (append-only
+  file, fsync'd) or WebhookAnchor (HTTP POST with retry). Configurable via the
+  anchor_backend= parameter on AuditChain.
 - PostgreSQL WAL advisory locks supported (SQLite WAL already present)
 - system_id field added for multi-system deployments
 - cost_usd field for token cost tracking
@@ -24,15 +25,121 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import sqlite3
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Optional, Protocol, runtime_checkable
+
+
+# ---------------------------------------------------------------------------
+# Anchor backends — pluggable Merkle root persistence
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class AnchorBackend(Protocol):
+    """
+    Protocol for Merkle root anchoring backends.
+
+    Implementations must be thread-safe (AuditChain holds _lock during calls).
+    The anchor() method should raise on unrecoverable failure so the caller
+    can log the error; transient failures should be retried internally.
+    """
+
+    def anchor(self, merkle_root: str, entry_count: int, db_path: str) -> None:
+        """Persist the given Merkle root externally."""
+        ...
+
+
+class FileAnchor:
+    """
+    Append-only file anchor — writes one JSON record per line, fsync'd.
+
+    Each record contains: timestamp (ISO-8601 UTC), merkle_root (hex),
+    entry_count (int), db_path (str).  The file is opened in append mode
+    on every call so it survives process restarts without data loss.
+    """
+
+    def __init__(self, anchor_file: str | Path = "audit_anchors.log") -> None:
+        self.anchor_file = Path(anchor_file)
+        self._lock = threading.Lock()
+
+    def anchor(self, merkle_root: str, entry_count: int, db_path: str) -> None:
+        record = json.dumps({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "merkle_root": merkle_root,
+            "entry_count": entry_count,
+            "db_path": db_path,
+            "anchor_type": "file",
+        }) + "\n"
+        with self._lock:
+            with open(self.anchor_file, "a", encoding="utf-8") as fh:
+                fh.write(record)
+                fh.flush()
+                os.fsync(fh.fileno())
+
+
+class WebhookAnchor:
+    """
+    HTTP POST anchor — sends Merkle root to a configurable URL with retry.
+
+    Uses stdlib urllib only (no requests dependency).  On non-2xx response or
+    network error, retries up to *retries* times with a 1-second back-off.
+    Raises RuntimeError after exhausting all retries.
+    """
+
+    def __init__(
+        self,
+        url: str,
+        timeout: float = 10.0,
+        retries: int = 3,
+        headers: Optional[dict[str, str]] = None,
+    ) -> None:
+        self.url = url
+        self.timeout = timeout
+        self.retries = retries
+        self.headers = headers or {"Content-Type": "application/json"}
+
+    def anchor(self, merkle_root: str, entry_count: int, db_path: str) -> None:
+        payload = json.dumps({
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "merkle_root": merkle_root,
+            "entry_count": entry_count,
+            "db_path": db_path,
+            "anchor_type": "webhook",
+        }).encode("utf-8")
+
+        last_exc: Exception = RuntimeError("no attempts made")
+        for attempt in range(1, self.retries + 1):
+            try:
+                req = urllib.request.Request(
+                    self.url,
+                    data=payload,
+                    headers=self.headers,
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                    if 200 <= resp.status < 300:
+                        return
+                    last_exc = RuntimeError(
+                        f"WebhookAnchor: HTTP {resp.status} from {self.url}"
+                    )
+            except (urllib.error.URLError, OSError) as exc:
+                last_exc = exc
+            if attempt < self.retries:
+                time.sleep(1.0)
+
+        raise RuntimeError(
+            f"WebhookAnchor: failed after {self.retries} attempts: {last_exc}"
+        ) from last_exc
 
 
 # ---------------------------------------------------------------------------
@@ -312,9 +419,11 @@ class AuditChain:
         self,
         db_path: str | Path = "audit_trail.db",
         store_plaintext: bool = False,
+        anchor_backend: Optional[AnchorBackend] = None,
     ) -> None:
         self.db_path = Path(db_path)
         self.store_plaintext = store_plaintext
+        self._anchor_backend: Optional[AnchorBackend] = anchor_backend
         self._lock = threading.Lock()
         self._conn = self._open_connection()
         self._init_schema()
@@ -505,15 +614,7 @@ class AuditChain:
         self._conn.commit()
 
     def _maybe_anchor_hourly(self) -> None:
-        """
-        Anchor the current Merkle root once per hour.
-
-        Production path: replace _anchor_root() with Ethereum/Polygon call:
-            w3.eth.send_transaction({
-                "to": ANCHOR_CONTRACT_ADDRESS,
-                "data": Web3.to_bytes(hexstr=merkle_root),
-            })
-        """
+        """Anchor the current Merkle root once per hour via the configured backend."""
         current_hour = int(time.time() // 3600)
         if current_hour == self._last_anchor_hour:
             return
@@ -526,26 +627,46 @@ class AuditChain:
             return
         tree = MerkleTree(hashes)
         self._anchor_root(tree.root, len(hashes))
+        # Record the anchor in chain_checkpoints with the resolved anchor_type
+        if self._anchor_backend is not None:
+            if isinstance(self._anchor_backend, FileAnchor):
+                anchor_type = "file"
+            elif isinstance(self._anchor_backend, WebhookAnchor):
+                anchor_type = "webhook"
+            else:
+                anchor_type = "custom"
+        else:
+            anchor_type = "none"
+        last_rowid = self._conn.execute(
+            "SELECT rowid FROM audit_log ORDER BY rowid DESC LIMIT 1"
+        ).fetchone()
+        rowid = last_rowid[0] if last_rowid else 0
+        self._conn.execute("""
+            INSERT INTO chain_checkpoints
+                (entry_rowid, entry_count, merkle_root, anchored_at, anchor_type)
+            VALUES (?, ?, ?, ?, ?)
+        """, (rowid, len(hashes), tree.root,
+              datetime.now(timezone.utc).isoformat(), anchor_type))
+        self._conn.commit()
 
     def _anchor_root(self, merkle_root: str, entry_count: int) -> None:
         """
-        Publish the Merkle root to a public ledger.
+        Publish the Merkle root via the configured AnchorBackend.
 
-        Stdout placeholder — structured for Ethereum/Polygon integration.
-        In production:
-            - Replace print() with web3.py transaction submission
-            - Store tx_hash in chain_checkpoints.anchor_type = "ethereum"
+        If no backend is configured this is a no-op.  The anchor_type column
+        in chain_checkpoints is written by _maybe_anchor_hourly() based on the
+        backend type.
         """
-        anchor_record = {
-            "event": "MERKLE_ROOT_ANCHOR",
-            "merkle_root": merkle_root,
-            "entry_count": entry_count,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "db_path": str(self.db_path),
-            "integration": "stdout_placeholder",
-            "production_target": "ethereum|polygon",
-        }
-        print(f"[AIAuditTrail:ANCHOR] {json.dumps(anchor_record)}", flush=True)
+        if self._anchor_backend is None:
+            return
+        try:
+            self._anchor_backend.anchor(merkle_root, entry_count, str(self.db_path))
+        except Exception as exc:  # noqa: BLE001
+            # Log but do not crash — anchoring failure is non-fatal for the chain
+            import logging
+            logging.getLogger(__name__).warning(
+                "AnchorBackend.anchor() failed: %s", exc
+            )
 
     def get_merkle_root(self) -> str:
         """Compute and return the current Merkle root over all entries."""

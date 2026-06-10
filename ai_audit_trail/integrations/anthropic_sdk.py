@@ -41,14 +41,15 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
-# Pricing table (USD per 1M tokens, as of April 2026)
+# Pricing table (USD per 1M tokens, as of June 2026)
 # ---------------------------------------------------------------------------
 
 _ANTHROPIC_PRICING: dict[str, dict[str, float]] = {
     # model_key_fragment: {input, output, cache_write, cache_read}
+    "claude-fable-5": {"input": 10.00, "output": 50.00, "cache_read": 1.00},
     "claude-opus-4": {"input": 15.00, "output": 75.00, "cache_read": 1.50},
     "claude-sonnet-4": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
-    "claude-haiku-4": {"input": 0.80, "output": 4.00, "cache_read": 0.08},
+    "claude-haiku-4": {"input": 1.00, "output": 5.00, "cache_read": 0.10},
     "claude-3-opus": {"input": 15.00, "output": 75.00, "cache_read": 1.50},
     "claude-3-5-sonnet": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
     "claude-3-sonnet": {"input": 3.00, "output": 15.00, "cache_read": 0.30},

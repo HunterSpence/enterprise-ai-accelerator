@@ -31,8 +31,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
-          "expr": "sum(increase(eaa_llm_tokens_total{model=\"claude-opus-4-7\",direction=\"input\",cache_state=\"miss\"}[$__range])) * 15 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-opus-4-7\",direction=\"output\",cache_state=\"miss\"}[$__range])) * 75 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-opus-4-7\",direction=\"input\",cache_state=\"read\"}[$__range])) * 7.5 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-opus-4-7\",direction=\"input\",cache_state=\"creation\"}[$__range])) * 18.75 / 1e6",
-          "legendFormat": "Opus 4.7"
+          "expr": "sum(increase(eaa_llm_tokens_total{model=\"claude-fable-5\",direction=\"input\",cache_state=\"miss\"}[$__range])) * 10 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-fable-5\",direction=\"output\",cache_state=\"miss\"}[$__range])) * 50 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-fable-5\",direction=\"input\",cache_state=\"read\"}[$__range])) * 1 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-fable-5\",direction=\"input\",cache_state=\"creation\"}[$__range])) * 12.5 / 1e6",
+          "legendFormat": "Fable 5"
         },
         {
           "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
@@ -41,7 +41,7 @@
         },
         {
           "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
-          "expr": "sum(increase(eaa_llm_tokens_total{model=\"claude-haiku-4-5-20251001\",direction=\"input\",cache_state=\"miss\"}[$__range])) * 0.8 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-haiku-4-5-20251001\",direction=\"output\",cache_state=\"miss\"}[$__range])) * 4 / 1e6",
+          "expr": "sum(increase(eaa_llm_tokens_total{model=\"claude-haiku-4-5-20251001\",direction=\"input\",cache_state=\"miss\"}[$__range])) * 1 / 1e6 + sum(increase(eaa_llm_tokens_total{model=\"claude-haiku-4-5-20251001\",direction=\"output\",cache_state=\"miss\"}[$__range])) * 5 / 1e6",
           "legendFormat": "Haiku 4.5"
         }
       ],
@@ -73,7 +73,7 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
-          "expr": "(\n  sum(rate(eaa_llm_tokens_total{direction=\"input\",cache_state=\"miss\"}[1h])) * 15 / 1e6 +\n  sum(rate(eaa_llm_tokens_total{direction=\"output\",cache_state=\"miss\"}[1h])) * 75 / 1e6 +\n  sum(rate(eaa_llm_tokens_total{direction=\"input\",cache_state=\"read\"}[1h])) * 7.5 / 1e6 +\n  sum(rate(eaa_llm_tokens_total{direction=\"input\",cache_state=\"creation\"}[1h])) * 18.75 / 1e6\n) * 24 * 30",
+          "expr": "(\n  sum(rate(eaa_llm_tokens_total{direction=\"input\",cache_state=\"miss\"}[1h])) * 10 / 1e6 +\n  sum(rate(eaa_llm_tokens_total{direction=\"output\",cache_state=\"miss\"}[1h])) * 50 / 1e6 +\n  sum(rate(eaa_llm_tokens_total{direction=\"input\",cache_state=\"read\"}[1h])) * 1 / 1e6 +\n  sum(rate(eaa_llm_tokens_total{direction=\"input\",cache_state=\"creation\"}[1h])) * 12.5 / 1e6\n) * 24 * 30",
           "legendFormat": "Projected 30-day (all models)"
         }
       ],
@@ -103,8 +103,8 @@
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },
-          "expr": "sum(increase(eaa_llm_tokens_total{model=\"claude-opus-4-7\",direction=\"input\",cache_state=\"read\"}[$__range])) * (15 - 7.5) / 1e6",
-          "legendFormat": "Opus 4.7 cache savings"
+          "expr": "sum(increase(eaa_llm_tokens_total{model=\"claude-fable-5\",direction=\"input\",cache_state=\"read\"}[$__range])) * (10 - 1) / 1e6",
+          "legendFormat": "Fable 5 cache savings"
         },
         {
           "datasource": { "type": "prometheus", "uid": "eaa-prometheus" },

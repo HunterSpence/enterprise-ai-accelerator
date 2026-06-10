@@ -33,6 +33,8 @@ from policy_guard.frameworks.iso_42001 import ISO42001Scanner, ISO42001Report
 from policy_guard.frameworks.dora import DORAScanner, DORAReport
 from policy_guard.frameworks.fedramp_rev5 import FedRAMPRev5Scanner, FedRAMPReport, MODERATE as FEDRAMP_MODERATE
 from policy_guard.frameworks.pci_dss_40 import PCIScanner, PCIReport
+from policy_guard.frameworks.colorado_sb26189 import ColoradoSB26189Scanner, ColoradoSB26189Report
+from policy_guard.frameworks.texas_traiga import TexasTRAIGAScanner, TexasTRAIGAReport
 from policy_guard.frameworks import mapping as fw_mapping
 
 console = Console()
@@ -41,15 +43,17 @@ console = Console()
 # EU AI Act and CIS AWS are weighted highest for most enterprise contexts.
 # New frameworks are additive; weights sum to 1.0 across enabled frameworks.
 FRAMEWORK_WEIGHTS: dict[str, float] = {
-    "cis_aws": 0.20,
-    "eu_ai_act": 0.20,
-    "nist_ai_rmf": 0.15,
-    "soc2": 0.10,
+    "cis_aws": 0.18,
+    "eu_ai_act": 0.18,
+    "nist_ai_rmf": 0.14,
+    "soc2": 0.09,
     "hipaa": 0.07,
-    "iso_42001": 0.08,
-    "dora": 0.08,
+    "iso_42001": 0.07,
+    "dora": 0.07,
     "fedramp": 0.07,
     "pci_dss_40": 0.05,
+    "colorado_sb26189": 0.04,
+    "texas_traiga": 0.04,
 }
 
 
@@ -73,6 +77,8 @@ class ScanConfig:
     run_fedramp: bool = True
     fedramp_baseline: str = FEDRAMP_MODERATE
     run_pci_dss_40: bool = True
+    run_colorado_sb26189: bool = True
+    run_texas_traiga: bool = True
 
     # AI system metadata (for EU AI Act + NIST)
     ai_systems: list[dict] = field(default_factory=list)
@@ -114,6 +120,8 @@ class ComplianceReport:
     dora: Optional[DORAReport] = None
     fedramp: Optional[FedRAMPReport] = None
     pci_dss_40: Optional[PCIReport] = None
+    colorado_sb26189: Optional[ColoradoSB26189Report] = None
+    texas_traiga: Optional[TexasTRAIGAReport] = None
 
     # Aggregated scores
     framework_scores: list[FrameworkScore] = field(default_factory=list)
@@ -186,6 +194,18 @@ class ComplianceReport:
                 self.high_findings += self.pci_dss_40.high_count
                 self.medium_findings += self.pci_dss_40.medium_count
                 self.low_findings += self.pci_dss_40.low_count
+            elif fs.framework == "colorado_sb26189" and self.colorado_sb26189:
+                self.total_findings += self.colorado_sb26189.total_findings
+                self.critical_findings += self.colorado_sb26189.critical_count
+                self.high_findings += self.colorado_sb26189.high_count
+                self.medium_findings += self.colorado_sb26189.medium_count
+                self.low_findings += self.colorado_sb26189.low_count
+            elif fs.framework == "texas_traiga" and self.texas_traiga:
+                self.total_findings += self.texas_traiga.total_findings
+                self.critical_findings += self.texas_traiga.critical_count
+                self.high_findings += self.texas_traiga.high_count
+                self.medium_findings += self.texas_traiga.medium_count
+                self.low_findings += self.texas_traiga.low_count
 
         if self.framework_scores:
             self.overall_score = sum(
@@ -236,7 +256,7 @@ class ComplianceScanner:
             transient=False,
         ) as progress:
             master = progress.add_task(
-                "[bold cyan]PolicyGuard — Scanning frameworks...", total=9
+                "[bold cyan]PolicyGuard — Scanning frameworks...", total=11
             )
 
             async def run_framework(name: str, coro) -> tuple[str, object]:
@@ -311,6 +331,20 @@ class ComplianceScanner:
                 scanner = PCIScanner(mock=self.config.mock_mode)
                 active_tasks.append(run_framework("pci_dss_40", scanner.scan()))
 
+            if self.config.run_colorado_sb26189:
+                scanner = ColoradoSB26189Scanner(
+                    ai_systems=self.config.ai_systems,
+                    mock=self.config.mock_mode,
+                )
+                active_tasks.append(run_framework("colorado_sb26189", scanner.scan()))
+
+            if self.config.run_texas_traiga:
+                scanner = TexasTRAIGAScanner(
+                    ai_systems=self.config.ai_systems,
+                    mock=self.config.mock_mode,
+                )
+                active_tasks.append(run_framework("texas_traiga", scanner.scan()))
+
             results = await asyncio.gather(*active_tasks)
 
         # Attach per-framework reports
@@ -333,6 +367,10 @@ class ComplianceScanner:
                 report.fedramp = result
             elif name == "pci_dss_40":
                 report.pci_dss_40 = result
+            elif name == "colorado_sb26189":
+                report.colorado_sb26189 = result
+            elif name == "texas_traiga":
+                report.texas_traiga = result
 
         # Build per-framework scores
         for fw_name, weight in FRAMEWORK_WEIGHTS.items():
@@ -399,6 +437,8 @@ class ComplianceScanner:
             "dora": "DORA (EU) 2022/2554",
             "fedramp": "FedRAMP Rev 5",
             "pci_dss_40": "PCI DSS 4.0",
+            "colorado_sb26189": "Colorado SB 26-189 (eff. 2027-01-01)",
+            "texas_traiga": "Texas TRAIGA (eff. 2026-01-01)",
         }
 
         for fs in report.framework_scores:

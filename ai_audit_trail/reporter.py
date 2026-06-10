@@ -426,7 +426,7 @@ class ReportGenerator:
 
   <div class="footer">
     AIAuditTrail V2 &mdash; Open-source EU AI Act compliance logging &mdash;
-    EU AI Act HIGH-RISK enforcement: August 2, 2026 &mdash;
+    EU AI Act HIGH-RISK enforcement: December 2, 2027 &mdash;
     SHA-256 Merkle chain + Article 62 + NIST AI RMF
   </div>
 

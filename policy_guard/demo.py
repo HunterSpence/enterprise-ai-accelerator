@@ -205,7 +205,7 @@ def _print_banner(scenario: str) -> None:
             "Organisation: RetailCorp Global (fictional)\n"
             "AI Systems: HiringAI + SalaryBenchmarkAI + CustomerRecoLLM\n"
             "Situation: Legal team just learned about EU AI Act. No compliance programme exists.\n\n"
-            f"[bold red]EU AI Act High-Risk Enforcement: {days} days away — August 2, 2026[/bold red]\n"
+            f"[bold red]EU AI Act High-Risk Enforcement: {days} days away — Dec 2, 2027[/bold red]\n"
             "[dim]Non-compliance penalty: €35,000,000 or 3% global annual turnover (whichever higher)[/dim]"
         )
     else:
@@ -216,7 +216,7 @@ def _print_banner(scenario: str) -> None:
             "AI Systems: DiagnosticAI (medical imaging) + PatientRiskLLM\n"
             "Situation: HIPAA audit + EU AI Act + SOC2 AICC all due this year.\n\n"
             "[bold green]Demonstrating: 1 implementation satisfying 3 frameworks simultaneously[/bold green]\n"
-            f"[dim]EU AI Act High-Risk Enforcement: {days} days away — August 2, 2026[/dim]"
+            f"[dim]EU AI Act High-Risk Enforcement: {days} days away — Dec 2, 2027[/dim]"
         )
 
     console.print(Panel.fit(
@@ -366,7 +366,7 @@ async def run_scenario_a() -> None:
         f"[orange3]High: {report.high_findings}[/orange3]  "
         f"Medium: {report.medium_findings}  "
         f"[dim]Low: {report.low_findings}[/dim]\n\n"
-        f"[bold red]EU AI Act deadline: August 2, 2026 — {days} days[/bold red]\n"
+        f"[bold red]EU AI Act high-risk enforcement (Dec 2, 2027): {days} days[/bold red]\n"
         f"[dim]PolicyGuard saved this company from €35M+ in non-compliance penalties[/dim]",
         border_style=overall_color,
     ))
@@ -667,7 +667,7 @@ async def run_demo(scenario: str = "all") -> None:
         f"            SOC 2 Type II + AICC-12 (2024) + CIS AWS v3.0 + HIPAA\n\n"
         f"[bold]The only open-source tool combining all 5 frameworks with cross-framework mapping.[/bold]\n"
         f"What EY, Deloitte, and KPMG charge $100K–$2M for — automated in minutes.\n\n"
-        f"[bold red]EU AI Act High-Risk Enforcement: {days} days — August 2, 2026[/bold red]\n"
+        f"[bold red]EU AI Act High-Risk Enforcement: {days} days — Dec 2, 2027[/bold red]\n"
         f"IBM OpenPages: $500K/yr  |  Credo AI: $180K/yr  |  [bold green]PolicyGuard: $0[/bold green]",
         title="[bold]Enterprise AI Compliance Scanner[/bold]",
         border_style="cyan",
@@ -715,7 +715,7 @@ async def run_demo(scenario: str = "all") -> None:
         f"  [green]•[/green] Cross-framework efficiency: 1 implementation → multiple controls\n"
         f"  [green]•[/green] Board-ready HTML/PDF report with SVG radar chart\n"
         f"  [green]•[/green] FastAPI REST API + WebSocket live scanning\n\n"
-        f"[bold red]{days} days until EU AI Act High-Risk enforcement — August 2, 2026[/bold red]\n"
+        f"[bold red]{days} days until EU AI Act High-Risk enforcement (Dec 2, 2027)[/bold red]\n"
         f"[dim]Non-compliance: €35M or 3% global turnover. PolicyGuard cost: $0.[/dim]",
         border_style="green",
     ))

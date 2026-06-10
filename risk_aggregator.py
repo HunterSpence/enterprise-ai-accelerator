@@ -473,7 +473,7 @@ class WorkloadRiskAggregator:
             raw = min(100.0, raw + inp.high_risk_ai_systems * 15)
             drivers.append(
                 f"{inp.high_risk_ai_systems} Annex III (High-Risk) AI system(s) — "
-                f"conformity assessment mandatory by August 2, 2026"
+                f"conformity assessment mandatory by December 2, 2027 (Digital Omnibus timeline)"
             )
 
         if inp.eu_ai_act_gap_count > 0:
@@ -569,7 +569,7 @@ class WorkloadRiskAggregator:
                     actions.append({
                         "priority": "P0" if inp.high_risk_ai_systems > 0 else "P1",
                         "module": "AIAuditTrail",
-                        "action": "Deploy AIAuditTrail for EU AI Act Article 12 compliance before August 2, 2026",
+                        "action": "Deploy AIAuditTrail for EU AI Act Article 12 compliance before the December 2, 2027 high-risk enforcement date",
                         "timeline": "30 days",
                         "estimated_risk_reduction": f"{dim.raw_score * 0.5:.0f} points",
                     })

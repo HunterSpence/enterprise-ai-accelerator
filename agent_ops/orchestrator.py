@@ -5,18 +5,19 @@ agent_ops/orchestrator.py
 Coordinator agent that decomposes a high-level enterprise IT task into
 parallel sub-agent work, collects results, and synthesizes a final output.
 
-Opus 4.7 upgrade (2026-04):
-  - Coordinator promoted from Opus 4.6 → Opus 4.7 (``claude-opus-4-7``)
-  - Coordinator plan now uses the ``core.AIClient`` wrapper so the system
-    prompt rides the 5-minute ephemeral cache (repeated runs pay once)
-  - Coordinator plan is produced via forced tool-use — the response is
-    schema-validated rather than parsed as free text
-  - Per-agent token usage (including cache reads) is surfaced in the
-    PipelineResult so executive dashboards can show the cost-efficiency
-    story alongside the reasoning story
+Hardening additions (2026-06):
+  - _run_agent: exponential-backoff retry (3 attempts, 1 s / 4 s / 16 s) on
+    transient errors (rate-limit / 5xx / timeout); auth errors are not retried.
+  - run_pipeline: optional max_tokens_budget / max_cost_usd caps via BudgetGuard;
+    raises BudgetExceededError with partial results when exceeded.
+  - Checkpointing: after each pipeline stage a resumable JSON checkpoint is
+    written under .eaa_checkpoints/{run_id}.json; Orchestrator.resume(run_id)
+    replays from the last completed stage.
+  - Human-in-the-loop: optional approval_handler invoked before high-stakes
+    stages; default auto-approves and records the decision in telemetry.
 
 Architecture:
-  - Opus 4.7 coordinator decomposes the task
+  - Fable 5 coordinator decomposes the task
   - Architecture / Migration / Compliance workers run in parallel (Haiku 4.5)
   - Sonnet 4.6 ReportAgent synthesizes the final briefing
 """
@@ -26,9 +27,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
-from dataclasses import dataclass, field
+import uuid
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
 import anthropic
@@ -43,11 +47,49 @@ from agent_ops.agents import (
 )
 from agent_ops.otel_tracer import AgentOpsTracer
 from core import AIClient, MODEL_COORDINATOR
+from core.guardrails import BudgetExceededError, BudgetGuard
 
 logger = logging.getLogger(__name__)
 
-# Opus 4.7 — the platform's coordinator-tier model (was 4-6 pre-upgrade).
+# Coordinator model — driven from core.models via core.__init__.
 _COORDINATOR_MODEL = MODEL_COORDINATOR
+
+# Checkpoint directory (relative to cwd).
+_CHECKPOINT_DIR = Path(".eaa_checkpoints")
+
+# Retry settings for transient errors.
+_RETRY_DELAYS = (1.0, 4.0, 16.0)   # seconds between successive attempts
+
+# Error substrings that indicate a transient (retryable) condition.
+_TRANSIENT_MARKERS = (
+    "rate_limit",
+    "rate limit",
+    "529",
+    "503",
+    "502",
+    "500",
+    "timeout",
+    "overloaded",
+    "connection",
+)
+
+# Error substrings that are NOT retried (auth / permission failures).
+_AUTH_MARKERS = (
+    "401",
+    "403",
+    "authentication",
+    "unauthorized",
+    "forbidden",
+    "invalid_api_key",
+)
+
+
+def _is_transient(exc: Exception) -> bool:
+    """Return True if the exception looks like a transient API error."""
+    msg = str(exc).lower()
+    if any(m in msg for m in _AUTH_MARKERS):
+        return False
+    return any(m in msg for m in _TRANSIENT_MARKERS)
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +116,7 @@ class AgentActivity:
 
 @dataclass
 class TokenUsageSummary:
-    """Aggregated token usage across the pipeline — surfaces the Opus 4.7
+    """Aggregated token usage across the pipeline — surfaces the
     prompt-cache efficiency in cost-conscious executive dashboards."""
 
     input_tokens: int = 0
@@ -90,6 +132,24 @@ class TokenUsageSummary:
     def cache_hit_ratio(self) -> float:
         denom = self.input_tokens + self.cache_read_tokens
         return self.cache_read_tokens / denom if denom else 0.0
+
+
+@dataclass
+class ApprovalRequest:
+    """Carries context for a human-in-the-loop gate.
+
+    Attributes
+    ----------
+    run_id : str
+        Unique identifier for the pipeline run.
+    stage : str
+        Name of the pipeline stage requesting approval (e.g. "workers", "report").
+    context : dict
+        Arbitrary stage-specific context the handler may display to the approver.
+    """
+    run_id: str
+    stage: str
+    context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -109,6 +169,9 @@ class PipelineResult:
     overall_health_score: int = 0
     total_findings: int = 0
     token_usage: TokenUsageSummary = field(default_factory=TokenUsageSummary)
+    run_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    # HITL audit: list of {"stage": ..., "approved": bool, "auto": bool}
+    hitl_audit: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def succeeded_agents(self) -> list[str]:
@@ -128,10 +191,9 @@ class PipelineResult:
 
 
 # ---------------------------------------------------------------------------
-# Orchestrator
+# Coordinator plan schema
 # ---------------------------------------------------------------------------
 
-# Schema for the coordinator's structured work-plan output.
 _COORDINATOR_PLAN_SCHEMA = {
     "type": "object",
     "required": ["plan_summary", "decomposition"],
@@ -168,6 +230,75 @@ _COORDINATOR_PLAN_SCHEMA = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Default HITL handler — auto-approves and records the decision
+# ---------------------------------------------------------------------------
+
+async def _default_approval_handler(req: ApprovalRequest) -> bool:
+    """Default policy: auto-approve every stage; records decision for audit."""
+    logger.info(
+        "HITL auto-approval: run_id=%s stage=%s (no approval_handler provided)",
+        req.run_id,
+        req.stage,
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
+# Checkpoint helpers
+# ---------------------------------------------------------------------------
+
+def _checkpoint_path(run_id: str) -> Path:
+    _CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    return _CHECKPOINT_DIR / f"{run_id}.json"
+
+
+def _write_checkpoint(
+    run_id: str,
+    stage: str,
+    completed_results: dict[str, Any],
+) -> None:
+    """Persist a resumable checkpoint JSON for this run."""
+    data = {
+        "run_id": run_id,
+        "stage": stage,
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "completed": completed_results,
+    }
+    path = _checkpoint_path(run_id)
+    path.write_text(json.dumps(data, default=str, indent=2), encoding="utf-8")
+    logger.debug("Checkpoint written: %s (stage=%s)", path, stage)
+
+
+def _read_checkpoint(run_id: str) -> dict[str, Any] | None:
+    path = _checkpoint_path(run_id)
+    if not path.exists():
+        return None
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _agent_result_from_dict(d: dict[str, Any]) -> AgentResult:
+    """Reconstruct an AgentResult from a checkpoint dict (best-effort)."""
+    return AgentResult(
+        agent_name=d.get("agent_name", "unknown"),
+        status=AgentStatus(d.get("status", "failed")),
+        findings=d.get("findings", []),
+        raw_output=d.get("raw_output", ""),
+        duration_seconds=d.get("duration_seconds", 0.0),
+        error=d.get("error"),
+        metadata=d.get("metadata", {}),
+        tokens_input=d.get("tokens_input", 0),
+        tokens_output=d.get("tokens_output", 0),
+        tokens_cache_read=d.get("tokens_cache_read", 0),
+        tokens_cache_creation=d.get("tokens_cache_creation", 0),
+        model=d.get("model", ""),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Orchestrator
+# ---------------------------------------------------------------------------
+
 class Orchestrator:
     """Coordinator agent: receives a high-level enterprise task, delegates
     to specialized sub-agents in parallel, and synthesizes a unified output.
@@ -176,6 +307,15 @@ class Orchestrator:
         client = anthropic.AsyncAnthropic(api_key="...")
         orch = Orchestrator(client)
         result = await orch.run_pipeline(task, config)
+
+    Parameters
+    ----------
+    client : anthropic.AsyncAnthropic | AIClient
+    on_activity : Callable[[AgentActivity], None] | None
+    tracer : AgentOpsTracer | None
+    approval_handler : Callable[[ApprovalRequest], Awaitable[bool]] | None
+        Called before each high-stakes stage. Returning False aborts the pipeline
+        with status "failed". Default: auto-approve + log for audit.
     """
 
     def __init__(
@@ -183,27 +323,65 @@ class Orchestrator:
         client: anthropic.AsyncAnthropic | AIClient,
         on_activity: Callable[[AgentActivity], None] | None = None,
         tracer: AgentOpsTracer | None = None,
+        approval_handler: Callable[[ApprovalRequest], Any] | None = None,
     ) -> None:
         self._ai = client if isinstance(client, AIClient) else AIClient(client)
-        self._client = self._ai.raw  # backwards compatibility for callers reading ._client
+        self._client = self._ai.raw  # backwards compat for callers reading ._client
         self._on_activity = on_activity or (lambda _: None)
         self._arch_agent = ArchitectureAgent(self._ai)
         self._mig_agent = MigrationAgent(self._ai)
         self._comp_agent = ComplianceAgent(self._ai)
         self._report_agent = ReportAgent(self._ai)
         self._tracer = tracer or AgentOpsTracer(export_mode="console")
+        self._approval_handler = approval_handler or _default_approval_handler
+
+    # ------------------------------------------------------------------
+    # Public: run a fresh pipeline
+    # ------------------------------------------------------------------
 
     async def run_pipeline(
-        self, task: str, config: dict[str, Any]
+        self,
+        task: str,
+        config: dict[str, Any],
+        *,
+        max_tokens_budget: int | None = None,
+        max_cost_usd: float | None = None,
+        run_id: str | None = None,
     ) -> PipelineResult:
+        """Execute the full analysis pipeline.
+
+        Parameters
+        ----------
+        task : str
+        config : dict
+        max_tokens_budget : int | None
+            Hard cap on total tokens across the entire pipeline.
+        max_cost_usd : float | None
+            Hard cap on total USD spend across the entire pipeline.
+        run_id : str | None
+            Override the auto-generated UUID (useful for deterministic tests).
+        """
         pipeline_start = time.monotonic()
         activity_log: list[AgentActivity] = []
+        hitl_audit: list[dict[str, Any]] = []
+        _run_id = run_id or str(uuid.uuid4())
+        budget = BudgetGuard(
+            max_tokens_budget=max_tokens_budget,
+            max_cost_usd=max_cost_usd,
+        )
 
         def log(agent: str, event: str, detail: str = "") -> None:
             entry = AgentActivity.now(agent, event, detail)
             activity_log.append(entry)
             self._on_activity(entry)
             logger.info("[%s] %s %s %s", entry.timestamp, agent, event, detail)
+
+        async def _gate(stage: str, context: dict[str, Any]) -> bool:
+            req = ApprovalRequest(run_id=_run_id, stage=stage, context=context)
+            approved = await self._approval_handler(req)
+            is_auto = self._approval_handler is _default_approval_handler
+            hitl_audit.append({"stage": stage, "approved": approved, "auto": is_auto})
+            return approved
 
         # 1. Coordinator plans the work -------------------------------------
         log("Coordinator", "started", f"Task: {task}")
@@ -212,10 +390,25 @@ class Orchestrator:
             attributes={
                 "agent_ops.pipeline.task": task,
                 "agent_ops.pipeline.coordinator_model": _COORDINATOR_MODEL,
+                "agent_ops.pipeline.run_id": _run_id,
             },
         )
+
         coordinator_plan, coordinator_decomp = await self._coordinator_plan(task, config)
         log("Coordinator", "completed", "Work plan generated")
+
+        _write_checkpoint(_run_id, "coordination", {"coordinator_plan": coordinator_plan})
+
+        # HITL gate before analysis workers
+        if not await _gate("workers", {"task": task, "plan": coordinator_plan}):
+            return PipelineResult(
+                task=task,
+                status="failed",
+                total_duration_seconds=time.monotonic() - pipeline_start,
+                coordinator_plan=coordinator_plan,
+                run_id=_run_id,
+                hitl_audit=hitl_audit,
+            )
 
         # 2. Analysis agents run in parallel --------------------------------
         log("ArchitectureAgent", "started", "Analyzing AWS environment")
@@ -229,6 +422,20 @@ class Orchestrator:
         arch_span = self._tracer.trace_agent("ArchitectureAgent", parent_span=pipeline_span)
         mig_span = self._tracer.trace_agent("MigrationAgent", parent_span=pipeline_span)
         comp_span = self._tracer.trace_agent("ComplianceAgent", parent_span=pipeline_span)
+
+        # Budget check: estimate worker tokens before dispatching
+        try:
+            budget.check(input_tokens=3_000, output_tokens=9_000)
+        except BudgetExceededError as exc:
+            logger.warning("Budget exceeded before workers: %s", exc)
+            return PipelineResult(
+                task=task,
+                status="partial",
+                total_duration_seconds=time.monotonic() - pipeline_start,
+                coordinator_plan=coordinator_plan,
+                run_id=_run_id,
+                hitl_audit=hitl_audit,
+            )
 
         arch_result, mig_result, comp_result = await asyncio.gather(
             self._run_agent(self._arch_agent, arch_payload),
@@ -244,14 +451,68 @@ class Orchestrator:
         ]:
             self._tracer.record_agent_result(span, result)
             self._tracer.finish_span(span)
+            budget.record(
+                input_tokens=result.tokens_input,
+                output_tokens=result.tokens_output,
+            )
             if result.status == AgentStatus.DONE:
                 log(name, "completed", f"{len(result.findings)} findings")
             else:
                 log(name, "failed", result.error or "unknown error")
 
+        _write_checkpoint(
+            _run_id,
+            "workers",
+            {
+                "coordinator_plan": coordinator_plan,
+                "ArchitectureAgent": asdict(arch_result),
+                "MigrationAgent": asdict(mig_result),
+                "ComplianceAgent": asdict(comp_result),
+            },
+        )
+
+        # HITL gate before report synthesis
+        if not await _gate("report", {"task": task}):
+            agent_results = {
+                "ArchitectureAgent": arch_result,
+                "MigrationAgent": mig_result,
+                "ComplianceAgent": comp_result,
+            }
+            return PipelineResult(
+                task=task,
+                status="partial",
+                total_duration_seconds=time.monotonic() - pipeline_start,
+                coordinator_plan=coordinator_plan,
+                agent_results=agent_results,
+                activity_log=activity_log,
+                run_id=_run_id,
+                hitl_audit=hitl_audit,
+            )
+
         # 3. Report agent synthesizes ---------------------------------------
         log("ReportAgent", "started", "Synthesizing executive briefing")
         report_span = self._tracer.trace_agent("ReportAgent", parent_span=pipeline_span)
+
+        try:
+            budget.check(input_tokens=2_000, output_tokens=3_000)
+        except BudgetExceededError as exc:
+            logger.warning("Budget exceeded before report: %s", exc)
+            agent_results = {
+                "ArchitectureAgent": arch_result,
+                "MigrationAgent": mig_result,
+                "ComplianceAgent": comp_result,
+            }
+            return PipelineResult(
+                task=task,
+                status="partial",
+                total_duration_seconds=time.monotonic() - pipeline_start,
+                coordinator_plan=coordinator_plan,
+                agent_results=agent_results,
+                activity_log=activity_log,
+                total_findings=sum(len(r.findings) for r in agent_results.values()),
+                run_id=_run_id,
+                hitl_audit=hitl_audit,
+            )
 
         report_payload = {
             "task": task,
@@ -262,6 +523,10 @@ class Orchestrator:
         report_result = await self._run_agent(self._report_agent, report_payload)
         self._tracer.record_agent_result(report_span, report_result)
         self._tracer.finish_span(report_span)
+        budget.record(
+            input_tokens=report_result.tokens_input,
+            output_tokens=report_result.tokens_output,
+        )
 
         if report_result.status == AgentStatus.DONE:
             log("ReportAgent", "completed", "Executive briefing ready")
@@ -276,6 +541,18 @@ class Orchestrator:
             "ReportAgent": report_result,
         }
 
+        _write_checkpoint(
+            _run_id,
+            "report",
+            {
+                "coordinator_plan": coordinator_plan,
+                "ArchitectureAgent": asdict(arch_result),
+                "MigrationAgent": asdict(mig_result),
+                "ComplianceAgent": asdict(comp_result),
+                "ReportAgent": asdict(report_result),
+            },
+        )
+
         total_findings = sum(
             len(r.findings)
             for r in [arch_result, mig_result, comp_result]
@@ -289,7 +566,6 @@ class Orchestrator:
             report_result.metadata if report_result.status == AgentStatus.DONE else {}
         )
 
-        # Aggregate token usage across all four agents.
         usage = TokenUsageSummary()
         for r in agent_results.values():
             usage.input_tokens += r.tokens_input
@@ -304,7 +580,6 @@ class Orchestrator:
             f"{usage.total_tokens} tokens ({usage.cache_read_tokens} cached)",
         )
 
-        # Close pipeline span with telemetry.
         self._tracer.record_pipeline_result(pipeline_span, None)
         pipeline_span.set_attribute("agent_ops.pipeline.status", pipeline_status)
         pipeline_span.set_attribute("agent_ops.pipeline.total_findings", total_findings)
@@ -335,7 +610,40 @@ class Orchestrator:
             overall_health_score=report_meta.get("overall_health_score", 0),
             total_findings=total_findings,
             token_usage=usage,
+            run_id=_run_id,
+            hitl_audit=hitl_audit,
         )
+
+    # ------------------------------------------------------------------
+    # Public: resume from checkpoint
+    # ------------------------------------------------------------------
+
+    async def resume(self, run_id: str) -> dict[str, Any]:
+        """Resume a previously checkpointed pipeline run.
+
+        Reads the checkpoint at ``.eaa_checkpoints/{run_id}.json`` and returns
+        the completed stage data. For runs that only reached "coordination" or
+        "workers", callers can continue the pipeline manually or re-invoke
+        run_pipeline with the saved data.
+
+        Returns
+        -------
+        dict with keys: run_id, stage, completed (agent result dicts).
+
+        Raises
+        ------
+        FileNotFoundError if no checkpoint exists for run_id.
+        """
+        data = _read_checkpoint(run_id)
+        if data is None:
+            raise FileNotFoundError(f"No checkpoint found for run_id={run_id!r}")
+        logger.info(
+            "Resuming run_id=%s from stage=%s (checkpointed at %s)",
+            run_id,
+            data.get("stage"),
+            data.get("ts"),
+        )
+        return data
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -344,7 +652,7 @@ class Orchestrator:
     async def _coordinator_plan(
         self, task: str, config: dict[str, Any]
     ) -> tuple[str, list[dict[str, Any]]]:
-        """Use Opus 4.7 with a forced tool-call so the plan is validated, not parsed."""
+        """Use coordinator model with a forced tool-call so the plan is validated."""
         environment_summary = {
             "aws_regions": config.get("aws_config", {}).get("regions", []),
             "workload_count": len(config.get("workload_inventory", [])),
@@ -385,12 +693,38 @@ class Orchestrator:
     async def _run_agent(
         agent: Any, payload: dict[str, Any]
     ) -> AgentResult:
-        """Thin wrapper so exceptions from any agent don't crash the gather."""
-        try:
-            return await agent.run(payload)
-        except Exception as exc:
-            return AgentResult(
-                agent_name=getattr(agent, "name", "unknown"),
-                status=AgentStatus.FAILED,
-                error=str(exc),
-            )
+        """Run an agent with exponential-backoff retry on transient errors.
+
+        Attempts: 3 (delays: 1s, 4s, 16s between successive tries).
+        Retries on: rate-limit / 5xx / timeout / connection errors.
+        Does NOT retry on: auth / permission errors (401 / 403).
+        """
+        last_exc: Exception | None = None
+        for attempt, delay in enumerate([0.0] + list(_RETRY_DELAYS), start=1):
+            if delay:
+                logger.warning(
+                    "Retrying %s (attempt %d) after %.0fs — last error: %s",
+                    getattr(agent, "name", "agent"),
+                    attempt,
+                    delay,
+                    last_exc,
+                )
+                await asyncio.sleep(delay)
+            try:
+                return await agent.run(payload)
+            except Exception as exc:
+                if not _is_transient(exc):
+                    # Non-transient (auth, etc.): fail immediately, no retry.
+                    return AgentResult(
+                        agent_name=getattr(agent, "name", "unknown"),
+                        status=AgentStatus.FAILED,
+                        error=str(exc),
+                    )
+                last_exc = exc
+
+        # All attempts exhausted.
+        return AgentResult(
+            agent_name=getattr(agent, "name", "unknown"),
+            status=AgentStatus.FAILED,
+            error=f"Failed after {len(_RETRY_DELAYS) + 1} attempts: {last_exc}",
+        )

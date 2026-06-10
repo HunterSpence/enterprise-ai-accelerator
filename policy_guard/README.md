@@ -1,6 +1,6 @@
 # PolicyGuard
 
-**EU AI Act enforcement begins August 2, 2026. Here's the open-source compliance tool.**
+**EU AI Act high-risk enforcement: December 2, 2027 (deferred from August 2, 2026). Here's the open-source compliance tool.**
 
 PolicyGuard automates the AI compliance and governance scanning that EY, Deloitte, and KPMG charge $100,000–$2,000,000 for. It scans AWS infrastructure against multiple regulatory frameworks simultaneously, generates EU AI Act technical documentation, detects bias in ML models, and produces board-ready compliance reports — in minutes, not months.
 
@@ -244,8 +244,8 @@ weasyprint>=60.0    (optional — enables PDF generation)
 |----------|---------------|
 | February 2, 2025 (PAST) | Prohibited AI practices banned under Article 5 |
 | August 2, 2025 (PAST) | GPAI model obligations apply — providers using GPT-4/Claude must document |
-| **August 2, 2026 (477 days)** | **High-risk AI full obligations — Annex III systems need everything** |
-| August 2, 2027 | High-risk AI in regulated products (medical devices, machinery) |
+| **December 2, 2027** | **High-risk AI full obligations — Annex III systems need everything (deferred from August 2, 2026 by the EU Digital Omnibus)** |
+| August 2, 2028 | AI embedded in Annex I regulated products (medical devices, machinery) |
 
 **PolicyGuard tracks all deadlines and tells you exactly what needs to be done before each one.**
 

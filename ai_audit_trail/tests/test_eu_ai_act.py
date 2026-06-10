@@ -47,8 +47,8 @@ class TestEnforcementTimeline:
         assert _ENFORCEMENT_DATES["gpai_model_rules"] == date(2025, 8, 2)
 
     def test_high_risk_systems_enforcement_date(self):
-        """Articles 8-25 (high-risk) — enforcement date: Aug 2, 2026."""
-        assert _ENFORCEMENT_DATES["high_risk_systems"] == date(2026, 8, 2)
+        """Articles 8-25 (high-risk) — enforcement date: Dec 2, 2027 (deferred from Aug 2, 2026 by EU Digital Omnibus)."""
+        assert _ENFORCEMENT_DATES["high_risk_systems"] == date(2027, 12, 2)
 
     def test_remaining_provisions_enforcement_date(self):
         """Remaining provisions — enforcement date: Aug 2, 2027."""

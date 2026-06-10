@@ -2,7 +2,7 @@
 core/cost_estimator.py
 ======================
 
-Anthropic-native cost estimation for Opus 4.7 / Sonnet 4.6 / Haiku 4.5.
+Anthropic-native cost estimation for Fable 5 / Sonnet 4.6 / Haiku 4.5.
 Zero external dependencies — all arithmetic in pure Python.
 
 WIRING (one-liner):
@@ -14,23 +14,23 @@ WIRING (one-liner):
 Full pipeline summary:
     from core.cost_estimator import CostEstimator, TokenUsageSummary
     summary = TokenUsageSummary()
-    summary.add(model=MODEL_OPUS_4_7, input_tokens=500, output_tokens=200)
+    summary.add(model=MODEL_FABLE_5, input_tokens=500, output_tokens=200)
     summary.add(model=MODEL_HAIKU_4_5, input_tokens=8000, output_tokens=1200, via_batch=True)
     breakdown = est.summary(summary)
     print(breakdown.render_markdown())
 
-Pricing reference (Anthropic as of 2026-04, USD per 1M tokens):
-    Opus 4.7:   $15.00 input / $75.00 output
-                Cache read: $1.50 (10% of input)
-                Cache creation: $18.75 (125% of input)
+Pricing reference (Anthropic as of 2026-06, USD per 1M tokens):
+    Fable 5:    $10.00 input / $50.00 output
+                Cache read: $1.00 (10% of input)
+                Cache creation: $12.50 (125% of input)
                 Batch: 50% off input + output
     Sonnet 4.6: $3.00 input / $15.00 output
                 Cache read: $0.30
                 Cache creation: $3.75
                 Batch: 50% off
-    Haiku 4.5:  $0.80 input / $4.00 output
-                Cache read: $0.08
-                Cache creation: $1.00
+    Haiku 4.5:  $1.00 input / $5.00 output
+                Cache read: $0.10
+                Cache creation: $1.25
                 Batch: 50% off
 """
 
@@ -39,7 +39,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from core.models import MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
+from core.models import MODEL_FABLE_5, MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
 
 # ---------------------------------------------------------------------------
 # Pricing table  — (input, output, cache_read, cache_creation) per 1M tokens
@@ -55,11 +55,11 @@ class _ModelPricing:
 
 
 _PRICING: dict[str, _ModelPricing] = {
-    MODEL_OPUS_4_7: _ModelPricing(
-        input_per_m=15.00,
-        output_per_m=75.00,
-        cache_read_per_m=1.50,
-        cache_creation_per_m=18.75,
+    MODEL_FABLE_5: _ModelPricing(
+        input_per_m=10.00,
+        output_per_m=50.00,
+        cache_read_per_m=1.00,
+        cache_creation_per_m=12.50,
         batch_discount=0.50,
     ),
     MODEL_SONNET_4_6: _ModelPricing(
@@ -70,13 +70,15 @@ _PRICING: dict[str, _ModelPricing] = {
         batch_discount=0.50,
     ),
     MODEL_HAIKU_4_5: _ModelPricing(
-        input_per_m=0.80,
-        output_per_m=4.00,
-        cache_read_per_m=0.08,
-        cache_creation_per_m=1.00,
+        input_per_m=1.00,
+        output_per_m=5.00,
+        cache_read_per_m=0.10,
+        cache_creation_per_m=1.25,
         batch_discount=0.50,
     ),
 }
+# Keep deprecated key pointing at Fable 5 so callers using MODEL_OPUS_4_7 still resolve.
+_PRICING[MODEL_OPUS_4_7] = _PRICING[MODEL_FABLE_5]
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +273,7 @@ class CostEstimator:
         Parameters
         ----------
         model:
-            Model ID (MODEL_OPUS_4_7 / MODEL_SONNET_4_6 / MODEL_HAIKU_4_5).
+            Model ID (MODEL_FABLE_5 / MODEL_SONNET_4_6 / MODEL_HAIKU_4_5).
         input_tokens:
             Number of non-cached input tokens.
         output_tokens:
@@ -322,7 +324,7 @@ class CostEstimator:
             Detailed per-model and bucket breakdown with savings figures.
         """
         per_model: dict[str, dict] = {
-            MODEL_OPUS_4_7:   _zero_row(),
+            MODEL_FABLE_5:    _zero_row(),
             MODEL_SONNET_4_6: _zero_row(),
             MODEL_HAIKU_4_5:  _zero_row(),
         }
@@ -431,8 +433,10 @@ def _zero_row() -> dict:
 
 
 def _short_model_name(model_id: str) -> str:
+    if "fable" in model_id:
+        return "Fable 5"
     if "opus" in model_id:
-        return "Opus 4.7"
+        return "Opus 4.8"
     if "sonnet" in model_id:
         return "Sonnet 4.6"
     if "haiku" in model_id:

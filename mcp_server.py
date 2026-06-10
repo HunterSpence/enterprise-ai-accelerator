@@ -1,6 +1,6 @@
 """
-Enterprise AI Accelerator MCP Server — MCP 2.0 (stdio + SSE)
-=============================================================
+Enterprise AI Accelerator MCP Server — MCP 2.0 (stdio + SSE + Streamable HTTP)
+================================================================================
 
 Exposes the full capability surface of the platform as MCP tools so any
 Claude client (Claude Code, Claude Desktop, IDE extensions) can drive:
@@ -21,9 +21,15 @@ caching, tool-use structured output, and extended thinking are enabled by
 default.
 
 MCP 2.0 additions (2026-04):
-  - SSE transport  (``--transport sse --host 0.0.0.0 --port 8765``)
+  - Streamable HTTP transport (RECOMMENDED — MCP spec 2025-03-26)
+    ``--transport streamable-http --host 0.0.0.0 --port 8765``
+  - SSE transport (LEGACY — superseded by streamable-http)
+    ``--transport sse --host 0.0.0.0 --port 8765``
   - Resources      (audit trail, scan results, compliance frameworks, policy catalog)
   - Prompts        (audit-terraform, classify-workload-6r, assess-bias, executive-briefing)
+  - Bearer auth    (MCP07 — set EAA_MCP_AUTH_TOKEN)
+  - Tool call audit trail (MCP08 — Merkle chain at .eaa_audit/mcp_tools.db; opt-out EAA_MCP_AUDIT=0)
+  - Input validation (MCP03/05 — path traversal + enum + numeric bounds)
 
 Opus 4.7 upgrade (2026-04): expanded from 4 tools (AIAuditTrail-only) to
 19 tools spanning all six modules + executive chat + compliance citations.
@@ -33,11 +39,11 @@ Transport selection::
     # stdio (default — Claude Code / Claude Desktop local)
     python mcp_server.py
 
-    # SSE (network-accessible — remote Claude Desktop, CI agents)
-    python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
+    # Streamable HTTP (RECOMMENDED for network access — MCP spec 2025-03-26)
+    python mcp_server.py --transport streamable-http --host 0.0.0.0 --port 8765
 
-    # SSE on custom interface
-    python mcp_server.py --transport sse --host 127.0.0.1 --port 9000
+    # SSE (LEGACY — superseded by streamable-http, MCP spec 2025-03-26)
+    python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
 
 Claude Desktop stdio config::
 
@@ -51,7 +57,18 @@ Claude Desktop stdio config::
       }
     }
 
-Claude Desktop SSE config::
+Claude Desktop streamable-http config (recommended)::
+
+    {
+      "mcpServers": {
+        "enterprise-ai-accelerator": {
+          "url": "http://localhost:8765/mcp",
+          "transport": "streamable-http"
+        }
+      }
+    }
+
+Claude Desktop SSE config (legacy)::
 
     {
       "mcpServers": {
@@ -65,6 +82,8 @@ Claude Desktop SSE config::
 Environment variables:
   AUDIT_DB_PATH         — override the default SQLite path (audit_trail.db)
   ANTHROPIC_API_KEY     — required for any tool that invokes Claude
+  EAA_MCP_AUTH_TOKEN    — enable bearer-token auth on network transports (MCP07)
+  EAA_MCP_AUDIT         — set to '0' to disable per-call tool audit chain (default: '1', MCP08)
 """
 
 from __future__ import annotations
@@ -721,10 +740,27 @@ async def list_tools() -> list[Tool]:
 
 @server.call_tool()
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    # MCP03/05 — input validation before dispatch
+    from mcp_transports import validate_tool_args
+    val_error = validate_tool_args(name, arguments)
+    if val_error:
+        err_result = {"error": val_error, "tool": name, "code": "INVALID_ARGS"}
+        return [TextContent(type="text", text=json.dumps(err_result, indent=2))]
+
+    # MCP08 — tamper-evident tool audit (fail-open)
+    import time as _time
+    from mcp_transports import audit_tool_call
+    _start_ms = _time.monotonic() * 1000
+
+    error_str: str | None = None
     try:
         result = await _dispatch(name, arguments)
     except Exception as exc:
-        result = {"error": str(exc), "tool": name}
+        error_str = str(exc)
+        result = {"error": error_str, "tool": name}
+    finally:
+        audit_tool_call(name, arguments, result if not error_str else None, error_str, _start_ms)
+
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 
 
@@ -1240,33 +1276,43 @@ async def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Examples:\n"
-            "  python mcp_server.py                          # stdio (Claude Code default)\n"
-            "  python mcp_server.py --transport sse          # SSE on 0.0.0.0:8765\n"
-            "  python mcp_server.py --transport sse --port 9000  # custom port\n"
+            "  python mcp_server.py                                        # stdio (Claude Code default)\n"
+            "  python mcp_server.py --transport streamable-http            # Streamable HTTP on 0.0.0.0:8765 (RECOMMENDED)\n"
+            "  python mcp_server.py --transport streamable-http --port 9000  # custom port\n"
+            "  python mcp_server.py --transport sse                        # SSE legacy on 0.0.0.0:8765\n"
+            "\n"
+            "Auth (MCP07): set EAA_MCP_AUTH_TOKEN to require bearer token on network transports.\n"
+            "Audit (MCP08): set EAA_MCP_AUDIT=0 to disable tool call Merkle chain logging (default: on).\n"
         ),
     )
     parser.add_argument(
         "--transport",
-        choices=["stdio", "sse"],
+        choices=["stdio", "streamable-http", "sse"],
         default="stdio",
-        help="Transport to use: 'stdio' (default) or 'sse'.",
+        help=(
+            "Transport to use: 'stdio' (default, Claude Code/Desktop local), "
+            "'streamable-http' (RECOMMENDED for network access, MCP spec 2025-03-26), "
+            "or 'sse' (legacy, superseded by streamable-http)."
+        ),
     )
     parser.add_argument(
         "--host",
         default="0.0.0.0",
-        help="Host/interface to bind when using SSE transport (default: 0.0.0.0).",
+        help="Host/interface to bind when using a network transport (default: 0.0.0.0).",
     )
     parser.add_argument(
         "--port",
         type=int,
         default=8765,
-        help="Port to listen on when using SSE transport (default: 8765).",
+        help="Port to listen on when using a network transport (default: 8765).",
     )
     args = parser.parse_args()
 
-    from mcp_transports import run_stdio, run_sse
+    from mcp_transports import run_stdio, run_sse, run_streamable_http
 
-    if args.transport == "sse":
+    if args.transport == "streamable-http":
+        await run_streamable_http(server, host=args.host, port=args.port)
+    elif args.transport == "sse":
         await run_sse(server, host=args.host, port=args.port)
     else:
         await run_stdio(server)

@@ -2,7 +2,7 @@
 EU AI Act Compliance — PolicyGuard V2 Implementation
 =====================================================
 Regulation (EU) 2024/1689. Entered into force August 2, 2024.
-High-risk system enforcement deadline: August 2, 2026.
+High-risk system enforcement deadline: December 2, 2027 (deferred from August 2, 2026 by the EU Digital Omnibus).
 
 V2 Enhancements:
 - Full Article coverage: 5, 6, 9, 10, 11, 12, 13, 14, 15, 43, 52-55
@@ -43,7 +43,8 @@ RISK_TIER_GPAI = "GPAI (General Purpose AI)"
 ENFORCEMENT_DATES = {
     "prohibited_practices": date(2025, 2, 2),
     "gpai_obligations": date(2025, 8, 2),
-    "high_risk_systems": date(2026, 8, 2),
+    "high_risk_systems": date(2027, 12, 2),   # Deferred from 2026-08-02 by EU Digital Omnibus
+    "annex_i_products": date(2028, 8, 2),      # AI embedded in Annex I regulated products
     "all_obligations": date(2027, 8, 2),
 }
 
@@ -531,8 +532,8 @@ COMPLIANCE_DEADLINES = [
         "affects": "General Purpose AI model providers",
     },
     {
-        "deadline": date(2026, 8, 2),
-        "milestone": "HIGH-RISK systems must be fully compliant (Articles 6-49). Conformity assessments required.",
+        "deadline": date(2027, 12, 2),
+        "milestone": "HIGH-RISK systems must be fully compliant (Articles 6-49). Conformity assessments required. Deferred from August 2, 2026 by the EU Digital Omnibus (provisional agreement May 6, 2026; Council confirmed May 13, 2026).",
         "scope": "high_risk_systems",
         "articles": ["Article 6", "Article 9", "Article 10", "Article 11", "Article 12", "Article 13", "Article 14", "Article 15", "Article 43"],
         "affects": "High-risk AI systems per Annex III",
@@ -811,7 +812,7 @@ def _classify_system(name: str, state: dict) -> RiskClassification:
             justification=(
                 f"System matches Annex III Category {annex_match}: {cat['name']}. "
                 f"Description keywords match: {', '.join(state.get('keywords_present', [])[:3])}. "
-                f"Full compliance required by August 2, 2026. Conformity assessment route: {cat['conformity_route']}."
+                f"Full compliance required by December 2, 2027 (deferred from August 2, 2026 by the Digital Omnibus). Conformity assessment route: {cat['conformity_route']}."
             ),
             article_references=[cat["article_ref"], "Article 6(2)", "Article 9", "Article 10", "Article 11", "Article 12"],
             conformity_route=cat["conformity_route"],
@@ -968,7 +969,7 @@ def _assess_article_11(state: dict) -> tuple[ArticleAssessment, TechnicalDocScor
             "Use PolicyGuard Annex IV template to populate all 15 required sections",
             "Assign a technical writer + ML engineer to complete documentation",
             "Schedule documentation review with legal counsel",
-            "Target 100% completeness 90 days before August 2, 2026 deadline",
+            "Target 100% completeness 90 days before December 2, 2027 deadline",
         ],
         cross_framework_mappings={
             "nist_ai_rmf": "MAP-2.1, MEASURE-2.10",
@@ -1129,7 +1130,7 @@ def _assess_article_43(classification: RiskClassification, state: dict) -> Confo
             reasons=[
                 f"Annex III Category {cat_num} requires notified body assessment",
                 "Internal conformity assessment not sufficient for this use case",
-                f"Must obtain CE marking before August 2, 2026",
+                f"Must obtain CE marking before December 2, 2027",
             ],
             estimated_cost_eur=50_000,
             estimated_duration_weeks=16,

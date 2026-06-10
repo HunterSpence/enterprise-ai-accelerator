@@ -1,6 +1,6 @@
 # Platform Architecture — Enterprise AI Accelerator
 
-This document describes the full platform architecture as of v0.2.0 (April 2026). For the EU AI Act-specific compliance story, see [OPUS_4_7_UPGRADE.md](OPUS_4_7_UPGRADE.md).
+This document describes the full platform architecture as of v0.4.0 (June 2026). For model upgrade history, see [FABLE_5_UPGRADE.md](FABLE_5_UPGRADE.md). For the EU AI Act evidence pack, see [EU_AI_ACT_EVIDENCE_PACK.md](EU_AI_ACT_EVIDENCE_PACK.md).
 
 ---
 
@@ -35,7 +35,7 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 │  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐  ┌───────────────────┐ │
 │  │ AIClient     │  │ ModelRouter  │  │ ResultCache      │  │ BatchCoalescer    │ │
 │  │ (single      │  │ (complexity- │  │ (SQLite TTL —    │  │ (auto-queue →     │ │
-│  │  Anthropic   │  │  based Opus/ │  │  identical reqs  │  │  Batch API,       │ │
+│  │  Anthropic   │  │  based Fable │  │  identical reqs  │  │  Batch API,       │ │
 │  │  wrapper)    │  │  Sonnet/     │  │  cost nothing)   │  │  50% discount)    │ │
 │  └──────┬───────┘  │  Haiku)      │  └─────────────────┘  └───────────────────┘ │
 │         │          └──────────────┘                                               │
@@ -61,7 +61,7 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 │  KubernetesAdapter │  │  ContainerScore      │  │  SBOMGenerator (CycloneDX)   │
 │  UnifiedDiscovery  │  │  CIMaturityScore     │  │  OSVScanner                  │
 │  .auto()           │  │  TestCoverageScanner │  │  DriftDetector               │
-│                    │  │  SixRScorer (Opus47) │  │  SARIFExporter               │
+│                    │  │  SixRScorer (Fable5) │  │  SARIFExporter               │
 └────────────────────┘  └──────────────────────┘  └──────────────────────────────┘
 
 ┌─────────────────────┐  ┌─────────────────────┐  ┌───────────────────────────────┐
@@ -82,7 +82,7 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 │                        agent_ops/ — Multi-Agent Orchestrator                      │
 │                                                                                   │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐ │
-│  │  CoordinatorAgent (Opus 4.7)                                                │ │
+│  │  CoordinatorAgent (Fable 5)                                                 │ │
 │  │  Decomposes task → routes to workers → evaluates results → asks follow-ups  │ │
 │  └─────────────────────────────┬───────────────────────────────────────────────┘ │
 │            ┌────────────────────┼────────────────────┐                           │
@@ -149,7 +149,7 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 
 1. All module outputs assembled into a `BriefingDocument`
 2. `BriefingLoader` serializes to ~200k tokens of structured text
-3. `ExecutiveChat.load(briefing)` uploads to Opus 4.7 with 1-hour prompt cache
+3. `ExecutiveChat.load(briefing)` uploads to Fable 5 with 1-hour prompt cache
 4. First `ask()` call: full input cost (~$3–5); subsequent calls within 60 min: ~10% of that
 5. Each answer includes structured finding references for auditability
 
@@ -166,9 +166,9 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 
 | Tier | Model | Use cases |
 |---|---|---|
-| High | claude-opus-4-7-20250514 | Coordination, extended thinking, executive chat, high-stakes compliance audits, interleaved thinking loops |
-| Medium | claude-sonnet-4-6-20241022 | Report synthesis, moderate-complexity analysis, IaC policy explanations |
-| Low | claude-haiku-4-5-20241022 | High-volume worker tasks, simple classification, data extraction, CVE triage |
+| High | claude-fable-5 | Coordination, extended thinking, executive chat, high-stakes compliance audits, interleaved thinking loops |
+| Medium | claude-sonnet-4-6 | Report synthesis, moderate-complexity analysis, IaC policy explanations |
+| Low | claude-haiku-4-5-20251001 | High-volume worker tasks, simple classification, data extraction, CVE triage |
 
 `ModelRouter.select(task, token_estimate)` returns a model string. Override by passing `model=` directly to `AIClient.complete()`.
 

@@ -348,8 +348,7 @@ async def nl_query(request: NLQueryRequest) -> NLQueryResponse:
     session_id = request.session_id or str(uuid.uuid4())
     api_key = os.environ.get("ANTHROPIC_API_KEY")
 
-    if not api_key:
-        # Demo mode: return a canned response without credentials
+    def _demo_response() -> NLQueryResponse:
         return NLQueryResponse(
             question=request.question,
             answer=(
@@ -365,12 +364,26 @@ async def nl_query(request: NLQueryRequest) -> NLQueryResponse:
             timestamp=datetime.now(timezone.utc),
         )
 
-    engine = NLQueryEngine(
-        snapshot=MOCK_SNAPSHOT,
-        cost_report=MOCK_COST_REPORT,
-        anthropic_api_key=api_key,
-    )
-    result = engine.query(request.question)
+    if not api_key:
+        # Demo mode: no credentials at all
+        return _demo_response()
+
+    try:
+        engine = NLQueryEngine(
+            snapshot=MOCK_SNAPSHOT,
+            cost_report=MOCK_COST_REPORT,
+            anthropic_api_key=api_key,
+        )
+        result = engine.query(request.question)
+    except Exception as exc:
+        # Catches invalid/placeholder keys (401 AuthenticationError) and any
+        # other initialisation failure — fall back to demo mode so the endpoint
+        # stays usable without real credentials (e.g. CI, demo environments).
+        _exc_name = type(exc).__name__
+        if any(kw in _exc_name for kw in ("Authentication", "Permission", "Forbidden")):
+            return _demo_response()
+        # For unexpected errors, re-raise so FastAPI returns a 500
+        raise
 
     return NLQueryResponse(
         question=result.question,

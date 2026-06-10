@@ -39,14 +39,14 @@ class TestCostCalculation:
         assert abs(cost - 3.00) < 0.01
 
     def test_haiku_cost_calculation(self):
-        """claude-haiku-4: $0.80/M input, $4.00/M output."""
+        """claude-haiku-4: $1.00/M input, $5.00/M output."""
         cost = _calculate_cost("claude-haiku-4-5", input_tokens=1_000_000, output_tokens=0)
-        assert abs(cost - 0.80) < 0.01
+        assert abs(cost - 1.00) < 0.01
 
-    def test_opus_cost_calculation(self):
-        """claude-opus-4: $15.00/M input, $75.00/M output."""
-        cost = _calculate_cost("claude-opus-4-6", input_tokens=1_000_000, output_tokens=0)
-        assert abs(cost - 15.00) < 0.01
+    def test_fable_cost_calculation(self):
+        """claude-fable-5: $10.00/M input, $50.00/M output."""
+        cost = _calculate_cost("claude-fable-5", input_tokens=1_000_000, output_tokens=0)
+        assert abs(cost - 10.00) < 0.01
 
     def test_output_token_cost(self):
         """Output tokens should cost more per token than input."""

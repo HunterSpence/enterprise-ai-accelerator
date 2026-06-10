@@ -13,16 +13,16 @@ WIRING (one-liner):
 
 Routing precedence (first match wins):
     1. override_model — explicit caller override
-    2. requires_annex_iv_audit=True → Opus 4.7 (audit-grade reasoning required)
-    3. token_count_estimate > 400_000 → Opus 4.7 (only model with 1M context)
+    2. requires_annex_iv_audit=True → Fable 5 (audit-grade reasoning required)
+    3. token_count_estimate > 400_000 → Fable 5 (only model with 1M context)
     4. needs_executive_prose=True → Sonnet 4.6
     5. kind in {classification, extraction, simple_summary} → Haiku 4.5
     6. default → Sonnet 4.6
 
 Cost assumptions ($/1M tokens, used only for savings estimates):
-    Opus 4.7:   $15 input / $75 output
+    Fable 5:    $10 input / $50 output
     Sonnet 4.6: $3  input / $15 output
-    Haiku 4.5:  $0.80 input / $4 output
+    Haiku 4.5:  $1  input / $5  output
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ import threading
 from dataclasses import dataclass, field
 from typing import Literal, Optional
 
-from core.models import MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
+from core.models import MODEL_FABLE_5, MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
 
 # ---------------------------------------------------------------------------
 # Task kinds that are cheap enough for Haiku
@@ -46,10 +46,12 @@ _HAIKU_KINDS: frozenset[str] = frozenset(
 # ---------------------------------------------------------------------------
 
 _COST_TABLE: dict[str, tuple[float, float]] = {
-    MODEL_OPUS_4_7:   (15.00, 75.00),
+    MODEL_FABLE_5:    (10.00, 50.00),
     MODEL_SONNET_4_6: (3.00,  15.00),
-    MODEL_HAIKU_4_5:  (0.80,   4.00),
+    MODEL_HAIKU_4_5:  (1.00,   5.00),
 }
+# Keep deprecated key pointing at Fable 5 so callers using MODEL_OPUS_4_7 still resolve.
+_COST_TABLE[MODEL_OPUS_4_7] = _COST_TABLE[MODEL_FABLE_5]
 
 # Assumed output/input ratio for savings estimates (conservative: 25% output)
 _OUTPUT_RATIO = 0.25
@@ -138,7 +140,7 @@ class ModelRouter:
         self._haiku_kinds = haiku_kinds if haiku_kinds is not None else _HAIKU_KINDS
         self._lock = threading.Lock()
         self._stats: dict[str, _ModelStats] = {
-            MODEL_OPUS_4_7:   _ModelStats(),
+            MODEL_FABLE_5:    _ModelStats(),
             MODEL_SONNET_4_6: _ModelStats(),
             MODEL_HAIKU_4_5:  _ModelStats(),
         }
@@ -191,8 +193,8 @@ class ModelRouter:
                     "estimated_cost_usd": round(cost, 6),
                 }
 
-            # Baseline: every call on Opus
-            opus_in, opus_out = _COST_TABLE[MODEL_OPUS_4_7]
+            # Baseline: every call on Fable 5 (flagship)
+            opus_in, opus_out = _COST_TABLE[MODEL_FABLE_5]
             total_input = self._opus_baseline.input_tokens_est
             total_output = int(total_input * _OUTPUT_RATIO)
             baseline_cost = (total_input / 1_000_000) * opus_in + (total_output / 1_000_000) * opus_out
@@ -225,9 +227,9 @@ class ModelRouter:
         if task.override_model:
             return task.override_model
         if task.requires_annex_iv_audit:
-            return MODEL_OPUS_4_7
+            return MODEL_FABLE_5
         if task.token_count_estimate > self._opus_threshold:
-            return MODEL_OPUS_4_7
+            return MODEL_FABLE_5
         if task.needs_executive_prose:
             return MODEL_SONNET_4_6
         if task.kind in self._haiku_kinds:

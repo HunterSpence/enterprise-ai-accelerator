@@ -1,6 +1,6 @@
 # core — Anthropic Optimization Layer
 
-The `core` package is the single integration point for all Anthropic API calls across the platform. It provides complexity-based model routing, SQLite result caching, auto-coalescing Batch API submission, SSE streaming, Files API access, interleaved thinking+tools loops, cost estimation, OTEL telemetry, Prometheus metrics, and structured logging. Combined, these levers reduce cost by approximately 95% compared to routing every call to Opus 4.7 at list price.
+The `core` package is the single integration point for all Anthropic API calls across the platform. It provides complexity-based model routing, SQLite result caching, auto-coalescing Batch API submission, SSE streaming, Files API access, interleaved thinking+tools loops, cost estimation, OTEL telemetry, Prometheus metrics, and structured logging. Combined, these levers reduce bulk-pipeline cost by roughly 90–95% compared to routing every call to Fable 5 at list price.
 
 ---
 
@@ -25,7 +25,7 @@ from core.ai_client import AIClient
 client = AIClient()
 
 response = await client.complete(
-    model="claude-opus-4-7-20250514",
+    model="claude-fable-5",
     system="You are a cloud migration expert.",
     messages=[{"role": "user", "content": "Classify this workload..."}],
     tools=[my_tool_schema],
@@ -42,18 +42,18 @@ Complexity-based model selection. Scores each task on factors including:
 - Module context (iac_security always gets at least Sonnet)
 
 Routes to:
-- **Opus 4.7** — coordination, extended thinking, executive chat, high-stakes compliance
+- **Fable 5** (`claude-fable-5`, overridable via `EAA_FLAGSHIP_MODEL`) — coordination, extended thinking, executive chat, high-stakes compliance
 - **Sonnet 4.6** — report synthesis, moderate-complexity analysis
 - **Haiku 4.5** — high-volume worker tasks, simple classification
 
-At reference workload (1,000 6R classifications), routing vs. all-Opus saves ~60× on worker calls and ~4× on synthesis calls.
+At reference workload (1,000 6R classifications), routing vs. all-Fable-5 saves ~10× on worker-call input cost before batch and cache discounts stack on top.
 
 ```python
 from core.model_router import ModelRouter
 
 router = ModelRouter()
 model = router.select(task="classify_workload", token_estimate=800)
-# Returns "claude-haiku-4-5-20250514" for simple classification
+# Returns "claude-haiku-4-5-20251001" for simple classification
 ```
 
 ### `ResultCache` (`result_cache.py`)
@@ -81,7 +81,7 @@ from core.batch_coalescer import BatchCoalescer
 
 async with BatchCoalescer(flush_size=100) as coalescer:
     request_id = await coalescer.submit(
-        model="claude-haiku-4-5-20250514",
+        model="claude-haiku-4-5-20251001",
         messages=[{"role": "user", "content": "Classify: ..."}],
     )
     result = await coalescer.get_result(request_id)
@@ -131,20 +131,20 @@ result = await loop.run(
 
 Per-call and per-session cost estimation. Uses current Anthropic list pricing (pinned in `cost_estimator.py` — update when pricing changes).
 
-| Token type | Opus 4.7 | Sonnet 4.6 | Haiku 4.5 |
+| Token type | Fable 5 | Sonnet 4.6 | Haiku 4.5 |
 |---|---|---|---|
-| Input | $15/MTok | $3/MTok | $0.25/MTok |
-| Output | $75/MTok | $15/MTok | $1.25/MTok |
-| Cache read | $1.50/MTok | $0.30/MTok | $0.025/MTok |
-| Cache creation | $18.75/MTok | $3.75/MTok | $0.30/MTok |
-| Batch (input) | $7.50/MTok | $1.50/MTok | $0.125/MTok |
+| Input | $10/MTok | $3/MTok | $1/MTok |
+| Output | $50/MTok | $15/MTok | $5/MTok |
+| Cache read | $1/MTok | $0.30/MTok | $0.10/MTok |
+| Cache creation | $12.50/MTok | $3.75/MTok | $1.25/MTok |
+| Batch (input) | $5/MTok | $1.50/MTok | $0.50/MTok |
 
 ```python
 from core.cost_estimator import CostEstimator
 
 estimator = CostEstimator()
 cost = estimator.estimate(
-    model="claude-opus-4-7-20250514",
+    model="claude-fable-5",
     input_tokens=1240,
     output_tokens=384,
     cache_read_tokens=8000,

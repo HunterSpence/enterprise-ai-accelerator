@@ -5,7 +5,7 @@ core/models.py
 Canonical model IDs and thinking budgets for the Enterprise AI Accelerator.
 
 Rules of the road:
-  - Opus 4.7 is the coordinator / high-stakes classifier / executive chat model
+  - Fable 5 is the coordinator / high-stakes classifier / executive chat model
   - Sonnet 4.6 is the report writer / medium-stakes summarizer
   - Haiku 4.5 is the high-volume worker (bulk scans, anomaly explanations)
 
@@ -15,19 +15,28 @@ generation, bumping two lines in this file upgrades the whole platform.
 
 from __future__ import annotations
 
+import os
+
 # ---------------------------------------------------------------------------
-# Canonical model IDs (as of 2026-04-16)
+# Canonical model IDs (as of 2026-06-10)
 # ---------------------------------------------------------------------------
 
-MODEL_OPUS_4_7: str = "claude-opus-4-7"
+# Flagship: Claude Fable 5 — $10/MTok input, $50/MTok output (June 2026)
+# Override via EAA_FLAGSHIP_MODEL env var.
+MODEL_FABLE_5: str = os.environ.get("EAA_FLAGSHIP_MODEL", "claude-fable-5")
+MODEL_OPUS_4_8: str = "claude-opus-4-8"
 MODEL_SONNET_4_6: str = "claude-sonnet-4-6"
 MODEL_HAIKU_4_5: str = "claude-haiku-4-5-20251001"
+
+# Deprecated aliases — kept so importing modules continue to work unchanged.
+# These resolve to Fable 5 (the current flagship tier).
+MODEL_OPUS_4_7: str = MODEL_FABLE_5  # deprecated: was "claude-opus-4-7"
 
 # ---------------------------------------------------------------------------
 # Role aliases — what the platform uses semantically
 # ---------------------------------------------------------------------------
 
-MODEL_COORDINATOR: str = MODEL_OPUS_4_7
+MODEL_COORDINATOR: str = MODEL_FABLE_5
 MODEL_REPORTER: str = MODEL_SONNET_4_6
 MODEL_WORKER: str = MODEL_HAIKU_4_5
 
@@ -55,9 +64,13 @@ CACHE_TTL_1H: str = "1h"          # beta — 1 hour TTL (enable via cache_contro
 # Context window sizes (reference values for callers sizing payloads)
 # ---------------------------------------------------------------------------
 
-CTX_WINDOW_OPUS_4_7: int = 1_000_000
+CTX_WINDOW_FABLE_5: int = 1_000_000
+CTX_WINDOW_OPUS_4_8: int = 1_000_000
 CTX_WINDOW_SONNET_4_6: int = 200_000
 CTX_WINDOW_HAIKU_4_5: int = 200_000
+
+# Deprecated alias kept for backward compatibility.
+CTX_WINDOW_OPUS_4_7: int = CTX_WINDOW_FABLE_5
 
 
 def describe_model(model_id: str) -> dict[str, object]:
@@ -66,11 +79,12 @@ def describe_model(model_id: str) -> dict[str, object]:
     Used by the MCP server and dashboards to surface 'which model handled
     this call and what can it do' without hardcoding capability strings.
     """
-    if model_id == MODEL_OPUS_4_7:
+    if model_id in (MODEL_FABLE_5, MODEL_OPUS_4_8):
+        family = "fable" if "fable" in model_id else "opus"
         return {
-            "model": MODEL_OPUS_4_7,
-            "family": "opus",
-            "context_window": CTX_WINDOW_OPUS_4_7,
+            "model": model_id,
+            "family": family,
+            "context_window": CTX_WINDOW_FABLE_5,
             "supports_extended_thinking": True,
             "supports_citations": True,
             "supports_files": True,

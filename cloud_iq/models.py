@@ -12,7 +12,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ class ScanRequest(BaseModel):
     include_k8s: bool = False
     dry_run: bool = False
 
-    @validator("regions")
+    @field_validator("regions")
     @classmethod
     def normalize_regions(cls, v: list[str]) -> list[str]:
         return [r.lower().strip() for r in v]

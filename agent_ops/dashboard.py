@@ -23,6 +23,7 @@ from rich.text import Text
 from rich.theme import Theme
 
 from agent_ops.agents import AgentStatus
+import core.models as _models
 
 
 # ---------------------------------------------------------------------------
@@ -266,11 +267,11 @@ class Dashboard:
         status_table.add_column("Detail", width=40)
 
         model_map = {
-            "Coordinator": "claude-opus-4-7",
-            "ArchitectureAgent": "claude-haiku-4-5",
-            "MigrationAgent": "claude-haiku-4-5",
-            "ComplianceAgent": "claude-haiku-4-5",
-            "ReportAgent": "claude-haiku-4-5",
+            "Coordinator": getattr(_models, "MODEL_COORDINATOR", "claude-fable-5"),
+            "ArchitectureAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-4-5"),
+            "MigrationAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-4-5"),
+            "ComplianceAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-4-5"),
+            "ReportAgent": getattr(_models, "MODEL_REPORTER", "claude-sonnet-4-6"),
         }
 
         for name, state in self._agents.items():

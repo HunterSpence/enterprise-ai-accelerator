@@ -134,6 +134,32 @@ def cmd_cve(args: argparse.Namespace) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Subcommand: mlbom
+# ---------------------------------------------------------------------------
+
+
+def cmd_mlbom(args: argparse.Namespace) -> int:
+    """Generate a CycloneDX 1.7 ML-BOM for the platform's AI model inventory."""
+    from iac_security.sbom_generator import MLBOMGenerator
+
+    gen = MLBOMGenerator()
+    try:
+        mlbom = gen.generate()
+    except ImportError as exc:
+        print(f"ERROR: core.models not importable — {exc}", file=sys.stderr)
+        return 1
+
+    out_path = args.output or "mlbom.cdx.json"
+    Path(out_path).write_text(json.dumps(mlbom, indent=2), encoding="utf-8")
+    comp_count = len(mlbom.get("components", []))
+    print(
+        f"ML-BOM written to {out_path} "
+        f"({comp_count} ml-model components, CycloneDX {mlbom['specVersion']})"
+    )
+    return 0
+
+
+# ---------------------------------------------------------------------------
 # Argument parser
 # ---------------------------------------------------------------------------
 
@@ -165,6 +191,16 @@ def build_parser() -> argparse.ArgumentParser:
     p_cve.add_argument("path", help="Repository root path")
     p_cve.add_argument("--out", metavar="FILE", help="Write JSON results to FILE instead of stdout")
 
+    # mlbom
+    p_mlbom = sub.add_parser(
+        "mlbom",
+        help="Generate CycloneDX 1.7 ML-BOM (AI model inventory for EU AI Act Art. 11 / GOVERN 5.2)",
+    )
+    p_mlbom.add_argument(
+        "--output", metavar="FILE", default="mlbom.cdx.json",
+        help="Output file path (default: mlbom.cdx.json)",
+    )
+
     return parser
 
 
@@ -178,6 +214,8 @@ def main() -> None:
         sys.exit(cmd_sbom(args))
     elif args.command == "cve":
         sys.exit(cmd_cve(args))
+    elif args.command == "mlbom":
+        sys.exit(cmd_mlbom(args))
     else:
         parser.print_help()
         sys.exit(1)

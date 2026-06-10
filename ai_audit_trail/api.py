@@ -163,7 +163,7 @@ if _HAS_FASTAPI:
         title="AIAuditTrail API",
         description=(
             "Tamper-evident AI audit logging for EU AI Act Article 12 compliance.\n\n"
-            "EU AI Act high-risk system enforcement begins **August 2, 2026**.\n"
+            "EU AI Act high-risk system enforcement begins **December 2, 2027** (deferred from August 2, 2026 by the Digital Omnibus).\n"
             "IBM OpenPages: $500K/yr | Credo AI: $180K/yr | AIAuditTrail: **$0**"
         ),
         version="2.0.0",
@@ -420,7 +420,7 @@ if _HAS_FASTAPI:
             "registered": True,
             "message": (
                 f"System registered. Risk tier: {risk_tier.value}. "
-                + ("HIGH-risk systems must comply by August 2, 2026." if risk_tier.value == "HIGH" else "")
+                + ("HIGH-risk systems must comply by December 2, 2027." if risk_tier.value == "HIGH" else "")
             ),
         }
 

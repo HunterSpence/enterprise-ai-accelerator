@@ -40,7 +40,8 @@ from ai_audit_trail.chain import AuditChain, RiskTier
 _ENFORCEMENT_DATES: dict[str, date] = {
     "prohibited_systems": date(2025, 2, 2),
     "gpai_model_rules": date(2025, 8, 2),
-    "high_risk_systems": date(2026, 8, 2),
+    "high_risk_systems": date(2027, 12, 2),   # Deferred from 2026-08-02 by EU Digital Omnibus
+    "annex_i_products": date(2028, 8, 2),      # AI embedded in Annex I regulated products
     "remaining_provisions": date(2027, 8, 2),
 }
 
@@ -825,7 +826,7 @@ def generate_article_13_transparency_report(
             "",
             f"> **High-risk AI system enforcement begins in "
             f"{days_to_enforcement} days** ({_ENFORCEMENT_DATES['high_risk_systems'].isoformat()}). "
-            f"Ensure full Article 8-25 compliance before this date.",
+            f"Ensure full Article 8-25 compliance before this date (deadline deferred from 2026-08-02 by the EU Digital Omnibus).",
         ]
     else:
         lines += [

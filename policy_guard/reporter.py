@@ -137,7 +137,7 @@ class ReportGenerator:
             f"in engineering and documentation effort — a fraction of the $150K–$2M consulting engagements "
             f"charged by Big 4 firms. The board is advised to authorize this investment and assign "
             f"ownership of the remediation roadmap to the CISO with a 90-day progress review, "
-            f"targeting full EU AI Act compliance before the August 2, 2026 enforcement deadline."
+            f"targeting full EU AI Act compliance before the December 2, 2027 enforcement deadline."
         )
 
     def _total_cost_estimate(self) -> int:
@@ -450,7 +450,7 @@ class ReportGenerator:
     <div class="deadline-banner">
         <div>
             <strong style="font-size:16px;">EU AI Act High-Risk Enforcement: {days_left} Days Remaining</strong>
-            <p style="margin:4px 0 0;opacity:0.85;font-size:13px;">August 2, 2026 — Mandatory conformity assessments for all Annex III AI systems. Non-compliance: up to €35,000,000 or 3% global turnover.</p>
+            <p style="margin:4px 0 0;opacity:0.85;font-size:13px;">December 2, 2027 — Mandatory conformity assessments for all Annex III AI systems (deferred from August 2, 2026 by the Digital Omnibus). Non-compliance: up to €35,000,000 or 3% global turnover.</p>
         </div>
         <div style="text-align:right;font-size:28px;font-weight:800;">{days_left}d</div>
     </div>
@@ -491,7 +491,7 @@ class ReportGenerator:
     <!-- EU AI Act System Classifications -->
     <div class="card">
         <h2>EU AI Act — AI System Risk Classifications</h2>
-        <p style="color:#64748b;font-size:13px;margin-bottom:16px;">AI systems evaluated against Annex III categories and Article 5 prohibited practices. Systems classified as High-Risk must be fully compliant by August 2, 2026.</p>
+        <p style="color:#64748b;font-size:13px;margin-bottom:16px;">AI systems evaluated against Annex III categories and Article 5 prohibited practices. Systems classified as High-Risk must be fully compliant by December 2, 2027 (deferred from August 2, 2026 by the Digital Omnibus).</p>
         {eu_systems_html if eu_systems_html else '<p style="color:#64748b;">No AI systems registered for this scan.</p>'}
     </div>
 

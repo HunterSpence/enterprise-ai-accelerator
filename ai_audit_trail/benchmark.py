@@ -235,7 +235,7 @@ def run_benchmark() -> None:
     print()
     print("=" * 72)
     print(f"  AIAuditTrail v2.0 · github.com/[hunter-spence]/ai-audit-trail")
-    print(f"  EU AI Act High-Risk enforcement: August 2, 2026")
+    print(f"  EU AI Act High-Risk enforcement: December 2, 2027 (deferred from August 2, 2026)")
     print("=" * 72)
     print()
 

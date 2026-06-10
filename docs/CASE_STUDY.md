@@ -26,8 +26,8 @@ acquisition, and the compliance team had flagged the Accenture deliverable as
 insufficient for EU AI Act Annex IV purposes because Ironside was rolling out an
 AI-assisted underwriting tool across the EU.
 
-The EU AI Act's high-risk system enforcement deadline — August 2, 2026 — was
-fourteen months away. Ironside's Head of Cloud, Marcus Tan, put it plainly in the
+The EU AI Act's high-risk system enforcement deadline — then August 2, 2026,
+since deferred to December 2, 2027 by the Digital Omnibus — was fourteen months away. Ironside's Head of Cloud, Marcus Tan, put it plainly in the
 kickoff call: "We need a living system, not a slide deck. And we need the AI
 governance story ready before the regulators ask for it."
 

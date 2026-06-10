@@ -218,5 +218,5 @@ MIT -- free to use, modify, and deploy.
 
 ---
 
-*EU AI Act enforcement begins August 2, 2026 for high-risk AI systems.*  
+*EU AI Act high-risk enforcement: December 2, 2027 (deferred from August 2, 2026 by the EU Digital Omnibus). The evidence burden is unchanged — Annex IV packs take 12–18 months, so 2026 is the build year.*  
 *IBM OpenPages costs $500K/yr. Credo AI costs $180K/yr. AIAuditTrail costs $0.*

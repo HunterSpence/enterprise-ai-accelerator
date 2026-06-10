@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "enterprise-ai-accelerator"
-version = "0.3.0"
+version = "0.4.0"
 description = "AI governance, FinOps, and cloud migration intelligence — EU AI Act Article 12 compliant, SARIF 2.1.0, OpenTelemetry."
 readme = "README.md"
 license = { text = "MIT" }
@@ -43,7 +43,8 @@ classifiers = [
 ]
 dependencies = [
     # AI
-    "anthropic>=0.40.0",
+    "anthropic>=0.69.0,<1.0",
+    "mcp>=1.27.0",
     # Web framework
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.29.0",
@@ -146,7 +147,14 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = [
+    "tests",
+    "agent_ops/tests",
+    "ai_audit_trail/tests",
+    "cloud_iq/tests",
+    "finops_intelligence/tests",
+    "policy_guard/tests",
+]
 addopts = "--tb=short -q"
 markers = [
     "network: requires network access (skipped by default)",

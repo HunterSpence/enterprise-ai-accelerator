@@ -75,7 +75,7 @@ class TestPrometheusExporter:
 class TestHooks:
     def test_llm_call_event_construction(self):
         from core._hooks import LLMCallEvent
-        ev = LLMCallEvent(model="claude-opus-4-7", module="migration_scout")
+        ev = LLMCallEvent(model="claude-fable-5", module="migration_scout")
         assert ev.outcome == "success"
         assert ev.input_tokens == 0
 

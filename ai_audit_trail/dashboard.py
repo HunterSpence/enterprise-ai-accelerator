@@ -49,7 +49,7 @@ except ImportError:
 _ENFORCEMENT_DATES = {
     "PROHIBITED practices (Feb 2025)": datetime(2025, 2, 2, tzinfo=timezone.utc),
     "GPAI obligations (Aug 2025)": datetime(2025, 8, 2, tzinfo=timezone.utc),
-    "HIGH-RISK systems (Aug 2026)": datetime(2026, 8, 2, tzinfo=timezone.utc),
+    "HIGH-RISK systems (Dec 2027)": datetime(2027, 12, 2, tzinfo=timezone.utc),  # Deferred from Aug 2026 by EU Digital Omnibus
     "Remaining systems (Aug 2027)": datetime(2027, 8, 2, tzinfo=timezone.utc),
 }
 

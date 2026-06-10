@@ -154,6 +154,8 @@ df = ingestor.load_month("2026-04")
 
 Supports: Parquet CUR v2, legacy CSV CUR, FOCUS 1.3 export format.
 
+> **Roadmap — FOCUS 1.4:** The FinOps Open Cost and Usage Specification 1.4 was announced at FinOps X (June 2026) and introduces AI token-economics columns (`ai_token_input_quantity`, `ai_token_output_quantity`, `ai_model_id`, and related cost-allocation fields). The exporter remains FOCUS 1.3-conformant today; FOCUS 1.4 support is planned for a future minor release once the spec reaches GA.
+
 ### `RISPOptimizer` (`ri_sp_optimizer.py`)
 
 Reserved Instance and Savings Plan optimizer. Analyzes on-demand spend patterns and recommends RI/SP purchases with an 80% coverage cap to avoid over-commitment.

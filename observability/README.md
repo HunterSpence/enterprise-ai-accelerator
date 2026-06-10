@@ -75,7 +75,7 @@ Prometheus scrape endpoint: `http://localhost:8000/metrics` (default port; confi
 | Span attribute | Value | Description |
 |---|---|---|
 | `gen_ai.system` | `anthropic` | LLM provider |
-| `gen_ai.request.model` | e.g. `claude-opus-4-7` | Requested model |
+| `gen_ai.request.model` | e.g. `claude-fable-5` | Requested model |
 | `gen_ai.response.model` | model from response | Actual model used |
 | `gen_ai.usage.input_tokens` | int | Input tokens charged |
 | `gen_ai.usage.output_tokens` | int | Output tokens charged |
@@ -126,7 +126,7 @@ metrics.requests_total.labels(module="my_module", status="success").inc()
 `core/logging.py` configures structlog with JSON output:
 
 ```json
-{"event": "api_call", "model": "claude-opus-4-7", "module": "iac_security",
+{"event": "api_call", "model": "claude-fable-5", "module": "iac_security",
  "input_tokens": 1240, "output_tokens": 384, "duration_ms": 2341,
  "cache_hit": false, "timestamp": "2026-04-16T18:34:12Z", "level": "info"}
 ```

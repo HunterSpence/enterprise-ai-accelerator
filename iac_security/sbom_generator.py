@@ -465,3 +465,148 @@ class SBOMGenerator:
             json.dump(sbom, f, indent=2)
         logger.info("SBOM written to %s", output_path)
         return output_path
+
+
+# ---------------------------------------------------------------------------
+# ML-BOM — CycloneDX 1.7 Machine Learning Bill of Materials
+# ---------------------------------------------------------------------------
+
+
+def _ml_model_component(
+    model_id: str,
+    name: str,
+    version: str,
+    provider: str,
+    intended_use: str,
+    role: str,
+    context_window: Optional[int] = None,
+) -> dict[str, Any]:
+    """Build a single CycloneDX 1.7 ml-model component dict."""
+    comp: dict[str, Any] = {
+        "type": "ml-model",
+        "bom-ref": str(uuid.uuid4()),
+        "name": name,
+        "version": version,
+        "supplier": {"name": provider},
+        "purl": f"pkg:mlmodel/{provider.lower()}/{model_id}@{version}",
+        "description": f"{intended_use}. Role: {role}.",
+        "properties": [
+            {"name": "ai:intended-use", "value": intended_use},
+            {"name": "ai:role", "value": role},
+            {"name": "ai:provider", "value": provider},
+        ],
+        "modelCard": {
+            "modelParameters": {
+                "task": "text-generation",
+                "architectureFamily": "transformer",
+                "inputs": [{"format": "text"}],
+                "outputs": [{"format": "text"}],
+            },
+            "quantitativeAnalysis": {},
+            "considerations": {
+                "licenses": [{"license": {"name": "Anthropic Usage Policy"}}],
+            },
+        },
+    }
+    if context_window is not None:
+        comp["properties"].append(
+            {"name": "ai:context-window-tokens", "value": str(context_window)}
+        )
+    return comp
+
+
+class MLBOMGenerator:
+    """
+    Generate a CycloneDX 1.7 Machine Learning Bill of Materials (ML-BOM).
+
+    Produces a BOM that inventories all AI models used by the Enterprise AI
+    Accelerator platform, sourced from ``core.models`` constants.  This
+    satisfies EU AI Act Article 11 / Annex IV technical documentation
+    requirements and NIST AI RMF GOVERN 5.2 (third-party AI tracking).
+
+    Usage::
+
+        from iac_security.sbom_generator import MLBOMGenerator
+        mlbom = MLBOMGenerator().generate()
+        with open("mlbom.cdx.json", "w") as f:
+            json.dump(mlbom, f, indent=2)
+    """
+
+    def generate(self, platform_version: str = "0.1.0") -> dict[str, Any]:
+        """
+        Produce a CycloneDX 1.7 ML-BOM dict.
+
+        Imports model IDs from ``core.models`` at call time so the BOM always
+        reflects the current constants without needing a re-import at module
+        load (also makes the generator importable without ``core`` on sys.path,
+        raising ImportError only when generate() is called).
+        """
+        from core.models import (
+            MODEL_FABLE_5,
+            MODEL_SONNET_4_6,
+            MODEL_HAIKU_4_5,
+            CTX_WINDOW_FABLE_5,
+            CTX_WINDOW_SONNET_4_6,
+            CTX_WINDOW_HAIKU_4_5,
+        )
+
+        components = [
+            _ml_model_component(
+                model_id=MODEL_FABLE_5,
+                name="Claude Fable 5",
+                version=MODEL_FABLE_5,
+                provider="Anthropic",
+                intended_use="Coordinator, high-stakes classifier, executive chat",
+                role="coordinator",
+                context_window=CTX_WINDOW_FABLE_5,
+            ),
+            _ml_model_component(
+                model_id=MODEL_SONNET_4_6,
+                name="Claude Sonnet 4.6",
+                version=MODEL_SONNET_4_6,
+                provider="Anthropic",
+                intended_use="Report writer, medium-stakes summarizer",
+                role="reporter",
+                context_window=CTX_WINDOW_SONNET_4_6,
+            ),
+            _ml_model_component(
+                model_id=MODEL_HAIKU_4_5,
+                name="Claude Haiku 4.5",
+                version=MODEL_HAIKU_4_5,
+                provider="Anthropic",
+                intended_use="High-volume worker, bulk scans, anomaly explanations",
+                role="worker",
+                context_window=CTX_WINDOW_HAIKU_4_5,
+            ),
+        ]
+
+        return {
+            "bomFormat": "CycloneDX",
+            "specVersion": "1.7",
+            "serialNumber": f"urn:uuid:{uuid.uuid4()}",
+            "version": 1,
+            "metadata": {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "tools": [
+                    {
+                        "name": "enterprise-ai-accelerator/iac_security",
+                        "version": platform_version,
+                    }
+                ],
+                "component": {
+                    "type": "platform",
+                    "bom-ref": str(uuid.uuid4()),
+                    "name": "enterprise-ai-accelerator",
+                    "version": platform_version,
+                    "description": (
+                        "Anthropic-native cloud governance platform. "
+                        "EU AI Act Art. 11 / Annex IV technical documentation."
+                    ),
+                },
+                "properties": [
+                    {"name": "eaa:regulatory-basis", "value": "EU AI Act Art. 11 / Annex IV"},
+                    {"name": "eaa:nist-control", "value": "GOVERN 5.2"},
+                ],
+            },
+            "components": components,
+        }

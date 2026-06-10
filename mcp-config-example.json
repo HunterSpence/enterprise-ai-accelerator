@@ -1,9 +1,31 @@
 {
   "mcpServers": {
     "enterprise-ai-accelerator": {
+      "_comment_transport": "RECOMMENDED: streamable-http (MCP spec 2025-03-26). Start server with: python mcp_server.py --transport streamable-http",
+      "url": "http://localhost:8765/mcp",
+      "transport": "streamable-http"
+    }
+  },
+  "_examples": {
+    "_comment": "Alternative configurations shown below",
+    "stdio_local": {
+      "_comment": "stdio (default) — Claude Code / Claude Desktop local. No server process needed; the client spawns it.",
       "command": "python",
       "args": ["mcp_server.py"],
       "cwd": "/path/to/enterprise-ai-accelerator"
+    },
+    "streamable_http_with_auth": {
+      "_comment": "Streamable HTTP with bearer auth (MCP07). Set EAA_MCP_AUTH_TOKEN in the server environment.",
+      "url": "http://localhost:8765/mcp",
+      "transport": "streamable-http",
+      "headers": {
+        "Authorization": "Bearer YOUR_EAA_MCP_AUTH_TOKEN"
+      }
+    },
+    "sse_legacy": {
+      "_comment": "SSE transport — LEGACY, superseded by streamable-http (MCP spec 2025-03-26). Start server with: python mcp_server.py --transport sse",
+      "url": "http://localhost:8765/sse",
+      "transport": "sse"
     }
   }
 }

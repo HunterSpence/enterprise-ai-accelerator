@@ -101,7 +101,7 @@ def _make_header_panel(days_to_deadline: int) -> Panel:
     return Panel(
         Align.center(
             f"[bold cyan]PolicyGuard v2.0[/bold cyan]  |  [dim]AI Governance & Compliance Platform[/dim]\n"
-            f"[{urgency_color}]EU AI Act High-Risk Deadline: {days_to_deadline} days away — August 2, 2026[/{urgency_color}]",
+            f"[{urgency_color}]EU AI Act High-Risk Deadline: {days_to_deadline} days away — Dec 2, 2027[/{urgency_color}]",
         ),
         border_style="cyan",
         padding=(0, 2),
@@ -236,7 +236,7 @@ def _make_countdown_panel(days: int) -> Panel:
     content = (
         f"[bold]EU AI Act High-Risk Enforcement[/bold]\n\n"
         f"  {bar}\n\n"
-        f"  [{color}]{days} days remaining[/{color}]  |  August 2, 2026\n\n"
+        f"  [{color}]{days} days remaining[/{color}]  |  Dec 2, 2027\n\n"
         f"  [dim]Non-compliance penalty: up to €35,000,000 or 3% global turnover[/dim]\n"
         f"  [dim]IBM OpenPages: $500K/yr  |  Credo AI: $180K/yr  |  PolicyGuard: $0[/dim]"
     )

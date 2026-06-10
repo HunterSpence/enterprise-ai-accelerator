@@ -16,15 +16,17 @@ Provides:
       return per-framework coverage percentage and gap counts.
 
 Framework name constants used throughout:
-  - "CIS_AWS"       — CIS AWS Foundations Benchmark
-  - "SOC2"          — SOC 2 Type II (Trust Service Criteria)
-  - "HIPAA"         — HIPAA Security Rule
-  - "EU_AI_ACT"     — EU AI Act (Regulation EU 2024/1689)
-  - "NIST_AI_RMF"   — NIST AI RMF (NIST AI 100-1 + 600-1 Gen AI Profile)
-  - "ISO_42001"     — ISO/IEC 42001:2023
-  - "DORA"          — Regulation (EU) 2022/2554
-  - "FEDRAMP"       — FedRAMP Rev 5 (NIST SP 800-53 Rev 5 baselines)
-  - "PCI_DSS_40"    — PCI DSS 4.0
+  - "CIS_AWS"           — CIS AWS Foundations Benchmark
+  - "SOC2"              — SOC 2 Type II (Trust Service Criteria)
+  - "HIPAA"             — HIPAA Security Rule
+  - "EU_AI_ACT"         — EU AI Act (Regulation EU 2024/1689)
+  - "NIST_AI_RMF"       — NIST AI RMF (NIST AI 100-1 + 600-1 Gen AI Profile)
+  - "ISO_42001"         — ISO/IEC 42001:2023
+  - "DORA"              — Regulation (EU) 2022/2554
+  - "FEDRAMP"           — FedRAMP Rev 5 (NIST SP 800-53 Rev 5 baselines)
+  - "PCI_DSS_40"        — PCI DSS 4.0
+  - "COLORADO_SB26189"  — Colorado SB 26-189 (signed 2026-05-14, eff. 2027-01-01)
+  - "TEXAS_TRAIGA"      — Texas Responsible AI Governance Act (eff. 2026-01-01)
 
 Control ID format conventions:
   CIS_AWS       → "CIS_AWS_<section>"          e.g. "CIS_AWS_2.1.2"
@@ -57,6 +59,8 @@ FRAMEWORK_CONTROL_TOTALS: dict[str, int] = {
     "DORA": 39,              # Controls catalogued across chapters II-VII
     "FEDRAMP": 248,          # Controls catalogued across 18 families
     "PCI_DSS_40": 83,        # Sub-requirements across 12 principal requirements
+    "COLORADO_SB26189": 15,  # 13 statutory controls (§§ 6-1-1702 to 6-1-1708) + 2 scope checks
+    "TEXAS_TRAIGA": 15,      # 15 controls across prohibited uses, disclosures, gov AI, enforcement
 }
 
 
@@ -356,6 +360,68 @@ CONTROL_MAPPINGS: dict[str, dict[str, list[str]]] = {
         "FEDRAMP":    ["FEDRAMP_PE-3"],
         "SOC2":       ["SOC2_CC6.4"],
         "HIPAA":      ["HIPAA_164.310(a)(1)"],
+    },
+
+    # --- Colorado SB 26-189 cross-framework mappings ---
+
+    # AIA requirement maps to EU AI Act conformity assessment + NIST AI RMF MAP function
+    "COLORADO_SB26189_CO_SB26189_703_A": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art43"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_MAP-5.1", "NIST_AI_RMF_MAP-5.2"],
+        "ISO_42001":  ["ISO_42001_6.1.2", "ISO_42001_8.4"],
+    },
+    # Consumer disclosure maps to EU Art 13 (transparency) + NIST GOVERN 6.2
+    "COLORADO_SB26189_CO_SB26189_703_B": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art13"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_GOVERN-6.2"],
+        "ISO_42001":  ["ISO_42001_A.8.2"],
+    },
+    # Human reviewer appeal maps to EU Art 14 (human oversight) + NIST MANAGE 2.2
+    "COLORADO_SB26189_CO_SB26189_705_D": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art14"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_MANAGE-2.2"],
+        "ISO_42001":  ["ISO_42001_A.6.2"],
+    },
+    # Developer bias testing maps to EU Art 10 (data governance) + NIST MEASURE 2.3
+    "COLORADO_SB26189_CO_SB26189_702_B": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art10"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_MEASURE-2.3"],
+        "ISO_42001":  ["ISO_42001_A.7.3"],
+    },
+
+    # --- Texas TRAIGA cross-framework mappings ---
+
+    # Prohibited subliminal manipulation maps to EU Art 5 (prohibited practices)
+    "TEXAS_TRAIGA_TX_TRAIGA_2501_A": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art5"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_GOVERN-1.7"],
+        "ISO_42001":  ["ISO_42001_A.4.2"],
+    },
+    # Disclosure of AI interaction maps to EU Art 52 (transparency for certain AI)
+    "TEXAS_TRAIGA_TX_TRAIGA_2503_A": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art52"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_GOVERN-6.2"],
+        "ISO_42001":  ["ISO_42001_A.8.2"],
+        "COLORADO_SB26189": ["COLORADO_SB26189_CO_SB26189_703_B"],
+    },
+    # Government no-sole-AI-decision maps to EU Art 14 human oversight
+    "TEXAS_TRAIGA_TX_TRAIGA_2506_B": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art14"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_MANAGE-2.2"],
+        "COLORADO_SB26189": ["COLORADO_SB26189_CO_SB26189_705_D"],
+    },
+    # Credit/lending AI accountability maps to SOC2 + NIST MEASURE
+    "TEXAS_TRAIGA_TX_TRAIGA_2509_A": {
+        "NIST_AI_RMF": ["NIST_AI_RMF_MEASURE-2.3", "NIST_AI_RMF_MEASURE-2.9"],
+        "SOC2":        ["SOC2_CC6.1"],
+        "EU_AI_ACT":   ["EU_AI_ACT_Art10", "EU_AI_ACT_Art13"],
+        "COLORADO_SB26189": ["COLORADO_SB26189_CO_SB26189_703_B"],
+    },
+    # Developer intended-use doc maps to EU Art 11 + ISO 42001 design doc
+    "TEXAS_TRAIGA_TX_TRAIGA_2504_A": {
+        "EU_AI_ACT":  ["EU_AI_ACT_Art11"],
+        "ISO_42001":  ["ISO_42001_8.3", "ISO_42001_A.5.3"],
+        "NIST_AI_RMF": ["NIST_AI_RMF_MAP-1.6"],
     },
 }
 

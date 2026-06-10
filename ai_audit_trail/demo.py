@@ -594,7 +594,7 @@ def _scenario_3_the_audit(chain_path: str) -> None:
         if days_high > 0:
             _console.print(
                 Panel(
-                    f"[bold]HIGH-RISK AI systems enforcement (August 2, 2026):[/bold]\n"
+                    f"[bold]HIGH-RISK AI systems enforcement (Dec 2, 2027):[/bold]\n"
                     f"[red bold]{days_high} days[/red bold] remaining\n\n"
                     f"  [dim]This demo proves the full compliance stack works:[/dim]\n"
                     f"  [green]✓[/green] SHA-256 Merkle chain (tamper-evident)\n"

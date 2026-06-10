@@ -1,55 +1,84 @@
 # Enterprise AI Accelerator
 
-**AI-native unified cloud governance platform — multi-cloud discovery, 6R migration planning, IaC security, FinOps intelligence, compliance audit, and executive AI chat. Built entirely on Claude Opus 4.7. Zero paid SaaS dependencies.**
+**AI-native unified cloud governance platform — multi-cloud discovery, 6R migration planning, IaC security, FinOps intelligence, 11-framework compliance, tamper-evident AI audit, and executive AI chat. Built entirely on Claude Fable 5. Zero paid SaaS dependencies.**
 
-[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#)
+[![CI](https://img.shields.io/badge/CI-tests%20%2B%20evals-brightgreen.svg)](.github/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Annex%20IV%20ready-orange.svg)](#eu-ai-act-readiness)
-[![FOCUS 1.3](https://img.shields.io/badge/FOCUS-1.3%20compliant-purple.svg)](#finops-intelligence)
-[![Claude Opus 4.7](https://img.shields.io/badge/Claude-Opus%204.7-black.svg)](docs/OPUS_4_7_UPGRADE.md)
-[![Prompt Caching](https://img.shields.io/badge/prompt%20caching-5m%20%2B%201h-8A2BE2.svg)](docs/OPUS_4_7_UPGRADE.md)
-[![Extended Thinking](https://img.shields.io/badge/extended%20thinking-Annex%20IV%20audit%20trail-orange.svg)](docs/OPUS_4_7_UPGRADE.md)
-[![1M Context](https://img.shields.io/badge/context-1M%20tokens-informational.svg)](docs/OPUS_4_7_UPGRADE.md)
-[![Batch API](https://img.shields.io/badge/batch%20API-50%25%20discount-green.svg)](docs/OPUS_4_7_UPGRADE.md)
-[![IaC Security](https://img.shields.io/badge/IaC%20Security-20%20policies-red.svg)](iac_security/README.md)
-[![Multi-Cloud](https://img.shields.io/badge/multi--cloud-AWS%20%7C%20Azure%20%7C%20GCP%20%7C%20K8s-0078d4.svg)](cloud_iq/adapters/README.md)
-[![OpenTelemetry](https://img.shields.io/badge/OpenTelemetry-gen__ai.*-darkblue.svg)](observability/README.md)
+[![Claude Fable 5](https://img.shields.io/badge/Claude-Fable%205-black.svg)](docs/FABLE_5_UPGRADE.md)
+[![EU AI Act](https://img.shields.io/badge/EU%20AI%20Act-Annex%20IV%20evidence-orange.svg)](docs/EU_AI_ACT_EVIDENCE_PACK.md)
+[![Compliance](https://img.shields.io/badge/frameworks-11-red.svg)](#capabilities-by-theme)
+[![Evals](https://img.shields.io/badge/evals-offline%20CI%20gate-8A2BE2.svg)](evals/README.md)
+[![Guardrails](https://img.shields.io/badge/guardrails-OWASP%20LLM%202025-darkred.svg)](#tested-and-guarded-not-just-claimed)
+[![MCP](https://img.shields.io/badge/MCP-streamable%20HTTP%20%2B%20audited%20tools-0078d4.svg)](#mcp-surface)
+[![FOCUS 1.3](https://img.shields.io/badge/FOCUS-1.3%20conformant-purple.svg)](#finops-intelligence)
 [![Carbon Aware](https://img.shields.io/badge/carbon%20tracking-open%20coefficients-3d9970.svg)](finops_intelligence/README.md)
 
-> **April 2026 — Opus 4.7 Executive Upgrade + v0.2.0 Platform Expansion.** Platform now runs on
-> Claude Opus 4.7 across every auditable path, with prompt caching, native tool-use structured
-> output, extended-thinking reasoning traces as Annex IV evidence, a 1M-context executive chat,
-> Batch API bulk scoring, and seven new capability tracks (multi-cloud discovery, IaC security,
-> app portfolio scanning, integration hub, observability, advanced FinOps, and an Anthropic-native
-> cost optimization layer). See [docs/OPUS_4_7_UPGRADE.md](docs/OPUS_4_7_UPGRADE.md) and
-> [CHANGELOG.md](CHANGELOG.md) for details.
+> **June 2026 — v0.4.0: Fable 5 refresh + governance hardening.** The platform now runs on
+> Claude Fable 5 across every coordinator and high-stakes reasoning path, ships an offline
+> eval harness with a CI gate, a guardrail layer mapped to OWASP LLM Top 10 (2025), an MCP
+> server with Streamable HTTP transport whose every tool call is logged to the platform's own
+> tamper-evident Merkle chain, compliance coverage current to June 2026 law (11 frameworks,
+> including Colorado SB 26-189 and Texas TRAIGA), and CycloneDX ML-BOM generation for
+> EU AI Act Annex IV evidence. See [CHANGELOG.md](CHANGELOG.md).
+
+---
+
+## The problem this exists to solve
+
+Enterprise AI programs are failing at industrial scale — and the firms paid to fix that are part of the failure:
+
+- **95% of enterprise GenAI pilots produce zero measurable P&L impact** (MIT NANDA, July 2025). The root cause isn't model quality — it's that pilots never become integrated, governed, operational systems.
+- **AI project abandonment jumped from 17% to 42% in a single year** (S&P Global, 2025).
+- **Gartner predicts over 40% of agentic AI projects will be canceled by end of 2027**, and documents widespread "agent washing" — of thousands of vendors claiming agentic capability, only ~130 are genuine.
+- **Deloitte refunded part of an AU$440K government engagement** after its "independent assurance review" was found to contain fabricated court cases and citations — generated with undisclosed GPT-4o. The firms selling "Trustworthy AI" frameworks could not audit their own AI output.
+
+The pattern: enterprises pay $3.2M–$12M for 12–18 month transformation engagements and receive recommendations, not running systems — with no verifiable trail for the AI-generated parts.
+
+This platform is the opposite bet: **a working, self-hosted, MIT-licensed governance system you can deploy today, where every AI decision is reasoning-traced, citation-grounded, and tamper-evidently logged.**
 
 ---
 
 ## What this is
 
-Enterprise AI Accelerator is an AI-native unified cloud governance platform built exclusively on Claude Opus 4.7 and open-source dependencies. It replaces the fragmented point solutions — migration tools, IaC scanners, FinOps dashboards, compliance auditors — that enterprise teams currently assemble from five to ten separate vendors, and does so at a fraction of the cost with a single audit trail. The platform covers the full cloud governance lifecycle: discover your multi-cloud estate, classify workloads for migration, scan infrastructure code for security and compliance violations, optimize cloud spend down to carbon emissions, and surface every decision in a tamper-evident audit chain that satisfies EU AI Act Annex IV. Everything runs on a single Anthropic subscription with no paid SaaS intermediaries.
+Enterprise AI Accelerator is an AI-native unified cloud governance platform built exclusively on Claude Fable 5 and open-source dependencies. It replaces the fragmented point solutions — migration tools, IaC scanners, FinOps dashboards, compliance auditors — that enterprise teams currently assemble from five to ten separate vendors, and does so at a fraction of the cost with a single audit trail. The platform covers the full cloud governance lifecycle: discover your multi-cloud estate, classify workloads for migration, scan infrastructure code for security and compliance violations, optimize cloud spend down to carbon emissions, and surface every decision in a tamper-evident audit chain designed for EU AI Act Annex IV evidence. Everything runs on a single Anthropic subscription with no paid SaaS intermediaries.
+
+---
+
+## Why this doesn't hallucinate (verifiably)
+
+Every consulting firm now claims AI quality controls. This platform makes the controls **inspectable artifacts**:
+
+| Failure mode | Structural control | Artifact you can hand an auditor |
+|---|---|---|
+| Fabricated citations (the Deloitte Australia failure) | **Anthropic Citations API** — compliance claims are grounded in character-range citations to the actual regulation text; the model cannot emit a control ID that isn't in the source | Citation-annotated compliance evidence (`compliance_citations/`) |
+| Untraceable AI decisions | **Extended-thinking traces persisted** for every high-stakes call (6R classification, compliance audit) | Reasoning trace files, structured as Annex IV technical documentation |
+| After-the-fact log tampering | **SHA-256 Merkle chain** over every audit event — any modification detected in O(log n) | `audit-trail://chain-verify` + anchored Merkle roots (file/webhook anchor backends) |
+| Silent quality drift | **Offline eval harness with a CI gate** — golden datasets for 6R classification, IaC policy detection, and prompt-injection resistance; PRs fail below threshold | `python -m evals.run --offline` report |
+| Prompt injection / excessive agency | **Guardrail layer** (input/output/execution rails + per-run budget caps), mapped to OWASP LLM Top 10 2025 | `core/guardrails.py` + red-team eval suite |
+| Unaccountable tool use | **The MCP server logs every tool invocation into the same Merkle chain** — the platform's own AI surface is under the audit regime it sells | MCP tool-call audit entries |
+
+No Big-6 platform publicly ships any of these as inspectable, self-hostable artifacts.
 
 ---
 
 ## What This Replaces
 
-> **Bottom line.** A Big 6 cloud-transformation engagement delivers a PowerPoint in 12–18 months for **$3.2M–$12M**. This platform ships equivalent technical surface area today for **$25K–$80K / year** — one Anthropic subscription, zero paid SaaS, a single tamper-evident audit trail.
+> **Bottom line.** A Big 6 cloud-transformation engagement delivers recommendations in 12–18 months for **$3.2M–$12M**. This platform ships the equivalent technical surface area today for **$25K–$80K / year** — one Anthropic subscription, zero paid SaaS, a single tamper-evident audit trail. Pricing details: [PRICING.md](PRICING.md).
 
 ### Big 6 consulting platforms
 
 | Firm / Platform | Engagement | What they ship | What this platform ships instead |
 |---|---:|---|---|
-| **Accenture** — MyNav | $500K–$5M | 2019-era recommendation engine with GPT-4 wrappers; no persisted reasoning traces | Native Opus 4.7 reasoning; extended-thinking traces as Annex IV audit evidence; source-available |
-| **Deloitte** — CloudCompass / Converge | $400K–$3M + $200K/yr | Tableau + Excel + PowerPoint automation; human-curated compliance content | Agentic decision engine; Citations API grounds every compliance claim in cited regulation text; SARIF 2.1.0 export |
-| **PwC** — Cloud Transformation Suite | $300K–$2M | LLMs used only for summarization; assessment-heavy | Frontier-model decision engine; tamper-evident Merkle audit chain; integrated carbon tracking |
-| **EY** — Nexus for Cloud | $400K–$2M | Thin glue over AWS Migration Hub / Azure Migrate; PowerPoint deliverables | Unified 6R + compliance + FinOps on one audit trail; structured tool-use JSON output |
-| **KPMG** — Powered Enterprise Cloud | $500K–$4M | SAP-centric; light on cloud-native / K8s / serverless | Multi-cloud adapters (AWS / Azure / GCP / K8s); IaC drift detection; open-source carbon model |
-| **Cognizant** — CloudVue / Cloud Steps | $200K–$1.5M | Pattern-matching over rules tables | Genuine extended-thinking reasoning; prompt caching; Anthropic-native architecture |
-| **Capgemini** — eAPM + Migration Factory | $300K–$2M | Rules-based app portfolio analysis | AI-native 6R scoring; 1M-context executive chat; interleaved thinking + tool-use |
+| **Accenture** — MyNav / AI Refinery | $500K–$5M | NVIDIA-locked closed platform; bespoke pricing only; no self-service | Open MIT source; runs in your cloud account; public pricing |
+| **Deloitte** — CloudCompass / Zora AI | $400K–$3M + $200K/yr | Agent libraries atop undisclosed third-party models; post-Australia-refund trust deficit | Citations-grounded evidence; tamper-evident Merkle audit chain; disclosed model stack |
+| **PwC** — agent OS | $300K–$2M | "25,000 agents deployed" — a count metric, not a quality metric | Eval-gated quality: published golden datasets + CI thresholds |
+| **EY** — Nexus for Cloud | $400K–$2M | Thin glue over AWS Migration Hub / Azure Migrate; slide deliverables | Unified 6R + compliance + FinOps on one audit trail; SARIF 2.1.0 |
+| **KPMG** — Powered Enterprise Cloud | $500K–$4M | SAP-centric; light on cloud-native / K8s / serverless | Multi-cloud adapters (AWS / Azure / GCP / K8s); IaC drift detection |
+| **IBM** — watsonx / Consulting Advantage | $200K–$2M | Five overlapping products; Gartner: "unlikely to gain traction outside IBM ecosystem" | One coherent platform, model-portable, no ecosystem lock |
+| **BCG X** | — | No cloud governance platform offering at all | The category exists; they don't compete in it |
 
-**Where the Big 6 still win.** Brand trust with boards, regulatory sign-off at Fortune 500 scale, and the organizational change-management muscle a 200-person program office provides. This platform is the technical substrate — not a replacement for that program office.
+**Where the Big 6 still win.** Brand trust with boards, regulatory sign-off at Fortune 500 scale, and the organizational change-management muscle a 200-person program office provides. This platform is the technical substrate — not a replacement for that program office. It's also what makes their recommendations *executable* without a second engagement.
 
 ### Commercial point tools
 
@@ -58,12 +87,11 @@ Enterprise AI Accelerator is an AI-native unified cloud governance platform buil
 | CAST Highlight / vFunction | App portfolio + refactoring | $150K–$600K/yr | `app_portfolio/` |
 | Snyk IaC / Prisma Cloud | IaC security | $200K–$1M/yr | `iac_security/` |
 | IBM OpenPages AI Governance | AI risk + compliance | $500K–$2M/yr | `ai_audit_trail/` + `policy_guard/` + `compliance_citations/` |
-| Credo AI | Bias + AI compliance | $180K/yr | `policy_guard/thinking_audit.py` |
+| Credo AI | Bias + AI compliance | $180K/yr | `policy_guard/` |
 | ServiceNow IRM + AIOps | GRC + ops | $300K–$2M/yr | `integrations/` + `executive_chat/` |
 | Apptio Cloudability / CloudZero | FinOps | $100K–$1M/yr | `finops_intelligence/` |
 | Flexera One / Turbonomic | Cloud cost + optimization | $100K–$2M/yr | `cloud_iq/adapters/` + `finops_intelligence/right_sizer.py` |
 | Datadog / New Relic | Observability | $50K–$500K/yr | `observability/` (OSS OTEL + Prometheus + Grafana) |
-| Cloud Carbon Footprint | Sustainability | Free | `finops_intelligence/carbon_tracker.py` |
 
 ### 3-year TCO — 10,000-workload enterprise
 
@@ -75,46 +103,16 @@ Enterprise AI Accelerator is an AI-native unified cloud governance platform buil
 
 ---
 
-## Platform diagrams
+## About vendor lock-in (the question every buyer asks)
 
-### Platform data flow
-
-```mermaid
-graph TD
-    A["User / Executive"] --> B["MCP Server (18 tools + 4 resources + 4 prompts, stdio + SSE)"]
-    B --> C["AgentOps Orchestrator"]
-    C --> D["Opus 4.7 Coordinator"]
-    D --> E["ArchitectureAgent (Haiku 4.5)"]
-    D --> F["MigrationAgent (Haiku 4.5)"]
-    D --> G["ComplianceAgent (Haiku 4.5)"]
-    D --> H["ReportAgent (Sonnet 4.6)"]
-    E --> I["AI Audit Trail"]
-    F --> I
-    G --> I
-    H --> I
-    I --> J["SHA-256 Merkle chain + SARIF 2.1.0"]
-```
-
-### Module coverage
-
-```mermaid
-graph TD
-    Core["Core AIClient — caching, thinking, routing, streaming, batch, citations"]
-    Core --> CloudIQ["cloud_iq/adapters/ — AWS / Azure / GCP / K8s discovery"]
-    Core --> Scout["migration_scout/ — 6R classifier + batch + thinking audit"]
-    Core --> Portfolio["app_portfolio/ — repo to 6R via extended thinking"]
-    Core --> IaC["iac_security/ — Terraform + Pulumi + SBOM + OSV + drift + SARIF"]
-    Core --> FinOps["finops_intelligence/ — CUR + RI/SP + right-size + carbon"]
-    Core --> Policy["policy_guard/ — IaC + bias + thinking audit"]
-    Core --> Citations["compliance_citations/ — Citations API evidence grounding"]
-    Core --> Chat["executive_chat/ — 1M-context unified Q&A"]
-    Core --> Integrations["integrations/ — Slack / Jira / ServiceNow / Teams / GitHub / PagerDuty"]
-    Core --> Obs["observability/ — OTEL + Prometheus + Grafana"]
-```
+- **License:** MIT. Fork it, white-label it, leave any time. There is no proprietary tier withholding core capability.
+- **Your cloud, your data:** all computation runs in your own account; the Anthropic API is the only external call. See [docs/SOVEREIGN_DEPLOYMENT.md](docs/SOVEREIGN_DEPLOYMENT.md) for sovereign and regulated-environment deployment, including routing options through cloud-provider model endpoints.
+- **Model abstraction:** every model call goes through `core/AIClient` + `ModelRouter`; model IDs live in one file (`core/models.py`) with environment overrides. Migrating tiers is a config change, not a rewrite — this release's Opus 4.7 → Fable 5 migration exercised exactly that path.
+- **Open interfaces everywhere:** MCP for tools, SARIF 2.1.0 for findings, CycloneDX for SBOM/ML-BOM, FOCUS for billing data, OpenTelemetry for traces. Nothing is exportable only through us.
 
 ---
 
-## Quick Start
+## Quick Start — time to value
 
 ```bash
 git clone https://github.com/HunterSpence/enterprise-ai-accelerator.git
@@ -122,23 +120,18 @@ cd enterprise-ai-accelerator
 pip install -r requirements.txt
 export ANTHROPIC_API_KEY=sk-ant-...
 
-# Simplest demo — scan a local repo for app portfolio intelligence
+# ~4 minutes to first findings — scan a local repo (no cloud credentials needed)
 python -m app_portfolio.cli .
 
-# AI governance + EU AI Act compliance
-python -m ai_audit_trail.demo
-
-# Multi-cloud discovery (auto-detects available credentials)
-python -c "from cloud_iq.adapters.unified import UnifiedDiscovery; UnifiedDiscovery.auto().discover()"
-
-# IaC security scan
+# ~15 minutes to a governance report — IaC security scan with SARIF output
 python -m iac_security .
 
-# Full FinOps with CUR ingestion + carbon tracking
-python -m finops_intelligence.demo
+# ~1 hour to an EU AI Act evidence pack — audit trail + ML-BOM + SARIF
+python -m ai_audit_trail.demo
+python -m iac_security mlbom
 ```
 
-All module demos include synthetic data. No cloud credentials required to run any demo.
+All module demos run offline against synthetic fixtures — **demo mode never calls the live API and never bills you.** Set `ANTHROPIC_API_KEY` only to enable the AI-powered paths.
 
 ---
 
@@ -147,54 +140,72 @@ All module demos include synthetic data. No cloud credentials required to run an
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                              Entry Points                                        │
-│       CLI  ·  MCP Server (19 tools)  ·  Python SDK  ·  Webhook Dispatcher       │
+│   CLI  ·  MCP Server (19 tools, stdio + streamable-HTTP)  ·  Python SDK  ·      │
+│   Webhook Dispatcher                                                             │
 └──────┬──────────────────┬────────────────────┬──────────────────────────────────┘
        │                  │                    │
        ▼                  ▼                    ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
 │                         core/ — Anthropic Optimization Layer                     │
-│  AIClient · ModelRouter (~95% cost savings) · ResultCache · BatchCoalescer      │
-│  Streaming · FilesAPI · InterleavedThinking · CostEstimator · Telemetry         │
+│  AIClient · ModelRouter · Guardrails (input/output/execution rails + budget)    │
+│  ResultCache · BatchCoalescer · Streaming · FilesAPI · CostEstimator            │
 └──────┬──────────────────┬────────────────────┬──────────────────────────────────┘
        │                  │                    │
 ┌──────▼──────┐  ┌────────▼────────┐  ┌────────▼───────┐  ┌───────────────────────┐
 │  cloud_iq/  │  │  app_portfolio/ │  │  iac_security/ │  │  finops_intelligence/ │
 │  adapters/  │  │  (11 languages) │  │  (20 policies) │  │  CUR + RI/SP + right- │
-│  AWS·Azure  │  │  OSV CVE scan   │  │  SBOM·SARIF    │  │  sizing + carbon      │
-│  GCP·K8s    │  │  6R via Opus    │  │  drift detect  │  │  DuckDB analytics     │
+│  AWS·Azure  │  │  OSV CVE scan   │  │  SBOM + ML-BOM │  │  sizing + carbon      │
+│  GCP·K8s    │  │  6R via Fable 5 │  │  drift·SARIF   │  │  DuckDB analytics     │
 └──────┬──────┘  └────────┬────────┘  └────────┬───────┘  └──────────┬────────────┘
        │                  │                    │                      │
        └──────────────────┴────────────────────┴──────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────────────┐
-│              agent_ops/ — Multi-Agent Orchestrator                              │
-│   Opus 4.7 Coordinator · Sonnet 4.6 Reporter · Haiku 4.5 Workers               │
+│        agent_ops/ — Multi-Agent Orchestrator (retries · budgets ·              │
+│        checkpoints · human-in-the-loop approval hooks)                          │
+│        Fable 5 Coordinator · Sonnet 4.6 Reporter · Haiku 4.5 Workers           │
 └───────────────────────────────────┬────────────────────────────────────────────┘
                                     │
           ┌─────────────────────────┼─────────────────────────┐
           │                         │                         │
 ┌─────────▼──────────┐   ┌──────────▼──────────┐   ┌─────────▼──────────────────┐
 │  migration_scout/  │   │   policy_guard/     │   │   ai_audit_trail/           │
-│  6R + Monte Carlo  │   │  EU AI Act + HIPAA  │   │   SHA-256 Merkle chain      │
-│  dependency maps   │   │  SOC2 + PCI-DSS     │   │   SARIF 2.1.0 + Article 12  │
-│  wave planning     │   │  SARIF 2.1.0        │   │   Annex IV evidence         │
+│  6R + Monte Carlo  │   │  11 frameworks incl │   │   SHA-256 Merkle chain      │
+│  dependency maps   │   │  EU AI Act · NIST   │   │   + anchor backends         │
+│  wave planning     │   │  CO SB 26-189·TRAIGA│   │   SARIF 2.1.0 + Art. 12     │
 └────────────────────┘   └─────────────────────┘   └────────────────────────────┘
           │                         │                         │
           └─────────────────────────▼─────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────────────┐
-│              executive_chat/ + compliance_citations/ + risk_aggregator.py       │
-│   1M-context CTO Q&A  ·  Citations API compliance evidence  ·  0–100 score     │
+│   executive_chat/ + compliance_citations/ + risk_aggregator.py + evals/         │
+│   1M-context CTO Q&A · Citations evidence · 0–100 risk score · CI eval gate    │
 └───────────────────────────────────┬────────────────────────────────────────────┘
                                     │
 ┌───────────────────────────────────▼────────────────────────────────────────────┐
 │              integrations/ + observability/                                     │
 │   Slack · Jira · ServiceNow · GitHub · Teams · PagerDuty · SMTP                │
-│   OTEL gen_ai.* traces · 8 Prometheus metrics · Grafana dashboards             │
+│   OTEL gen_ai.* traces · Prometheus metrics · Grafana dashboards               │
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Model tier:** Opus 4.7 handles coordination + high-stakes reasoning (6R, extended thinking, executive chat). Sonnet 4.6 handles report synthesis. Haiku 4.5 handles high-volume worker tasks. The model router selects the right tier automatically based on task complexity.
+**Model tier:** Fable 5 (`claude-fable-5`) handles coordination and high-stakes reasoning (6R, extended thinking, executive chat) — overridable to Opus 4.8. Sonnet 4.6 handles report synthesis. Haiku 4.5 handles high-volume worker tasks. The model router selects the tier automatically by task complexity.
+
+---
+
+## Tested and guarded — not just claimed
+
+Two things this release adds that you will not find in a consulting-firm platform demo:
+
+**An eval harness with teeth.** `evals/` ships golden datasets (6R workload classification, IaC policy detection, a prompt-injection red-team corpus) and an offline runner with per-suite thresholds wired into CI — a PR that degrades detection quality fails. Run it yourself:
+
+```bash
+python -m evals.run --offline
+```
+
+**A guardrail layer mapped to OWASP LLM Top 10 (2025).** Input rails (prompt-injection detection across instruction-override, encoding, and tool-arg-smuggling patterns), output rails (secret/PII redaction), execution rails (tool allowlists), and hard per-run token/cost budgets. The red-team eval suite exercises the rails in CI.
+
+The platform also **dogfoods its own audit regime**: every MCP tool call made against it is hashed and appended to the same Merkle chain it offers customers (`audit-trail://chain-verify`).
 
 ---
 
@@ -202,22 +213,22 @@ All module demos include synthetic data. No cloud credentials required to run an
 
 | Module | Purpose | Key Classes | Value Prop |
 |---|---|---|---|
-| **core/** | Anthropic optimization layer | `AIClient`, `ModelRouter`, `ResultCache`, `BatchCoalescer`, `CostEstimator`, `StreamHandler`, `FilesAPIClient`, `InterleavedThinkingLoop` | ~95% cost reduction vs always-Opus baseline via complexity routing + SQLite cache + auto-coalescing Batch API |
-| **cloud_iq/** | AWS infrastructure analysis | `CloudScanner`, `CostAnalyzer`, `MLDetector`, `NLQueryEngine` | $47K/month waste identified in AcmeCorp demo without credentials |
-| **cloud_iq/adapters/** | Multi-cloud discovery | `AWSAdapter`, `AzureAdapter`, `GCPAdapter`, `KubernetesAdapter`, `UnifiedDiscovery` | Real boto3 / azure-mgmt / google-cloud / kubernetes discovery with graceful degradation |
-| **app_portfolio/** | Repository intelligence | `LanguageDetector`, `DependencyScanner`, `CVEScanner`, `ContainerizationScorer`, `CIMaturityScorer`, `SixRScorer` | 11 languages, 9 dep manifests, OSV.dev CVE scan, Opus 4.7 extended-thinking 6R per repo |
-| **migration_scout/** | 6R workload classification | `WorkloadAssessor`, `DependencyMapper`, `WavePlanner`, `BatchClassifier`, `ThinkingAudit` | Only OSS tool with AI-native 6R + Monte Carlo wave planning (AWS Migration Hub closed Nov 2025) |
-| **policy_guard/** | Multi-framework compliance | `ComplianceScanner`, `BiasDetector`, `SARIFExporter`, `IncidentResponse`, `ThinkingAudit` | 9-framework scanner (EU AI Act + HIPAA + SOC 2 + CIS AWS + NIST AI RMF 2.0 + ISO 42001 + DORA + FedRAMP Rev 5 + PCI DSS 4.0); cross-framework traceability matrix; one implementation closes controls across all frameworks simultaneously |
-| **iac_security/** | IaC security scanning | `TerraformParser`, `PulumiParser`, `PolicyEngine`, `SBOMGenerator`, `OSVScanner`, `DriftDetector`, `SARIFExporter` | 20 built-in policies (CIS AWS / PCI-DSS / SOC 2 / HIPAA), CycloneDX SBOM, OSV CVE, SARIF to GitHub Security tab |
-| **finops_intelligence/** | Cloud cost intelligence | `CURIngestor`, `RISPOptimizer`, `RightSizer`, `CarbonTracker`, `SavingsReporter`, `AnomalyDetector` | AWS CUR via DuckDB, RI/SP optimizer (80% coverage cap), right-sizing with CloudWatch, carbon tracking with open coefficients |
-| **ai_audit_trail/** | EU AI Act audit logging | `MerkleChain`, `EUAIActLogger`, `NISTRMFScorer`, `IncidentManager`, `SARIFExporter` | Only OSS tool combining SHA-256 Merkle chain + SARIF 2.1.0 + Article 12 / Annex IV |
-| **executive_chat/** | 1M-context CTO Q&A | `ExecutiveChat`, `BriefingLoader` | Full enterprise briefing in one prompt; follow-ups cost ~10% via 1-hour cache |
+| **core/** | Anthropic optimization + safety layer | `AIClient`, `ModelRouter`, `GuardrailEngine`, `BudgetGuard`, `ResultCache`, `BatchCoalescer`, `CostEstimator` | Complexity routing + caching + batching cut model spend by roughly an order of magnitude vs all-flagship; rails enforce OWASP LLM 2025 controls |
+| **cloud_iq/** + **adapters/** | Multi-cloud discovery & analysis | `CloudScanner`, `CostAnalyzer`, `AWSAdapter`, `AzureAdapter`, `GCPAdapter`, `KubernetesAdapter` | Real boto3 / azure-mgmt / google-cloud / kubernetes discovery with graceful degradation; offline demo mode |
+| **app_portfolio/** | Repository intelligence | `LanguageDetector`, `DependencyScanner`, `CVEScanner`, `SixRScorer` | 11 languages, 9 dep manifests, OSV.dev CVE scan, Fable 5 extended-thinking 6R per repo |
+| **migration_scout/** | 6R workload classification | `WorkloadAssessor`, `DependencyMapper`, `WavePlanner`, `BatchClassifier`, `ThinkingAudit` | AI-native 6R + Monte Carlo wave planning (AWS Migration Hub closed Nov 2025 — this gap is open) |
+| **policy_guard/** | Multi-framework compliance | `ComplianceScanner`, `BiasDetector`, `SARIFExporter`, `IncidentResponse` | **11 frameworks**: EU AI Act, NIST AI RMF 2.0, ISO/IEC 42001, HIPAA, SOC 2, CIS AWS, DORA, FedRAMP Rev 5, PCI DSS 4.0, **Colorado SB 26-189**, **Texas TRAIGA** — with cross-framework traceability |
+| **iac_security/** | IaC security + SBOM + ML-BOM | `TerraformParser`, `PulumiParser`, `PolicyEngine`, `SBOMGenerator`, `OSVScanner`, `DriftDetector` | 20 policies, CycloneDX SBOM **and ML-BOM**, OSV CVE, SARIF to GitHub Security tab |
+| **finops_intelligence/** | Cloud cost intelligence | `CURIngestor`, `RISPOptimizer`, `RightSizer`, `CarbonTracker`, `SavingsReporter` | AWS CUR via DuckDB, FOCUS 1.3 conformant (FOCUS 1.4 AI-token columns on roadmap), carbon tracking with open coefficients |
+| **ai_audit_trail/** | EU AI Act audit logging | `MerkleChain`, `AnchorBackend`, `EUAIActLogger`, `NISTRMFScorer`, `IncidentManager` | SHA-256 Merkle chain + file/webhook root anchoring + SARIF 2.1.0 + Article 12 / Annex IV + 72-hour Article 62 incident tracking |
+| **executive_chat/** | 1M-context CTO Q&A | `ExecutiveChat`, `BriefingLoader` | Full enterprise briefing in one prompt; follow-ups at a fraction of first-call cost via 1-hour cache |
 | **compliance_citations/** | Evidence-grounded compliance | `EvidenceLibrary`, `CitationsEngine` | Anthropic Citations API — character-range citations, no hallucinated control IDs |
-| **agent_ops/** | Multi-agent orchestration | `Orchestrator`, `CoordinatorAgent`, `ReporterAgent`, `WorkerAgent` | Opus 4.7 coordinator + Sonnet 4.6 reporter + Haiku 4.5 workers with MCP-driven dispatch |
-| **integrations/** | Notification + ticketing | `FindingRouter`, `WebhookDispatcher`, `SlackAdapter`, `JiraAdapter`, `ServiceNowAdapter`, `GitHubAppAdapter`, `TeamsAdapter`, `PagerDutyAdapter`, `SMTPAdapter` | Retry / circuit-breaker / rate-limit on all adapters; PR check-runs with inline annotations |
-| **observability/** | Full OTEL stack | `TelemetryClient`, `PrometheusExporter`, Grafana dashboards | gen_ai.* conventions, 8 Prometheus metrics, Grafana platform + cost dashboards, Jaeger traces |
-| **risk_aggregator.py** | Cross-module risk score | `WorkloadRiskAggregator`, `RiskInput` | Unified 0–100 score from any combination of module outputs |
-| **mcp_server.py** | MCP surface | 18 tools + 4 resources + 4 prompts | Every module drivable from Claude Code / Claude Desktop; stdio + SSE transports |
+| **agent_ops/** | Multi-agent orchestration | `Orchestrator`, `CoordinatorAgent`, `WorkerAgent` | Fable 5 coordinator with retries, checkpoint/resume, per-run budgets, and human-in-the-loop approval hooks |
+| **evals/** | Quality gate | golden datasets + offline scorers + CI gate | The platform's accuracy claims are reproducible: `python -m evals.run --offline` |
+| **integrations/** | Notification + ticketing | `FindingRouter`, `WebhookDispatcher`, adapters | Slack / Jira / ServiceNow / GitHub / Teams / PagerDuty / SMTP with retry + circuit-breaker |
+| **observability/** | Full OTEL stack | `TelemetryClient`, `PrometheusExporter`, Grafana dashboards | gen_ai.* conventions, Prometheus metrics, Grafana platform + cost dashboards, Jaeger traces |
+| **risk_aggregator.py** | Cross-module risk score | `WorkloadRiskAggregator` | Unified 0–100 score from any combination of module outputs |
+| **mcp_server.py** | MCP surface | 19 tools + resources + prompts | Every module drivable from Claude Code / Claude Desktop; stdio + streamable-HTTP (+ legacy SSE); bearer-token auth; Merkle-audited tool calls |
 
 ---
 
@@ -225,105 +236,51 @@ All module demos include synthetic data. No cloud credentials required to run an
 
 | Theme | What the platform covers |
 |---|---|
-| **Discovery** | Real boto3/azure-mgmt/google-cloud/kubernetes discovery; 11 programming languages; 9 dependency manifest formats; OSV.dev CVE feed |
+| **Discovery** | boto3/azure-mgmt/google-cloud/kubernetes discovery; 11 programming languages; 9 dependency manifest formats; OSV.dev CVE feed |
 | **Migration Planning** | AI-native 6R classification; Monte Carlo wave planning with confidence intervals; dependency SCC resolution; 3-year TCO; AWS MAP alignment |
-| **Compliance** | EU AI Act Articles 9/10/12/13/15/62; HIPAA; SOC 2; CIS AWS Benchmark; 20 IaC policies; SARIF 2.1.0 export; **NIST AI RMF 2.0** (73 subcategories + Gen AI profile, NIST AI 600-1); **ISO/IEC 42001:2023** (47 controls, certifiable AI management system); **DORA** (38 controls, EU financial entities, in force Jan 2025); **FedRAMP Rev 5** (248 controls across 18 families, Low/Moderate/High baselines); **PCI DSS 4.0** (83 sub-requirements, mandatory Mar 2025, customized approach notation); cross-framework traceability matrix with 180+ control links |
-| **FinOps** | AWS CUR ingestion via DuckDB; FOCUS 1.3 (all 33 columns + AI/LLM rows); RI/SP optimization; right-sizing with CloudWatch; carbon emissions; savings executive report |
-| **Observability** | OpenTelemetry gen_ai.* conventions; 8 Prometheus metrics; structlog JSON; Grafana eaa_platform + eaa_cost dashboards; Jaeger traces; OTEL Collector |
-| **Audit** | SHA-256 Merkle chain; reasoning traces as Annex IV evidence; SARIF 2.1.0 to GitHub Security tab; 72-hour Article 62 incident tracking |
-| **AI Governance** | Extended-thinking reasoning trace persistence; Citations API grounded evidence; bias detection; NIST AI RMF scoring; EU AI Act Annex III classification |
+| **Compliance** | **11 frameworks** with cross-framework traceability: EU AI Act (Articles 9/10/12/13/15/62), NIST AI RMF 2.0 (73 subcategories + GenAI profile), ISO/IEC 42001:2023 (47 controls), HIPAA, SOC 2, CIS AWS, DORA, FedRAMP Rev 5 (248 controls), PCI DSS 4.0, Colorado SB 26-189 (effective Jan 1 2027), Texas TRAIGA (effective Jan 1 2026) |
+| **AI Quality** | Offline eval harness (golden 6R + IaC + injection-red-team datasets) with CI thresholds; guardrail rails mapped to OWASP LLM Top 10 2025; per-run budget enforcement |
+| **FinOps** | AWS CUR ingestion via DuckDB; FOCUS 1.3 conformance; RI/SP optimization; right-sizing with CloudWatch; carbon emissions; CFO-ready savings report |
+| **Observability** | OpenTelemetry gen_ai.* conventions; Prometheus metrics; structlog JSON; Grafana dashboards; Jaeger traces |
+| **Audit** | SHA-256 Merkle chain with anchor backends; reasoning traces as Annex IV evidence; SARIF 2.1.0; 72-hour Article 62 incident tracking; MCP tool-call audit |
+| **AI Governance** | Extended-thinking trace persistence; Citations-grounded evidence; bias detection; NIST AI RMF scoring; CycloneDX ML-BOM; EU AI Act Annex III classification |
 
 ---
 
-## Cost Optimization — ~95% Savings Story
+## Cost Optimization
 
 The `core/` optimization layer applies four levers automatically:
 
 | Lever | Mechanism | Saving |
 |---|---|---|
-| **Complexity routing** | `ModelRouter` scores each task; simple tasks go to Haiku 4.5 ($0.25/MTok input) not Opus 4.7 ($15/MTok) | Up to 60× on worker tasks |
+| **Complexity routing** | `ModelRouter` scores each task; simple tasks go to Haiku 4.5 instead of Fable 5 ($10/MTok input) | ~10× on worker-tier input |
 | **Result cache** | SQLite-backed `ResultCache` returns identical results without a second API call | 100% on cache hits |
 | **Batch coalescing** | `BatchCoalescer` auto-submits accumulated requests to the Anthropic Batch API | 50% discount on batched calls |
-| **Prompt caching** | 5-min ephemeral on all system prompts; 1-hour on executive chat | ~85–90% on repeat pipelines |
+| **Prompt caching** | 5-min ephemeral on all system prompts; 1-hour on executive chat | large reduction on repeat pipelines |
 
-Combined baseline: a 1,000-workload 6R scan at all-Opus-4.7 list price costs ~$150. With routing + batching + caching it drops to ~$7–10.
+Stacked, the levers cut bulk-pipeline costs by roughly **90–95% vs an all-flagship baseline**.
 
----
-
-## Performance & Cost
-
-### Latency benchmarks
-
-| Operation | p50 | p95 | Notes |
-|---|---|---|---|
-| 6R classification (Haiku 4.5, cached system prompt) | 680 ms | 1.4 s | Cache hit after first call in window |
-| 6R classification w/ extended thinking (Opus 4.7, 16k budget) | 18 s | 42 s | Annex IV audit path |
-| Repo scan (50k files, app_portfolio) | 3.8 s | 7.2 s | Parallel I/O, no AI calls |
-| IaC policy scan (200 resources) | 480 ms | 1.1 s | 20 policies, pure Python |
-| CVE scan (500 deps, OSV batched) | 2.1 s | 3.9 s | Single batched API call |
-| FinOps RI/SP recommendation (10k workloads) | 4.2 s | 9.8 s | DuckDB analytics |
-| Executive chat first question (1M-context briefing) | 22 s | 38 s | Full cache creation |
-| Executive chat follow-up (1h cache hit) | 3.1 s | 6.4 s | 90%+ cost reduction vs first call |
-
-### Cost benchmarks (per-pipeline, Claude list prices)
-
-| Scenario | Cost per run | vs. baseline |
-|---|---|---|
-| Baseline (all Opus 4.7, no caching, no batch) | $0.82 | 1.00x |
-| + Prompt caching (5-min ephemeral on system prompts) | $0.31 | 0.38x |
-| + Model router (Haiku for classification, Sonnet for prose) | $0.12 | 0.15x |
-| + Batch API on bulk operations | $0.07 | 0.09x |
-| **All three combined** | **$0.04** | **~95% reduction** |
-
-Benchmarks are representative estimates based on Anthropic API pricing (April 2026) and typical pipeline sizes. Actual numbers depend on workload characteristics.
-
----
-
-## See it run in 30 seconds
-
-```bash
-git clone https://github.com/HunterSpence/enterprise-ai-accelerator
-cd enterprise-ai-accelerator
-pip install -r requirements.txt
-bash examples/run_demos.sh
-```
-
-This runs four end-to-end demos against fixtures in `examples/`:
-- `app_portfolio` — scans a Flask sample repo, returns 6R recommendation
-- `iac_security` — scans Terraform with deliberate violations, returns SARIF
-- `sbom` — generates CycloneDX SBOM of the sample repo
-- `finops_intelligence` — analyzes synthetic AWS CUR data, returns savings report
-
-All demos run offline by default (no AWS / Azure / GCP credentials needed). Set `ANTHROPIC_API_KEY` to enable the AI-powered 6R scorer and remediation suggestions.
-
----
-
-## This repo runs its own tools
-
-The platform dogfoods itself on every release:
-
-- **CycloneDX SBOM** — `SBOM.cdx.json` at the repo root, generated via `python -m iac_security sbom .`
-- **Dependency CVE status** — clean, verified via `python -m app_portfolio.cve_scanner`
+**Honest benchmark note (v0.4.0):** Fable 5's tokenizer counts up to ~35% more tokens for identical text than the Opus 4.7-era tokenizer, while list prices dropped ($10/$50 vs $15/$75 per MTok). Pre-June-2026 per-pipeline dollar figures published in earlier versions of this README are therefore not directly comparable and are being re-benchmarked; the relative savings ratios above hold. Cost figures here are representative estimates at Anthropic list prices (June 2026), and depend on workload characteristics.
 
 ---
 
 ## EU AI Act Readiness
 
-**Enforcement date: August 2, 2026.**
-
-The platform is designed to satisfy EU AI Act obligations for high-risk AI system operators:
+**Where the timeline actually stands (June 2026):** GPAI obligations have been in force since August 2, 2025. High-risk (Annex III) enforcement — originally August 2, 2026 — was deferred to **December 2, 2027** by the Digital Omnibus agreement (provisionally agreed May 2026; Annex I embedded systems: August 2, 2028). The deadline moved; the evidence burden did not — penalties still reach 3% of global annual turnover, and Annex IV technical documentation takes most organizations 12–18 months to assemble. Procurement teams are asking for it now.
 
 | Article | Obligation | Platform capability |
 |---|---|---|
 | **Article 9** | Risk management system | Unified 0–100 risk score + per-module traces via `risk_aggregator.py` |
 | **Article 10** | Data governance | Citations API grounds every compliance claim in cited regulatory source text |
-| **Article 12** | Record-keeping | SHA-256 Merkle chain in `ai_audit_trail/` — any tampering detected in O(log n) |
+| **Article 12** | Record-keeping | SHA-256 Merkle chain in `ai_audit_trail/` — tampering detected in O(log n); roots anchorable to external backends |
 | **Article 13** | Transparency | Reasoning trace on every extended-thinking call, persisted as Annex IV evidence |
-| **Article 15** | Accuracy / robustness | Extended thinking budget documents model decision process for audit |
-| **Article 62** | Incident reporting | P0–P3 severity ladder + 72-hour deadline tracking in `ai_audit_trail/incident_manager.py` |
-| **Annex IV** | Technical documentation | SARIF 2.1.0 export + structured reasoning trace form a complete Annex IV evidence package |
+| **Article 15** | Accuracy / robustness | Extended-thinking traces + the offline eval suite document model decision quality |
+| **Article 62** | Incident reporting | P0–P3 severity ladder + 72-hour deadline tracking |
+| **Annex IV** | Technical documentation | SARIF 2.1.0 + reasoning traces + **CycloneDX ML-BOM** form a complete evidence package |
 
-The reasoning-trace + Citations + SARIF combination is not available in any other open-source tool.
+Step-by-step: [docs/EU_AI_ACT_EVIDENCE_PACK.md](docs/EU_AI_ACT_EVIDENCE_PACK.md) — which command produces each Annex IV artifact.
+
+The reasoning-trace + Citations + SARIF + ML-BOM combination is not available in any other open-source tool.
 
 ---
 
@@ -334,114 +291,47 @@ The reasoning-trace + Citations + SARIF combination is not available in any othe
 | EU AI Act Art.12 | Yes (full) | Yes | Yes (6 articles) | Yes (Art.11-13,25) | No | Yes |
 | SARIF 2.1.0 export | Yes | No | No | No | No | No |
 | OpenTelemetry | Yes (native gen_ai.*) | No | Yes (proxy) | Yes (consumer) | Yes (v3) | No |
-| Tamper-proof chain | SHA-256 Merkle | SHA-256 SQLite | HMAC-SHA256 | No | No | Unknown |
+| Tamper-proof chain | SHA-256 Merkle + anchors | SHA-256 SQLite | HMAC-SHA256 | No | No | Unknown |
+| Offline eval CI gate | Yes | No | No | No | Evals (live) | No |
+| Guardrail layer (OWASP LLM 2025) | Yes | No | No | No | No | No |
+| ML-BOM (CycloneDX) | Yes | No | No | No | No | No |
 | Multi-cloud discovery | AWS+Azure+GCP+K8s | No | No | No | No | No |
-| IaC security (20 policies) | Yes (CIS/PCI/SOC2/HIPAA) | No | No | No | No | No |
-| App portfolio scanner | Yes (11 languages) | No | No | No | No | No |
+| IaC security (20 policies) | Yes | No | No | No | No | No |
 | Carbon tracking | Yes (open coefficients) | No | No | No | No | No |
-| Python SDK | Yes | Yes | Yes | CLI only | Yes | SaaS |
 | License | MIT | MIT | Apache 2.0 | Unknown | MIT (core) | Proprietary |
 | Cost | Free | Free | Free | Free | Free (self-host) | $50K+/yr |
 
 ---
 
-## Roadmap
+## Pricing
 
-The following are explicitly **not yet built**. Honest positioning matters.
+The platform is MIT-licensed and free, forever, in full. Paid offerings are support and services around it:
 
-| Gap | Status |
-|---|---|
-| Multi-tenant RBAC | Not built — single-user / single-org only today |
-| React / web dashboard UI | Not built — Grafana dashboards for observability only; no app UI |
-| SOC 2 Type II audit | Not started — platform itself has not undergone SOC 2 audit |
-| Hyperscaler marketplace listing | Not listed on AWS / Azure / GCP Marketplace |
-| Real-time streaming compliance scan | In progress — OTEL traces exist; live compliance stream not wired |
-| Multi-region / HA deployment | Not documented — single-node only |
+| Tier | Price | What it is |
+|---|---:|---|
+| **OSS Core** | Free | The entire platform. No feature gates. |
+| **Enterprise Support** | $25K–$80K/yr | SLA support, compliance evidence packs, upgrade assistance (Starter / Standard / Enterprise) |
+| **Fixed-Scope Services** | $15K–$50K | Cloud Governance Sprint (2 wk), Migration Planning Package, Compliance Audit Acceleration |
+| **FinOps outcome option** | 10% of realized savings | Measured at month 6 against the platform's own savings report |
+
+Details and tier contents: [PRICING.md](PRICING.md).
 
 ---
 
-## Repository Structure
+## Roadmap
 
-```
-enterprise-ai-accelerator/
-├── core/                       Anthropic optimization layer
-│   ├── ai_client.py            Single Anthropic wrapper with caching + tool-use
-│   ├── model_router.py         Complexity-based model selection
-│   ├── result_cache.py         SQLite result cache
-│   ├── batch_coalescer.py      Auto-coalescing Batch API submitter
-│   ├── streaming.py            SSE streaming handler
-│   ├── files_api.py            Files API wrapper
-│   ├── interleaved_thinking.py Interleaved thinking+tools loop
-│   ├── cost_estimator.py       Full cost estimator
-│   ├── telemetry.py            OTEL tracer setup
-│   ├── prometheus_exporter.py  8 Prometheus metrics
-│   └── logging.py              structlog JSON logging
-├── cloud_iq/                   AWS infrastructure analysis
-│   └── adapters/               Multi-cloud discovery
-│       ├── aws.py              boto3 discovery
-│       ├── azure.py            azure-mgmt discovery
-│       ├── gcp.py              google-cloud discovery
-│       ├── kubernetes.py       kubernetes client discovery
-│       └── unified.py          UnifiedDiscovery.auto()
-├── app_portfolio/              Repository intelligence + 6R scoring
-│   ├── cli.py                  CLI entry point
-│   ├── analyzer.py             Pipeline coordinator
-│   ├── language_detector.py    11-language detector
-│   ├── dependency_scanner.py   9 dep manifest formats
-│   ├── cve_scanner.py          OSV.dev batch CVE scanner
-│   ├── containerization_scorer.py
-│   ├── ci_maturity_scorer.py
-│   ├── test_coverage_scanner.py
-│   └── six_r_scorer.py         Opus 4.7 extended-thinking 6R
-├── migration_scout/            6R classification + wave planning
-│   ├── assessor.py             AI-native 6R workload classifier
-│   ├── dependency_mapper.py    SCC circular dependency resolution
-│   ├── wave_planner.py         Monte Carlo wave planner
-│   ├── tco_calculator.py       3-year TCO with license elimination
-│   ├── batch_classifier.py     Batch API bulk 6R scoring
-│   └── thinking_audit.py       Extended-thinking + Annex IV persistence
-├── policy_guard/               Multi-framework compliance scanner
-│   ├── scanner.py              EU AI Act + HIPAA + SOC2 + PCI-DSS
-│   ├── bias_detector.py        Statistical disparate impact analysis
-│   ├── sarif_exporter.py       SARIF 2.1.0 → GitHub Security tab
-│   ├── incident_response.py    P0–P3 + SLA tracking
-│   └── thinking_audit.py       Extended-thinking audit path
-├── iac_security/               IaC security + SBOM + drift
-│   ├── terraform_parser.py     Terraform HCL parser
-│   ├── pulumi_parser.py        Pulumi parser
-│   ├── policies.py             20 built-in policies
-│   ├── sbom_generator.py       CycloneDX SBOM generator
-│   ├── osv_scanner.py          OSV.dev batched CVE scanner
-│   ├── drift_detector.py       IaC vs. cloud state diff
-│   └── sarif_exporter.py       SARIF 2.1.0 exporter
-├── finops_intelligence/        Cloud cost intelligence
-│   ├── cur_ingestor.py         AWS CUR ingestion via DuckDB
-│   ├── ri_sp_optimizer.py      RI/SP optimizer (80% coverage cap)
-│   ├── right_sizer.py          CloudWatch + instance catalog right-sizer
-│   ├── carbon_tracker.py       Carbon emissions (open coefficients)
-│   └── savings_reporter.py     Executive savings report
-├── ai_audit_trail/             EU AI Act logging + NIST AI RMF
-│   ├── chain.py                SHA-256 Merkle hash chain
-│   ├── eu_ai_act.py            Article 12/62 compliance engine
-│   ├── nist_rmf.py             GOVERN/MAP/MEASURE/MANAGE scoring
-│   ├── incident_manager.py     P0–P3 + Article 62 deadline tracking
-│   ├── decorators.py           Drop-in SDK integrations (5 frameworks)
-│   └── sarif_exporter.py       SARIF 2.1.0 export
-├── executive_chat/             1M-context CTO Q&A
-├── compliance_citations/       Citations API grounded compliance evidence
-├── integrations/               Notification + ticketing adapters
-│   ├── dispatcher.py           FindingRouter + WebhookDispatcher
-│   ├── slack.py / jira.py / servicenow.py / github_app.py
-│   ├── teams.py / pagerduty.py / smtp_email.py / github_issue.py
-├── observability/              OTEL + Prometheus + Grafana
-│   ├── grafana_dashboards/     eaa_platform + eaa_cost dashboards
-│   ├── otel-collector.yaml     OTEL Collector config
-│   └── docker-compose.obs.yaml One-command observability stack
-├── agent_ops/                  Multi-agent orchestrator
-├── risk_aggregator.py          Cross-module 0–100 risk score
-└── mcp_server.py               18 MCP tools + 4 resources + 4 prompts (stdio + SSE)
-└── mcp_transports.py           Transport helpers: run_stdio(), run_sse(), SSE health endpoint
-```
+Honest status — see [ROADMAP.md](ROADMAP.md) for the full list with rationale.
+
+| Item | Status |
+|---|---|
+| Multi-tenant RBAC | Not built — single-org today |
+| Web app UI | Streamlit compliance dashboard ships today; full app UI not built |
+| SOC 2 Type II (of this platform) | Not started — observation period is the next step |
+| Hyperscaler marketplace listings | Not listed yet |
+| Claude Agent SDK migration | Planned — orchestrator hardening (retries/budgets/checkpoints/HITL) landed natively in v0.4.0 |
+| A2A protocol interop | Planned |
+| GraphRAG knowledge module | Planned |
+| Multi-region / HA deployment | Not documented — single-node only |
 
 ---
 
@@ -454,129 +344,91 @@ python -m app_portfolio.cli .
 # AI governance + EU AI Act (3 enterprise scenarios, no credentials)
 python -m ai_audit_trail.demo
 
-# $340K/month cloud spend optimization ($89.4K/month identified)
+# Cloud spend optimization demo
 python -m finops_intelligence.demo
 
-# 75-workload migration plan, Oracle $420K/yr license elimination
+# 75-workload migration plan demo
 python -m migration_scout.demo
 
-# EU AI Act compliance scanner (Fortune 500 hiring AI + healthcare AI)
+# 11-framework compliance scanner demo
 python -m policy_guard.demo
 
-# AWS infrastructure analysis ($47,200/month waste identified)
+# AWS infrastructure analysis demo
 python -m cloud_iq.demo
 
-# Bring up full observability stack (Prometheus + Grafana + Jaeger)
+# ML-BOM for the platform's own model stack
+python -m iac_security mlbom
+
+# Offline eval suite (the CI quality gate)
+python -m evals.run --offline
+
+# Full observability stack (Prometheus + Grafana + Jaeger)
 cd observability && docker compose -f docker-compose.obs.yaml up -d
-
-# MCP server — stdio (Claude Code / Claude Desktop local)
-python mcp_server.py
-
-# MCP server — SSE transport (remote / CI agent access)
-python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
-
-# Health check (SSE mode only)
-curl http://localhost:8765/health
 ```
 
-See [docs/DEMO.md](docs/DEMO.md) for the 5-minute exec demo, 15-minute technical walkthrough, and 3-minute interview pitch.
+All demos run offline by default — demo mode performs no billable API calls. See [docs/DEMO.md](docs/DEMO.md) for the 5-minute exec demo and 15-minute technical walkthrough.
+
+---
+
+## MCP Surface
+
+Every module is drivable from Claude Code / Claude Desktop / any MCP client: 19 tools, plus resources and prompts.
+
+### Transports
+
+```bash
+# stdio (default — Claude Code, Claude Desktop local)
+python mcp_server.py
+
+# Streamable HTTP (recommended network transport, MCP spec 2025-03-26+)
+python mcp_server.py --transport streamable-http --host 0.0.0.0 --port 8765
+
+# SSE (legacy — superseded by streamable-http)
+python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
+```
+
+- **Auth:** set `EAA_MCP_AUTH_TOKEN` to require `Authorization: Bearer` on network transports.
+- **Audited by design:** every tool invocation is hashed and appended to the platform's Merkle chain (`EAA_MCP_AUDIT`, default on).
+- Client config example: [mcp-config-example.json](mcp-config-example.json).
 
 ---
 
 ## Why This Matters Now
 
-**EU AI Act — August 2, 2026:** High-risk AI system obligations (Articles 8–25) become enforceable. Logging, documentation, human oversight, and incident reporting requirements apply. Article 62 requires serious incident reporting within 72 hours. Non-compliance: up to 3% of global annual turnover.
+**EU AI Act:** GPAI obligations are already in force (August 2025); high-risk Annex III obligations land December 2, 2027 after the Digital Omnibus deferral — and Annex IV evidence packs take 12–18 months to assemble, which makes 2026 the build year. US state law is moving faster: Texas TRAIGA took effect January 1, 2026; Colorado's SB 26-189 takes effect January 1, 2027.
 
-**AWS Migration Hub closure — November 7, 2025:** The standard OSS migration planning tool is gone. AWS Transform covers only .NET and mainframe. The market gap for general-purpose migration intelligence is open.
+**The consulting trust gap is open:** post-Deloitte-Australia, "show me your reasoning" is the first question in AI procurement. Tamper-evident evidence is the answer this platform was built around.
 
-**FOCUS 1.3 adoption:** Now the basis for multi-cloud billing normalization across enterprise FinOps platforms. Organizations without FOCUS-compliant tooling face manual data transformation across every cloud billing export.
+**AWS Migration Hub closed November 7, 2025:** the standard OSS migration planning path is gone; the general-purpose migration intelligence gap remains open.
+
+**FOCUS 1.4 (June 2026)** standardizes AI token economics in FinOps data — this platform's FOCUS 1.3 conformance and token-level cost telemetry are the on-ramp.
 
 ---
 
 ## Requirements
 
 ```
-Python 3.11+
+Python 3.11–3.13
 anthropic>=0.69.0
+mcp>=1.27.0
 ```
 
-Full dependency list: `requirements.txt`. Key additions in v0.2.0: `boto3`, `azure-mgmt-compute`, `azure-mgmt-resource`, `google-cloud-compute`, `kubernetes`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp`, `prometheus-client`, `python-hcl2`, `cyclonedx-python-lib`, `packageurl-python`, `PyJWT`, `cryptography`, `slack-sdk`, `jira`.
+Full dependency list: `requirements.txt`. All dependencies are OSS (Apache 2.0 / MIT). Zero paid SaaS services.
 
-All dependencies are OSS (Apache 2.0 / MIT). Zero paid SaaS services.
+> Note: Python 3.14 is not yet supported (a transitive dependency lacks 3.14 wheels).
 
 ---
 
-## MCP 2.0 Surface
+## Project Governance
 
-The MCP server exposes three capability tiers:
-
-### Tools (18 — callable by the client)
-
-| Tool | Module |
-|------|--------|
-| `audit_log_decision`, `get_compliance_status`, `export_sarif`, `get_audit_chain` | AIAuditTrail |
-| `cloudiq_analyze_environment` | CloudIQ |
-| `migration_assess_workload`, `migration_bulk_classify`, `migration_generate_wave_plan` | MigrationScout |
-| `finops_explain_anomaly`, `finops_bulk_explain` | FinOps |
-| `policyguard_scan_iac`, `policyguard_audit_policy`, `policyguard_audit_bias` | PolicyGuard |
-| `executive_ask` | ExecutiveChat |
-| `compliance_cite_question` | ComplianceCitations |
-| `list_models`, `platform_capabilities`, `risk_aggregate_score` | Platform |
-
-### Resources (4 — streamable, not inlined)
-
-| URI | Content |
-|-----|---------|
-| `audit-trail://recent` | Last 50 audit decisions as JSON |
-| `audit-trail://chain-verify` | Merkle chain verification result |
-| `scan-results://{scan_id}` | Full IaC scan result by ID (populated by `policyguard_scan_iac`) |
-| `compliance://frameworks` | Supported regulatory frameworks (7 total) |
-| `policy-catalog://iac` | 20-policy IaC catalog (CIS AWS, SOC 2, GDPR, PCI-DSS) |
-
-### Prompts (4 — reusable templates)
-
-| Prompt | Args | Purpose |
-|--------|------|---------|
-| `audit-terraform` | `path`, `environment` | Scan + narrate IaC findings |
-| `classify-workload-6r` | `workload_json` | 6R classification with reasoning trace |
-| `assess-bias` | `dataset_summary` | EU AI Act Article 10 bias audit |
-| `executive-briefing` | `scan_results_json` | Board-level CTO briefing |
-
-### Transports
-
-```
-# stdio (default — Claude Code, Claude Desktop local)
-python mcp_server.py
-
-# SSE (network-accessible — remote Claude Desktop, CI pipelines)
-python mcp_server.py --transport sse --host 0.0.0.0 --port 8765
-```
-
-Claude Desktop SSE config:
-
-```json
-{
-  "mcpServers": {
-    "enterprise-ai-accelerator": {
-      "url": "http://localhost:8765/sse",
-      "transport": "sse"
-    }
-  }
-}
-```
-
-SSE mode exposes `GET /health`:
-
-```json
-{"status": "ok", "tools": 18, "resources": 5, "prompts": 4, "uptime_s": 42.1}
-```
+This is a solo-maintained project built to enterprise-reviewable standards: [GOVERNANCE.md](GOVERNANCE.md) covers the maintainer model, release cadence, and bus-factor mitigations (MIT license = fork-safe; documented architecture; offline test + eval suites; zero proprietary dependencies). Security policy: [SECURITY.md](SECURITY.md). Vulnerability reports are answered within 72 hours.
 
 ---
 
 ## Author
 
 **Hunter Spence**
-4 years at Accenture, Infrastructure Transformation (CL-9). Delivered cloud migration engagements across enterprise clients. AWS Certified Cloud Practitioner.
+4 years at Accenture, Infrastructure Transformation (CL-9). Delivered cloud migration engagements across enterprise clients. AWS Certified Cloud Practitioner. Built this because the gap between what Big-6 firms charge and what the technology can do autonomously is no longer defensible.
 
 [LinkedIn](https://linkedin.com/in/hunterspence) · [Email](mailto:hunter@vantaweb.io) · [VantaWeb](https://vantaweb.io)
 
@@ -584,12 +436,10 @@ SSE mode exposes `GET /health`:
 
 ## Contributing
 
-Pull requests welcome. See `CONTRIBUTING.md` for the contribution guide and code style.
+Pull requests welcome. See `CONTRIBUTING.md` for the contribution guide and code style. CI runs the offline test suite and the eval gate on every PR.
 
 ---
 
 ## License
 
 MIT. Use it, extend it, white-label it. See [LICENSE](LICENSE).
-
-*Built because the gap between what Big 4 firms charge and what the technology can do autonomously is no longer defensible.*
