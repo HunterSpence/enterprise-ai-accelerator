@@ -38,12 +38,11 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import os
 import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 _DEFAULT_DB_PATH = Path.home() / ".eaa_cache" / "results.db"
 _DEFAULT_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
@@ -178,7 +177,7 @@ class ResultCache:
         )
         return hashlib.sha256(payload.encode()).hexdigest()
 
-    async def get(self, key: str) -> Optional[CachedResult]:
+    async def get(self, key: str) -> CachedResult | None:
         """Return a cached result or None if absent / expired.
 
         Also updates ``last_hit_at`` and ``hit_count`` on a hit.
@@ -186,7 +185,7 @@ class ResultCache:
         await self._ensure_init()
         now = time.time()
 
-        def _read(conn: sqlite3.Connection) -> Optional[tuple]:
+        def _read(conn: sqlite3.Connection) -> tuple | None:
             row = conn.execute(
                 """
                 SELECT response_json, input_tokens, output_tokens,

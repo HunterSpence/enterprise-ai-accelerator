@@ -13,8 +13,9 @@ Single Anthropic wrapper. All platform modules use `AIClient` — no direct `ant
 Features baked in:
 - 5-minute ephemeral prompt cache on all system prompts
 - 1-hour prompt cache for `executive_chat` briefings
-- Native tool-use (schema-validated; no regex JSON parsing)
-- Extended-thinking support (`thinking_budget_tokens` parameter)
+- Structured outputs via `output_config.format` (schema-guaranteed JSON; no regex parsing)
+- Adaptive thinking with effort levels (`effort="low|medium|high|xhigh|max"`)
+- Refusal handling: typed `RefusalError` + server-side fallback to Opus 4.8 on Fable 5 policy declines
 - OTEL span creation on every call (via `_hooks.py`)
 - Prometheus metric increments on every call
 - Structured log emission on every call
@@ -122,7 +123,7 @@ loop = InterleavedThinkingLoop(client, tools=[...])
 result = await loop.run(
     system="You are a migration planning expert.",
     user_message="Plan the migration for this 75-workload inventory...",
-    thinking_budget_tokens=16000,
+    effort="xhigh",
     persist_traces=True,  # write reasoning to AIAuditTrail
 )
 ```

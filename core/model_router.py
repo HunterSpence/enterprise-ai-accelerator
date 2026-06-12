@@ -13,11 +13,16 @@ WIRING (one-liner):
 
 Routing precedence (first match wins):
     1. override_model — explicit caller override
-    2. requires_annex_iv_audit=True → Fable 5 (audit-grade reasoning required)
-    3. token_count_estimate > 400_000 → Fable 5 (only model with 1M context)
-    4. needs_executive_prose=True → Sonnet 4.6
-    5. kind in {classification, extraction, simple_summary} → Haiku 4.5
-    6. default → Sonnet 4.6
+    2. requires_annex_iv_audit=True → Fable 5 @ xhigh (audit-grade reasoning)
+    3. token_count_estimate > 400_000 → Sonnet 4.6 @ high (cheapest 1M-context
+       model — Sonnet 4.6 matches Fable 5's window at 30% of the input price)
+    4. needs_executive_prose=True → Sonnet 4.6 @ medium
+    5. kind in {classification, extraction, simple_summary} AND the task fits
+       Haiku's 200K window → Haiku 4.5
+    6. default → Sonnet 4.6 @ medium
+
+Each decision also carries an ``output_config.effort`` level — the modern
+depth/cost control (thinking-token budgets are gone on Fable 5 / Opus 4.7+).
 
 Cost assumptions ($/1M tokens, used only for savings estimates):
     Fable 5:    $10 input / $50 output
@@ -29,9 +34,17 @@ from __future__ import annotations
 
 import threading
 from dataclasses import dataclass, field
-from typing import Literal, Optional
 
-from core.models import MODEL_FABLE_5, MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
+from core.models import (
+    CTX_WINDOW_HAIKU_4_5,
+    EFFORT_HIGH,
+    EFFORT_MEDIUM,
+    EFFORT_XHIGH,
+    MODEL_FABLE_5,
+    MODEL_HAIKU_4_5,
+    MODEL_OPUS_4_7,
+    MODEL_SONNET_4_6,
+)
 
 # ---------------------------------------------------------------------------
 # Task kinds that are cheap enough for Haiku
@@ -56,8 +69,13 @@ _COST_TABLE[MODEL_OPUS_4_7] = _COST_TABLE[MODEL_FABLE_5]
 # Assumed output/input ratio for savings estimates (conservative: 25% output)
 _OUTPUT_RATIO = 0.25
 
-# Threshold above which only Opus has enough context window
+# Threshold above which the task is routed to a 1M-context model
+# (Sonnet 4.6 — the cheapest model with a 1M window as of June 2026).
 _OPUS_CONTEXT_THRESHOLD: int = 400_000
+
+# Tasks bigger than ~90% of Haiku's 200K window must never route to Haiku,
+# regardless of task kind.
+_HAIKU_CONTEXT_CEILING: int = int(CTX_WINDOW_HAIKU_4_5 * 0.9)
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +113,21 @@ class RoutingTask:
     token_count_estimate: int = 0
     requires_annex_iv_audit: bool = False
     needs_executive_prose: bool = False
-    override_model: Optional[str] = None
+    override_model: str | None = None
     metadata: dict = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class RoutingDecision:
+    """A routed (model, effort) pair.
+
+    ``effort`` is the recommended ``output_config.effort`` level for the
+    call — None for models that do not support the effort parameter
+    (Haiku 4.5 errors on it).
+    """
+
+    model: str
+    effort: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -156,15 +187,23 @@ class ModelRouter:
 
         Precedence (first match wins):
         1. explicit override
-        2. requires_annex_iv_audit → Opus
-        3. token_count_estimate > threshold → Opus
+        2. requires_annex_iv_audit → Fable 5
+        3. token_count_estimate > threshold → Sonnet (cheapest 1M context)
         4. needs_executive_prose → Sonnet
-        5. kind in haiku_kinds → Haiku
+        5. kind in haiku_kinds (and fits Haiku's window) → Haiku
         6. default → Sonnet
         """
-        model = self._pick(task)
-        self._record(model, task.token_count_estimate)
-        return model
+        return self.route_decision(task).model
+
+    def route_decision(self, task: RoutingTask) -> RoutingDecision:
+        """Return the full (model, effort) decision for ``task``.
+
+        Same precedence as :meth:`route`, plus the recommended
+        ``output_config.effort`` level for the chosen model.
+        """
+        decision = self._pick(task)
+        self._record(decision.model, task.token_count_estimate)
+        return decision
 
     def stats(self) -> dict[str, object]:
         """Return per-model call counts + estimated cost savings vs always-Opus.
@@ -223,18 +262,25 @@ class ModelRouter:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _pick(self, task: RoutingTask) -> str:
+    def _pick(self, task: RoutingTask) -> RoutingDecision:
         if task.override_model:
-            return task.override_model
+            return RoutingDecision(task.override_model, EFFORT_HIGH)
         if task.requires_annex_iv_audit:
-            return MODEL_FABLE_5
+            # Audit-grade reasoning: flagship at agentic-tier effort.
+            return RoutingDecision(MODEL_FABLE_5, EFFORT_XHIGH)
         if task.token_count_estimate > self._opus_threshold:
-            return MODEL_FABLE_5
+            # Long-context: Sonnet 4.6 has the same 1M window as Fable 5 at
+            # 30% of the input price — cheapest capable model wins.
+            return RoutingDecision(MODEL_SONNET_4_6, EFFORT_HIGH)
         if task.needs_executive_prose:
-            return MODEL_SONNET_4_6
-        if task.kind in self._haiku_kinds:
-            return MODEL_HAIKU_4_5
-        return MODEL_SONNET_4_6
+            return RoutingDecision(MODEL_SONNET_4_6, EFFORT_MEDIUM)
+        if (
+            task.kind in self._haiku_kinds
+            and task.token_count_estimate <= _HAIKU_CONTEXT_CEILING
+        ):
+            # Haiku 4.5 does not support the effort parameter.
+            return RoutingDecision(MODEL_HAIKU_4_5, None)
+        return RoutingDecision(MODEL_SONNET_4_6, EFFORT_MEDIUM)
 
     def _record(self, model: str, token_estimate: int) -> None:
         with self._lock:

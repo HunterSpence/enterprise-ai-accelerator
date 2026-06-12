@@ -2,8 +2,10 @@
 core/interleaved_thinking.py
 =============================
 
-Demonstrates Anthropic's interleaved extended-thinking + tool-use pattern
-for multi-step reasoning over tools with full audit-trail preservation.
+Adaptive-thinking + tool-use loop for multi-step reasoning over tools with
+full audit-trail preservation. Adaptive thinking interleaves reasoning
+between tool calls automatically — no beta header, no token budget; depth is
+controlled with ``effort``.
 
 WIRING (one-liner):
     from core.interleaved_thinking import interleaved_reason
@@ -13,32 +15,46 @@ WIRING (one-liner):
         tool_executor=my_async_tool_fn,   # async fn(name, input) -> str
     )
     print(result.final_text)
-    print(result.thinking_blocks)  # full reasoning trace for Annex IV logging
+    print(result.thinking_blocks)  # summarized reasoning trace for Annex IV logging
 
-Protocol (from Anthropic's interleaved-thinking docs):
-    1. Send messages with thinking enabled
+Protocol:
+    1. Send messages with thinking={"type": "adaptive", "display": "summarized"}
     2. Model may respond with thinking + text + tool_use blocks
     3. Extract all content blocks from the response
-    4. If tool_use block found:
+    4. If stop_reason == "refusal" → raise RefusalError (Fable 5 classifiers)
+       If stop_reason == "pause_turn" → re-send to resume (server-side tools)
+    5. If tool_use block found:
        a. Execute the tool
        b. Append model's FULL assistant content block list to messages
-          (thinking blocks MUST be included — Anthropic requires this)
+          (thinking blocks MUST be passed back exactly as received —
+          including blocks whose text is empty)
        c. Append tool_result message
        d. Repeat from step 1
-    5. If stop_reason == "end_turn" or no tool_use → return result
+    6. If stop_reason == "end_turn" or no tool_use → return result
 
 Key rule: thinking blocks MUST be preserved in the assistant turn and passed
-back on subsequent calls. Dropping them causes a 400 error from Anthropic.
+back unchanged on subsequent calls. Modifying or dropping them causes a 400.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import warnings
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from typing import Any
 
-from core.models import MODEL_OPUS_4_7, THINKING_BUDGET_HIGH
+from core.models import (
+    DEFAULT_MAX_TOKENS,
+    EFFORT_HIGH,
+    MODEL_COORDINATOR,
+    effort_for_budget,
+    is_fable,
+    supports_adaptive_thinking,
+    supports_effort,
+    validate_effort,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,14 +100,18 @@ async def interleaved_reason(
     system: str,
     user: str,
     tools: list[dict[str, Any]],
-    tool_executor: Optional[Callable[[str, dict[str, Any]], Any]] = None,
+    tool_executor: Callable[[str, dict[str, Any]], Any] | None = None,
     max_iterations: int = 10,
-    thinking_budget: int = THINKING_BUDGET_HIGH,
-    model: Optional[str] = None,
-    max_tokens: int = 4096,
+    effort: str = EFFORT_HIGH,
+    thinking_budget: int = 0,  # deprecated → effort
+    model: str | None = None,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
     cache_system: bool = True,
 ) -> InterleavedResult:
-    """Run an interleaved extended-thinking + tool-use loop.
+    """Run an adaptive-thinking + tool-use loop.
+
+    Adaptive thinking automatically interleaves reasoning between tool calls
+    (no beta header, no token budget); ``effort`` controls the depth.
 
     Parameters
     ----------
@@ -111,13 +131,18 @@ async def interleaved_reason(
         testing the thinking loop structure without real tool backends.
     max_iterations:
         Hard cap on reasoning → tool → reasoning cycles (default 10).
+    effort:
+        Effort level for output_config ("low"/"medium"/"high"/"xhigh"/"max").
+        Default "high" — agentic loops respond well to "xhigh" when accuracy
+        matters more than cost.
     thinking_budget:
-        Token budget for extended thinking per iteration.
+        DEPRECATED. Rejected by Fable 5 / Opus 4.7+; a positive value is
+        translated to the nearest effort level.
     model:
-        Model ID. Defaults to MODEL_OPUS_4_7 (only Opus fully supports
-        interleaved thinking with tool use as of 2026-04).
+        Model ID. Defaults to MODEL_COORDINATOR (Fable 5).
     max_tokens:
-        Max output tokens per API call (must be > thinking_budget).
+        Max output tokens per API call (adaptive thinking spends from this
+        cap too, so keep it generous).
     cache_system:
         Wrap system in ephemeral cache block (default True).
 
@@ -126,8 +151,18 @@ async def interleaved_reason(
     InterleavedResult
         Accumulated final text, tool calls, thinking traces, and token totals.
     """
-    model = model or MODEL_OPUS_4_7
+    model = model or MODEL_COORDINATOR
     executor = tool_executor or _noop_tool_executor
+
+    if thinking_budget > 0:
+        warnings.warn(
+            "thinking_budget is deprecated (rejected on Fable 5 / Opus 4.7+); "
+            "pass effort='low|medium|high|xhigh|max' instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        effort = effort_for_budget(thinking_budget)
+    effort = validate_effort(effort)
 
     # Build system blocks
     if cache_system:
@@ -137,9 +172,14 @@ async def interleaved_reason(
     else:
         system_blocks = system
 
-    # Ensure max_tokens > thinking_budget (Anthropic requirement)
-    if max_tokens <= thinking_budget:
-        max_tokens = thinking_budget + 2048
+    create_kwargs: dict[str, Any] = {}
+    if supports_adaptive_thinking(model):
+        if is_fable(model) or "opus-4-7" in model or "opus-4-8" in model:
+            create_kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+        else:
+            create_kwargs["thinking"] = {"type": "adaptive"}
+    if supports_effort(model):
+        create_kwargs["output_config"] = {"effort": effort}
 
     # Conversation state
     messages: list[dict[str, Any]] = [{"role": "user", "content": user}]
@@ -153,10 +193,10 @@ async def interleaved_reason(
         response = await ai.raw.messages.create(
             model=model,
             max_tokens=max_tokens,
-            thinking={"type": "enabled", "budget_tokens": thinking_budget},
             system=system_blocks,
             messages=messages,
             tools=tools,
+            **create_kwargs,
         )
 
         # Accumulate token usage
@@ -187,6 +227,25 @@ async def interleaved_reason(
 
         # Check stop condition
         stop_reason = getattr(response, "stop_reason", None) or ""
+
+        if stop_reason == "refusal":
+            # Safety classifiers declined (HTTP 200, not an exception) —
+            # surface as a typed error; partial output should be discarded.
+            from core.ai_client import RefusalError
+
+            details = getattr(response, "stop_details", None)
+            raise RefusalError(
+                category=getattr(details, "category", None) if details else None,
+                explanation=getattr(details, "explanation", None) if details else None,
+                model=model,
+            )
+
+        if stop_reason == "pause_turn":
+            # Server-side tool loop paused — re-send to resume. Do NOT add a
+            # "continue" user message; the API detects the trailing state.
+            assistant_content = _serialize_blocks(response_content_blocks)
+            messages.append({"role": "assistant", "content": assistant_content})
+            continue
 
         if not tool_use_blocks or stop_reason == "end_turn":
             # Final response — gather text and exit loop

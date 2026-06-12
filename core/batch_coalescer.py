@@ -28,12 +28,11 @@ Pricing: 50% off vs real-time API when using messages.batches.create.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +74,7 @@ class BatchableRequest:
     system: str
     user: str
     custom_id: str = ""
-    schema: Optional[dict[str, Any]] = None
+    schema: dict[str, Any] | None = None
     tool_name: str = "return_result"
     max_tokens: int = 1024
     extra: dict[str, Any] = field(default_factory=dict)
@@ -149,7 +148,7 @@ class BatchCoalescer:
         self._in_flight_lock = asyncio.Lock()
 
         self._closed = False
-        self._flush_task: Optional[asyncio.Task] = None
+        self._flush_task: asyncio.Task | None = None
         self._stats = {"submitted": 0, "flushed_batches": 0, "errors": 0}
 
     # ------------------------------------------------------------------

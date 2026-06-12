@@ -11,6 +11,83 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.5.0] -- 2026-06-12
+
+The v0.4.0 release moved the model IDs to Fable 5 but kept Opus 4.6-era request
+shapes -- three of which Fable 5 rejects or silently degrades. v0.5.0 completes
+the migration: every call path is now on the June-2026 API surface, with refusal
+resilience and model-aware budgeting on top. **Zero new runtime dependencies.**
+
+### Fixed -- Fable 5 API correctness (production-breaking before this release)
+- `core/ai_client.py`, `core/streaming.py`, `core/interleaved_thinking.py` -- the
+  legacy `thinking={"type": "enabled", "budget_tokens": N}` shape returned **HTTP 400
+  on every Fable 5 call** (the flagship thinking path was non-functional in v0.4.0).
+  All paths now use adaptive thinking; depth is controlled via `output_config.effort`.
+- Annex IV reasoning traces were **silently empty** on Fable 5 (thinking display
+  defaults to omitted). All audit-trail paths now send
+  `thinking={"type": "adaptive", "display": "summarized"}` -- the summarized trace
+  is what gets persisted as Article 12 evidence (the raw chain of thought is never
+  returned by the API on Fable 5).
+- `ThinkingResponse.thinking_tokens` was incorrectly populated from
+  `cache_read_input_tokens`; thinking spend is folded into `output_tokens` by the
+  API and the field now reports 0 (kept for backward compatibility).
+- `core/models.py` -- `CTX_WINDOW_SONNET_4_6` corrected to 1M (was 200K; Sonnet 4.6
+  has a 1M window).
+- `docs/FABLE_5_UPGRADE.md` -- corrected Opus 4.7 pricing ($5/$25, not $15/$75),
+  the fabricated `claude-opus-4-7-20250514` ID, and the inverted "Fable 5 is
+  cheaper than Opus 4.7" claim.
+
+### Changed -- structured outputs replace forced tool calls
+- `AIClient.structured()` / `structured_with_thinking()` now use **structured
+  outputs** (`output_config.format` with a JSON schema): generation is constrained
+  server-side so the response text is guaranteed-valid JSON, and -- unlike forced
+  `tool_choice` -- the mechanism is compatible with thinking, which is always on
+  for Fable 5. `tool_name`/`tool_description` parameters are retained as no-ops.
+- Schemas are normalized automatically (`additionalProperties: false` injected
+  recursively). `migration_scout`'s open-map `evidence_weight` schema was rewritten
+  as an `{attribute, weight}` array (strict-mode compatible) and folded back into a
+  dict after parsing.
+- Default `max_tokens` raised to 16,000 on non-streaming calls (adaptive thinking
+  spends from the same cap; 1-2K ceilings starve it) and 64,000 on streaming.
+
+### Added -- refusal resilience (server-side fallbacks)
+- Fable 5 safety classifiers can decline a request as a *successful* HTTP 200 with
+  `stop_reason: "refusal"`. The client now (1) routes Fable 5 calls through the
+  server-side fallbacks beta so a refusal is retried on **Opus 4.8 in the same
+  round trip** (`MODEL_FALLBACK`, env-overridable; kill-switch
+  `EAA_ENABLE_FALLBACKS=0`), and (2) raises a typed `RefusalError` (with
+  `stop_details` category/explanation for the audit trail) when the whole chain
+  declines. `StructuredResponse.served_by_fallback` reports when a fallback model
+  produced the answer. Graceful degradation on providers that reject the beta.
+- `core/interleaved_thinking.py` -- handles `refusal` (typed error) and
+  `pause_turn` (server-tool resume) stop reasons in the agentic loop.
+
+### Added -- effort-aware routing + model-aware budgets
+- `core/models.py` -- `EFFORT_LOW/MEDIUM/HIGH/XHIGH/MAX`, `effort_for_budget()`
+  translation, `MODEL_FALLBACK`, beta-header constants
+  (`BETA_SERVER_SIDE_FALLBACK`, `BETA_TASK_BUDGETS`, `BETA_COMPACTION`), capability
+  helpers (`is_fable`, `supports_effort`, `supports_adaptive_thinking`), and
+  max-output-token reference values. `describe_model()` now reports adaptive
+  thinking, effort, structured outputs, always-on-thinking, and refusal capability.
+- `core/model_router.py` -- `route_decision()` returns a `RoutingDecision`
+  (model + recommended effort). Routing fixes: long-context tasks (>400K) now route
+  to **Sonnet 4.6** (same 1M window as Fable 5 at 30% of the input price), and
+  Haiku-eligible task kinds that exceed Haiku's 200K window are promoted to Sonnet
+  instead of overflowing.
+- `agent_ops/orchestrator.py` -- pipelines run under `max_tokens_budget` now also
+  pass an **API-native task budget** (`output_config.task_budget`, beta, min 20K)
+  so the model sees a running countdown and self-moderates -- complementing
+  BudgetGuard's hard client-side abort.
+- `AIClient.count_tokens()` -- model-specific token counting via the
+  count_tokens endpoint (never tiktoken).
+
+### Deprecated
+- `THINKING_BUDGET_*` constants and every `budget_tokens` / `thinking_budget`
+  kwarg -- still accepted, translated to the nearest effort level with a
+  `DeprecationWarning`. Removal targeted for v0.6.0.
+
+---
+
 ## [0.4.0] — 2026-06-10
 
 Six parallel capability tracks: model refresh to Claude Fable 5, a first-party offline eval
@@ -28,7 +105,7 @@ code; `mcp>=1.27.0` (already a runtime requirement) is now correctly declared in
 - **Fixed:** `cloud_iq` demo mode made live (billable) API calls — demo mode now never calls the Anthropic API; the two affected tests pass offline
 - `cloud_iq/models.py` — Pydantic V1 `@validator` migrated to V2 `@field_validator`
 - `finops_intelligence/README.md` — FOCUS 1.4 (June 2026, AI token-economics columns) noted on roadmap; exporter remains FOCUS 1.3-conformant
-- **Tokenizer caveat:** the Fable 5 tokenizer counts up to ~35% more tokens for identical text than the Opus 4.7-era tokenizer; pre-v0.4.0 benchmark token counts and dollar figures are stale. See `docs/FABLE_5_UPGRADE.md`.
+- **Tokenizer caveat (corrected in v0.5.0):** Fable 5 shares the Opus 4.7/4.8-era tokenizer; counts are roughly unchanged vs Opus 4.7/4.8. The ~35% inflation applies only when comparing against pre-Opus-4.7 (Sonnet/Haiku-era) measurements -- pre-v0.4.0 benchmark token counts and dollar figures remain stale for that reason. See `docs/FABLE_5_UPGRADE.md`.
 
 ### Added — Eval Harness + CI (W2)
 - `evals/` — first-party, offline-first eval harness (no third-party eval dependency): JSONL golden datasets (`six_r_classification` 23 cases, `iac_policy_detection` 20 cases incl. true-negatives, `prompt_injection_redteam` 25 cases), deterministic scorers, per-suite thresholds, JSON + markdown reports

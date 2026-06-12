@@ -57,9 +57,9 @@ FastAPI metrics mount:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Any
-
+from typing import Any
 
 # ---------------------------------------------------------------------------
 # Event dataclass
@@ -95,7 +95,7 @@ class LLMCallEvent:
         module: str,
         latency_seconds: float = 0.0,
         outcome: str = "success",
-    ) -> "LLMCallEvent":
+    ) -> LLMCallEvent:
         """Convenience constructor from a ``StructuredResponse``."""
         return cls(
             model=getattr(response, "model", "unknown"),
@@ -117,7 +117,7 @@ class LLMCallEvent:
         module: str,
         latency_seconds: float = 0.0,
         outcome: str = "success",
-    ) -> "LLMCallEvent":
+    ) -> LLMCallEvent:
         """Convenience constructor from a ``ThinkingResponse``."""
         return cls(
             model=getattr(response, "model", "unknown"),

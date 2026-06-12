@@ -19,7 +19,7 @@ it. Callers opt in:
     standard = assessor.assess_workload(w)
     auditor = ThinkingAudit()
     audited = await auditor.audit(w, standard)
-    audited.reasoning_trace  # full Opus 4.7 thinking trace
+    audited.reasoning_trace  # Fable 5 summarized reasoning trace
 """
 
 from __future__ import annotations
@@ -28,9 +28,11 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from core import AIClient, MODEL_OPUS_4_7, THINKING_BUDGET_XHIGH
+from core import EFFORT_XHIGH, MODEL_FABLE_5, AIClient
 
-
+# NOTE: structured outputs require additionalProperties=false on every
+# object, so the evidence-weight map is expressed as an array of
+# {attribute, weight} pairs and folded back into a dict after parsing.
 _AUDIT_SCHEMA = {
     "type": "object",
     "required": ["strategy", "rationale", "confidence", "concerns"],
@@ -44,11 +46,20 @@ _AUDIT_SCHEMA = {
         "concerns": {"type": "array", "items": {"type": "string"}},
         "blockers": {"type": "array", "items": {"type": "string"}},
         "evidence_weight": {
-            "type": "object",
-            "additionalProperties": {"type": "number"},
-            "description": "Map of input attribute → weight in the decision (0..1).",
+            "type": "array",
+            "description": "Input attributes and their weight in the decision (0..1).",
+            "items": {
+                "type": "object",
+                "required": ["attribute", "weight"],
+                "properties": {
+                    "attribute": {"type": "string"},
+                    "weight": {"type": "number"},
+                },
+                "additionalProperties": False,
+            },
         },
     },
+    "additionalProperties": False,
 }
 
 
@@ -61,7 +72,7 @@ _SYSTEM_PROMPT = (
     "(2) what the business criticality + license cost + team familiarity imply, "
     "(3) which 6R strategies are plausible and why you rejected the others, "
     "(4) what evidence would change your answer. "
-    "Then return the final classification via the tool."
+    "Then return the final structured classification."
 )
 
 
@@ -77,17 +88,17 @@ class AuditedAssessment:
     blockers: list[str] = field(default_factory=list)
     evidence_weight: dict[str, float] = field(default_factory=dict)
     reasoning_trace: str = ""
-    model: str = MODEL_OPUS_4_7
+    model: str = MODEL_FABLE_5
     input_tokens: int = 0
     output_tokens: int = 0
 
 
 class ThinkingAudit:
-    """Run Opus 4.7 extended-thinking audits on high-stakes 6R classifications."""
+    """Run Fable 5 adaptive-thinking audits on high-stakes 6R classifications."""
 
-    def __init__(self, ai: AIClient | None = None, thinking_budget: int = THINKING_BUDGET_XHIGH) -> None:
-        self._ai = ai or AIClient(default_model=MODEL_OPUS_4_7)
-        self._thinking_budget = thinking_budget
+    def __init__(self, ai: AIClient | None = None, effort: str = EFFORT_XHIGH) -> None:
+        self._ai = ai or AIClient(default_model=MODEL_FABLE_5)
+        self._effort = effort
 
     async def audit(
         self,
@@ -118,11 +129,9 @@ class ThinkingAudit:
             system=_SYSTEM_PROMPT,
             user=user,
             schema=_AUDIT_SCHEMA,
-            tool_name="emit_audited_classification",
-            tool_description="Return the audited 6R classification.",
-            model=MODEL_OPUS_4_7,
-            max_tokens=2048,
-            budget_tokens=self._thinking_budget,
+            model=MODEL_FABLE_5,
+            max_tokens=16_000,
+            effort=self._effort,
         )
 
         data = structured.data
@@ -135,7 +144,7 @@ class ThinkingAudit:
             rationale=data.get("rationale", ""),
             concerns=data.get("concerns", []),
             blockers=data.get("blockers", []),
-            evidence_weight=data.get("evidence_weight", {}),
+            evidence_weight=_weights_to_dict(data.get("evidence_weight", [])),
             reasoning_trace=thinking,
             model=structured.model,
             input_tokens=structured.input_tokens,
@@ -146,6 +155,25 @@ class ThinkingAudit:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _weights_to_dict(weights: Any) -> dict[str, float]:
+    """Fold the schema's [{attribute, weight}] array back into a dict.
+
+    Also accepts a plain dict for backward compatibility with persisted
+    pre-v0.5.0 records.
+    """
+    if isinstance(weights, dict):
+        return {str(k): float(v) for k, v in weights.items() if isinstance(v, (int, float))}
+    result: dict[str, float] = {}
+    if isinstance(weights, list):
+        for entry in weights:
+            if isinstance(entry, dict) and "attribute" in entry and "weight" in entry:
+                try:
+                    result[str(entry["attribute"])] = float(entry["weight"])
+                except (TypeError, ValueError):
+                    continue
+    return result
+
 
 def _serialize_workload(workload: Any) -> dict[str, Any]:
     """Best-effort attribute grab for dataclasses, pydantic models, and dicts."""

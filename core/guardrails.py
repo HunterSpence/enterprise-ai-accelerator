@@ -28,9 +28,9 @@ import base64
 import logging
 import math
 import re
-import unicodedata
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -625,7 +625,7 @@ class GuardedAIClient:
         *,
         engine: GuardrailEngine | None = None,
         budget_guard: BudgetGuard | None = None,
-        on_flag: Callable[[str, "RailResult"], None] | None = None,
+        on_flag: Callable[[str, RailResult], None] | None = None,
     ) -> None:
         self._client = client
         self._engine = engine or GuardrailEngine()

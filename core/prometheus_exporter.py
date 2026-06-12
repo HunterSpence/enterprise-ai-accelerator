@@ -34,7 +34,6 @@ Call helpers from anywhere::
 from __future__ import annotations
 
 import logging
-import os
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -45,13 +44,13 @@ logger = logging.getLogger(__name__)
 
 try:
     from prometheus_client import (
+        CONTENT_TYPE_LATEST,
+        REGISTRY,
         CollectorRegistry,
         Counter,
         Gauge,
         Histogram,
         generate_latest,
-        CONTENT_TYPE_LATEST,
-        REGISTRY,
     )
     _PROMETHEUS_AVAILABLE = True
 except ImportError:

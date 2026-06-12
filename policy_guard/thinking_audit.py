@@ -2,7 +2,7 @@
 policy_guard/thinking_audit.py
 ==============================
 
-Opus 4.7 extended-thinking wrapper around PolicyGuard's bias detection and
+Fable 5 adaptive-thinking wrapper around PolicyGuard's bias detection and
 policy scanning outputs. Produces a full reasoning trace suitable for EU
 AI Act Article 12 Annex IV technical documentation.
 
@@ -28,8 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from core import AIClient, MODEL_OPUS_4_7, THINKING_BUDGET_HIGH
-
+from core import EFFORT_XHIGH, MODEL_FABLE_5, AIClient
 
 _POLICY_AUDIT_SCHEMA = {
     "type": "object",
@@ -94,7 +93,7 @@ _BIAS_AUDIT_SCHEMA = {
 
 _POLICY_SYSTEM_PROMPT = (
     "You are a senior cloud security / compliance auditor reviewing a policy "
-    "decision for a formal audit record. Use extended thinking to walk through "
+    "decision for a formal audit record. Think carefully through "
     "the control text, the evidence supplied, plausible alternative verdicts, "
     "and the scope of impact, before returning the final structured verdict. "
     "Your reasoning trace is persisted as Annex IV technical documentation."
@@ -102,7 +101,7 @@ _POLICY_SYSTEM_PROMPT = (
 
 _BIAS_SYSTEM_PROMPT = (
     "You are a senior ML fairness auditor performing a bias assessment on a "
-    "training dataset or model output. Use extended thinking to consider the "
+    "training dataset or model output. Think carefully through the "
     "multiple fairness definitions (demographic parity, equal opportunity, "
     "calibration) and which groups are at risk. Cite concrete evidence from "
     "the provided statistics. Your reasoning trace is persisted as EU AI Act "
@@ -121,7 +120,7 @@ class PolicyAudit:
     evidence_cited: list[str] = field(default_factory=list)
     blast_radius: dict[str, Any] = field(default_factory=dict)
     reasoning_trace: str = ""
-    model: str = MODEL_OPUS_4_7
+    model: str = MODEL_FABLE_5
     input_tokens: int = 0
     output_tokens: int = 0
 
@@ -137,21 +136,21 @@ class BiasAudit:
     mitigation: list[str] = field(default_factory=list)
     eu_ai_act_article_references: list[str] = field(default_factory=list)
     reasoning_trace: str = ""
-    model: str = MODEL_OPUS_4_7
+    model: str = MODEL_FABLE_5
     input_tokens: int = 0
     output_tokens: int = 0
 
 
 class PolicyThinkingAudit:
-    """Extended-thinking wrapper for high-stakes policy and bias decisions."""
+    """Adaptive-thinking wrapper for high-stakes policy and bias decisions."""
 
     def __init__(
         self,
         ai: AIClient | None = None,
-        thinking_budget: int = THINKING_BUDGET_HIGH,
+        effort: str = EFFORT_XHIGH,
     ) -> None:
-        self._ai = ai or AIClient(default_model=MODEL_OPUS_4_7)
-        self._thinking_budget = thinking_budget
+        self._ai = ai or AIClient(default_model=MODEL_FABLE_5)
+        self._effort = effort
 
     async def audit_policy_decision(
         self,
@@ -176,11 +175,9 @@ class PolicyThinkingAudit:
             system=_POLICY_SYSTEM_PROMPT,
             user=user,
             schema=_POLICY_AUDIT_SCHEMA,
-            tool_name="emit_policy_audit",
-            tool_description="Emit the audited policy decision.",
-            model=MODEL_OPUS_4_7,
-            max_tokens=2048,
-            budget_tokens=self._thinking_budget,
+            model=MODEL_FABLE_5,
+            max_tokens=16_000,
+            effort=self._effort,
         )
 
         data = structured.data
@@ -220,11 +217,9 @@ class PolicyThinkingAudit:
             system=_BIAS_SYSTEM_PROMPT,
             user=user,
             schema=_BIAS_AUDIT_SCHEMA,
-            tool_name="emit_bias_audit",
-            tool_description="Emit the audited bias assessment.",
-            model=MODEL_OPUS_4_7,
-            max_tokens=2048,
-            budget_tokens=self._thinking_budget,
+            model=MODEL_FABLE_5,
+            max_tokens=16_000,
+            effort=self._effort,
         )
 
         data = structured.data
