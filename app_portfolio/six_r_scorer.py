@@ -2,11 +2,10 @@
 app_portfolio/six_r_scorer.py
 ===============================
 
-The killer feature: Opus 4.7 extended-thinking 6R migration strategy scorer.
+The killer feature: Fable 5 adaptive-thinking 6R migration strategy scorer.
 
-Feeds the full PortfolioReport into Claude Opus 4.7 with THINKING_BUDGET_HIGH
-(16k tokens of interleaved reasoning) and returns a SixRRecommendation with
-a persisted reasoning trace.
+Feeds the full PortfolioReport into Claude Fable 5 at high effort and returns
+a SixRRecommendation with a persisted (summarized) reasoning trace.
 
 6R Framework:
   Retire      — decommission; no cloud value (high CVE, 0 LoC activity,
@@ -17,8 +16,9 @@ a persisted reasoning trace.
   Refactor     — re-architect for cloud-native; high complexity, active codebase
   Repurchase   — replace with SaaS; commodity function + stale custom code
 
-The tool schema is strictly typed so the model cannot hallucinate free-form
-JSON — Anthropic validates on the server side.
+The output schema is enforced via structured outputs (output_config.format)
+so the model cannot hallucinate free-form JSON — Anthropic constrains
+generation on the server side.
 
 Reasoning trace is returned alongside the recommendation for audit persistence
 (caller can store in AIAuditTrail or write to disk).
@@ -30,8 +30,8 @@ import json
 import logging
 from typing import Any
 
-from core import AIClient, MODEL_OPUS_4_7, THINKING_BUDGET_HIGH
 from app_portfolio.report import PortfolioReport, SixRRecommendation
+from core import EFFORT_HIGH, MODEL_FABLE_5, AIClient
 
 logger = logging.getLogger(__name__)
 
@@ -150,11 +150,11 @@ async def score_six_r(
     report: PortfolioReport,
     ai: AIClient,
 ) -> SixRRecommendation:
-    """Use Opus 4.7 extended thinking to recommend a 6R migration strategy.
+    """Use Fable 5 adaptive thinking to recommend a 6R migration strategy.
 
     Args:
         report: Fully populated PortfolioReport (all sub-scanners should have run).
-        ai: AIClient instance (uses MODEL_OPUS_4_7 + THINKING_BUDGET_HIGH).
+        ai: AIClient instance (uses MODEL_FABLE_5 at EFFORT_HIGH).
 
     Returns:
         SixRRecommendation with thinking_trace populated for audit trail.
@@ -210,7 +210,7 @@ async def _score_inner(
 
     user_message = (
         "Analyse this application portfolio report and recommend the optimal "
-        "6R migration strategy. Use the tool to return your structured recommendation.\n\n"
+        "6R migration strategy, returned as the structured recommendation.\n\n"
         "```json\n"
         f"{user_payload}\n"
         "```"
@@ -220,14 +220,9 @@ async def _score_inner(
         system=_SYSTEM_PROMPT,
         user=user_message,
         schema=_SIX_R_SCHEMA,
-        tool_name="recommend_migration_strategy",
-        tool_description=(
-            "Return the 6R migration strategy recommendation with full rationale, "
-            "effort estimate, risk level, blockers, and quick wins."
-        ),
-        model=MODEL_OPUS_4_7,
-        max_tokens=4096,
-        budget_tokens=THINKING_BUDGET_HIGH,
+        model=MODEL_FABLE_5,
+        max_tokens=16_000,
+        effort=EFFORT_HIGH,
     )
 
     data = structured_resp.data

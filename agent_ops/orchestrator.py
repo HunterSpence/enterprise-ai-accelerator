@@ -394,7 +394,9 @@ class Orchestrator:
             },
         )
 
-        coordinator_plan, coordinator_decomp = await self._coordinator_plan(task, config)
+        coordinator_plan, coordinator_decomp = await self._coordinator_plan(
+            task, config, task_budget_tokens=max_tokens_budget
+        )
         log("Coordinator", "completed", "Work plan generated")
 
         _write_checkpoint(_run_id, "coordination", {"coordinator_plan": coordinator_plan})
@@ -650,9 +652,18 @@ class Orchestrator:
     # ------------------------------------------------------------------
 
     async def _coordinator_plan(
-        self, task: str, config: dict[str, Any]
+        self,
+        task: str,
+        config: dict[str, Any],
+        task_budget_tokens: int | None = None,
     ) -> tuple[str, list[dict[str, Any]]]:
-        """Use coordinator model with a forced tool-call so the plan is validated."""
+        """Use the coordinator model with structured outputs so the plan is validated.
+
+        When the pipeline runs under a token budget, the same number is passed
+        through as an API-native task budget (beta) so the model sees a running
+        countdown and self-moderates — complementing BudgetGuard's hard
+        client-side enforcement.
+        """
         environment_summary = {
             "aws_regions": config.get("aws_config", {}).get("regions", []),
             "workload_count": len(config.get("workload_inventory", [])),
@@ -678,10 +689,9 @@ class Orchestrator:
             system=system,
             user=user,
             schema=_COORDINATOR_PLAN_SCHEMA,
-            tool_name="emit_coordinator_plan",
-            tool_description="Emit the coordinator work plan as structured data.",
             model=_COORDINATOR_MODEL,
-            max_tokens=1024,
+            max_tokens=16_000,
+            task_budget_tokens=task_budget_tokens,
         )
 
         data = response.data

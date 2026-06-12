@@ -29,8 +29,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from core import AIClient, MODEL_OPUS_4_7, THINKING_BUDGET_HIGH
-
+from core import EFFORT_HIGH, MODEL_FABLE_5, AIClient
 
 # ---------------------------------------------------------------------------
 # Briefing bundle — the full enterprise context loaded into system prompt
@@ -166,7 +165,7 @@ class ExecutiveChat:
     """
 
     def __init__(self, ai: AIClient | None = None) -> None:
-        self._ai = ai or AIClient(default_model=MODEL_OPUS_4_7)
+        self._ai = ai or AIClient(default_model=MODEL_FABLE_5)
 
     def _build_system_prompt(self, bundle: BriefingBundle) -> str:
         return _SYSTEM_PROMPT_PREFIX + bundle.render()
@@ -177,9 +176,15 @@ class ExecutiveChat:
         question: str,
         *,
         use_extended_thinking: bool = False,
-        max_tokens: int = 2048,
+        max_tokens: int = 16_000,
     ) -> ExecutiveAnswer:
-        """Answer a question against the provided briefing bundle."""
+        """Answer a question against the provided briefing bundle.
+
+        ``use_extended_thinking=True`` requests the summarized reasoning
+        trace alongside the structured answer (adaptive thinking is always
+        on for Fable 5 either way; the flag controls whether the trace is
+        captured and attached to the answer).
+        """
         system = self._build_system_prompt(bundle)
 
         if use_extended_thinking:
@@ -187,11 +192,9 @@ class ExecutiveChat:
                 system=system,
                 user=question,
                 schema=_ANSWER_SCHEMA,
-                tool_name="return_executive_answer",
-                tool_description="Return the structured executive answer.",
-                model=MODEL_OPUS_4_7,
+                model=MODEL_FABLE_5,
                 max_tokens=max_tokens,
-                budget_tokens=THINKING_BUDGET_HIGH,
+                effort=EFFORT_HIGH,
             )
             data = dict(structured.data)
             data.setdefault("thinking_trace", thinking)
@@ -200,9 +203,7 @@ class ExecutiveChat:
                 system=system,
                 user=question,
                 schema=_ANSWER_SCHEMA,
-                tool_name="return_executive_answer",
-                tool_description="Return the structured executive answer.",
-                model=MODEL_OPUS_4_7,
+                model=MODEL_FABLE_5,
                 max_tokens=max_tokens,
             )
             data = structured.data

@@ -37,7 +37,7 @@ import logging
 import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ class FileRef:
     purpose: str = "document"
 
     def as_document_block(
-        self, *, title: Optional[str] = None, citations: bool = True
+        self, *, title: str | None = None, citations: bool = True
     ) -> dict[str, Any]:
         """Return an Anthropic content block dict for use in messages.
 
@@ -135,7 +135,7 @@ class FilesClient:
         path: Path | str,
         *,
         purpose: str = "document",
-        media_type: Optional[str] = None,
+        media_type: str | None = None,
     ) -> FileRef:
         """Upload a file to the Anthropic Files API.
 
@@ -249,7 +249,7 @@ class FilesClient:
         path: Path | str,
         *,
         title: str,
-        media_type: Optional[str] = None,
+        media_type: str | None = None,
     ) -> FileRef:
         """Upload a compliance document and return a pre-configured FileRef.
 

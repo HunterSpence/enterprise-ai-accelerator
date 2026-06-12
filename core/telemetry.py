@@ -24,11 +24,10 @@ import asyncio
 import functools
 import logging
 import os
-import time
 import uuid
+from collections.abc import AsyncGenerator, Callable, Generator
 from contextlib import asynccontextmanager, contextmanager
-from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Callable, Generator, Optional, TypeVar
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 

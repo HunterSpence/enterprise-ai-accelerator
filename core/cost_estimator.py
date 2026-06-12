@@ -37,7 +37,6 @@ Pricing reference (Anthropic as of 2026-06, USD per 1M tokens):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 from core.models import MODEL_FABLE_5, MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
 
@@ -248,7 +247,7 @@ class CostEstimator:
     """
 
     def __init__(
-        self, *, pricing_overrides: Optional[dict[str, _ModelPricing]] = None
+        self, *, pricing_overrides: dict[str, _ModelPricing] | None = None
     ) -> None:
         self._pricing: dict[str, _ModelPricing] = {**_PRICING}
         if pricing_overrides:

@@ -33,8 +33,19 @@ from __future__ import annotations
 
 import json
 import logging
+import warnings
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
-from typing import Any, AsyncGenerator, Optional
+from typing import Any
+
+from core.models import (
+    DEFAULT_MAX_TOKENS_STREAMING,
+    effort_for_budget,
+    is_fable,
+    supports_adaptive_thinking,
+    supports_effort,
+    validate_effort,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,12 +94,14 @@ async def stream_completion(
     *,
     system: str,
     user: str,
-    model: Optional[str] = None,
-    max_tokens: int = 2048,
-    budget_tokens: int = 0,
-    tools: Optional[list[dict[str, Any]]] = None,
+    model: str | None = None,
+    max_tokens: int = DEFAULT_MAX_TOKENS_STREAMING,
+    thinking: bool = False,
+    effort: str | None = None,
+    budget_tokens: int = 0,  # deprecated → thinking=True + effort
+    tools: list[dict[str, Any]] | None = None,
     cache_system: bool = True,
-    extra_messages: Optional[list[dict[str, Any]]] = None,
+    extra_messages: list[dict[str, Any]] | None = None,
 ) -> AsyncGenerator[StreamEvent, None]:
     """Async generator yielding StreamEvents as Anthropic streams.
 
@@ -103,17 +116,42 @@ async def stream_completion(
     model:
         Model ID. Defaults to ai._default_model.
     max_tokens:
-        Max output tokens.
+        Max output tokens. Streaming is not subject to HTTP timeouts, so the
+        default is generous; BudgetGuard caps actual spend.
+    thinking:
+        If True, enables adaptive thinking (with summarized display on the
+        Fable/Opus 4.7+ family so "thinking" events carry readable text —
+        the default on those models streams empty thinking deltas).
+    effort:
+        Optional effort level ("low"/"medium"/"high"/"xhigh"/"max") via
+        output_config — depth/cost control on models that support it.
     budget_tokens:
-        If > 0, enables extended thinking with this budget.
+        DEPRECATED. The fixed-budget thinking shape is rejected by Fable 5 /
+        Opus 4.7+. A positive value is translated to adaptive thinking with
+        the nearest effort level.
     tools:
         Optional list of tool dicts (Anthropic tool schema format).
     cache_system:
         If True, wraps system in ephemeral cache_control block.
     extra_messages:
         Optional prior turns to prepend before the user message.
+
+    Note: Fable 5 safety classifiers can end a stream with
+    ``stop_reason == "refusal"`` — clients should treat a "stop" event whose
+    data is "refusal" as a decline and discard any partial output.
     """
     model = model or ai._default_model
+
+    if budget_tokens > 0:
+        warnings.warn(
+            "budget_tokens is deprecated (rejected on Fable 5 / Opus 4.7+); "
+            "use thinking=True with an effort level instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        thinking = True
+        if effort is None:
+            effort = effort_for_budget(budget_tokens)
 
     # Build system blocks
     if cache_system:
@@ -132,8 +170,13 @@ async def stream_completion(
         "system": system_blocks,
         "messages": messages,
     }
-    if budget_tokens > 0:
-        create_kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget_tokens}
+    if thinking and supports_adaptive_thinking(model):
+        if is_fable(model) or "opus-4-7" in model or "opus-4-8" in model:
+            create_kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+        else:
+            create_kwargs["thinking"] = {"type": "adaptive"}
+    if effort and supports_effort(model):
+        create_kwargs["output_config"] = {"effort": validate_effort(effort)}
     if tools:
         create_kwargs["tools"] = tools
 
@@ -141,7 +184,7 @@ async def stream_completion(
         # Anthropic async streaming context manager
         async with ai.raw.messages.stream(**create_kwargs) as stream:
             # Track active tool_use block for input_json_delta accumulation
-            active_tool: Optional[dict[str, Any]] = None
+            active_tool: dict[str, Any] | None = None
 
             async for event in stream:
                 event_type = getattr(event, "type", None)
@@ -230,11 +273,13 @@ async def stream_sse(
     *,
     system: str,
     user: str,
-    model: Optional[str] = None,
-    max_tokens: int = 2048,
-    budget_tokens: int = 0,
-    tools: Optional[list[dict[str, Any]]] = None,
-    on_event: Optional[Any] = None,
+    model: str | None = None,
+    max_tokens: int = DEFAULT_MAX_TOKENS_STREAMING,
+    thinking: bool = False,
+    effort: str | None = None,
+    budget_tokens: int = 0,  # deprecated → thinking=True + effort
+    tools: list[dict[str, Any]] | None = None,
+    on_event: Any | None = None,
 ) -> AsyncGenerator[str, None]:
     """Async generator of SSE-formatted strings for FastAPI StreamingResponse.
 
@@ -262,6 +307,8 @@ async def stream_sse(
         user=user,
         model=model,
         max_tokens=max_tokens,
+        thinking=thinking,
+        effort=effort,
         budget_tokens=budget_tokens,
         tools=tools,
     ):

@@ -220,7 +220,7 @@ class TestBudgetAbort:
 
         orch._approval_handler = auto_approve
 
-        async def _fake_coordinator_plan(task, config):
+        async def _fake_coordinator_plan(task, config, task_budget_tokens=None):
             return ("stub plan", [])
 
         orch._coordinator_plan = _fake_coordinator_plan
@@ -359,7 +359,7 @@ class TestHITL:
 
         orch._approval_handler = approval_handler or auto_approve
 
-        async def _fake_coordinator_plan(task, config):
+        async def _fake_coordinator_plan(task, config, task_budget_tokens=None):
             return ("stub plan", [])
 
         orch._coordinator_plan = _fake_coordinator_plan
