@@ -126,6 +126,12 @@ eaa-policy-demo   = "policy_guard.demo:main"
 eaa-cloudiq-demo  = "cloud_iq.demo:run_demo"
 eaa-agents-demo   = "agent_ops.demo:main"
 
+[tool.setuptools]
+# Top-level single-file modules aren't found by packages.find (which only
+# discovers packages); list them so the wheel actually ships them. cloud_config
+# is imported by auth/ and migration_scout/, so an omitted wheel ImportErrors.
+py-modules = ["cloud_config", "mcp_server", "mcp_transports", "risk_aggregator"]
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = [
