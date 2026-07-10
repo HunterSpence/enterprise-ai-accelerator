@@ -8,7 +8,7 @@ anthropic>=0.69.0,<1.0
 # MCP SDK — 1.27.0+ required for SSE transport, resources, and prompts
 mcp>=1.27.0
 # SSE server support (transitive via mcp, made explicit for clarity)
-sse-starlette>=1.6.0
+sse-starlette>=3.4.4
 starlette>=0.37.0
 
 # Web framework (shared by all API modules)
