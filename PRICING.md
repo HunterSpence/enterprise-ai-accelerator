@@ -1,6 +1,8 @@
 # Pricing — Enterprise AI Accelerator
 
-This document describes commercial options for organizations that need support, hosting, or delivery services around the open-source codebase. All numbers are starting points for conversation, not binding quotes.
+> **Evaluation prototype — pre-production, solo-maintained. Not a certification and not a compliance determination.**
+
+This document describes commercial options for organizations that need support, hosting, or delivery services around the open-source codebase. All numbers are starting points for conversation, not binding quotes. **Only "OSS Core" and "Fixed-Scope Delivery Services" are things you can actually buy today.** Every other section below is a planned offering, not a live product — see the status note on each.
 
 ---
 
@@ -14,29 +16,31 @@ What you do not get with the free tier: SLAs, support response times, or hosted 
 
 ---
 
-## Accelerator Cloud — Managed Hosting
+## Accelerator Cloud — Managed Hosting (PLANNED — NOT AVAILABLE TODAY)
 
-For teams that want the platform running without managing infrastructure.
+> **Status: not built.** There is no managed multi-tenant hosting, no per-seat billing infrastructure, and no SSO/SAML implementation in the platform today (see [ROADMAP.md](ROADMAP.md) — multi-tenant RBAC and web UI are both "Planned"). The tiers below describe a *future* offering, not something you can purchase or provision right now. Do not send payment against this section.
 
-| Tier | Price | Included |
+For teams that will want the platform running without managing infrastructure, once built:
+
+| Tier (planned) | Target price | Would include |
 |------|-------|---------|
 | **Starter** | $299 / month | Single tenant, up to 5 users, 50K API calls/month, email support (2-business-day response) |
 | **Professional** | $499 / month | Single tenant, up to 20 users, 200K API calls/month, Slack support (next-business-day response), compliance report exports |
 | **Business** | $799 / month | Single tenant, unlimited users, 1M API calls/month, priority Slack support (4-hour response), SSO/SAML, custom retention |
 
-Overage: $0.0008 per API call above tier limit. Annual billing: 2 months free (equivalent to ~17% discount).
+Overage (planned): $0.0008 per API call above tier limit. Annual billing (planned): 2 months free (equivalent to ~17% discount).
 
 ---
 
 ## Enterprise Self-Hosted — License + Support
 
-For organizations that require all computation inside their own cloud or data center.
+For organizations that require all computation inside their own cloud or data center. **Note: this is a solo-maintained project.** Support is delivered by one person on business hours (US Eastern); there is no on-call team behind these tiers today, so "24×7" below is aspirational, not a staffed SLA — treat it as best-effort until a support team exists.
 
 | Tier | Annual Price | Included |
 |------|-------------|---------|
-| **Starter** | $25,000 / year | Deployment assistance (up to 16 hours), 6-month support contract (8×5, 1-business-day SLA), one model-refresh update |
-| **Standard** | $50,000 / year | Deployment assistance (up to 40 hours), 12-month support contract (8×5, same-business-day SLA), all model-refresh updates, compliance evidence pack walkthrough |
-| **Enterprise** | $80,000 / year | Deployment assistance (up to 80 hours), 12-month support contract (24×7 for P1, same-business-day for P2), all updates, dedicated Slack channel, architecture review session |
+| **Starter** | $25,000 / year | Deployment assistance (up to 16 hours), 6-month support contract (8×5, 1-business-day best-effort response), one model-refresh update |
+| **Standard** | $50,000 / year | Deployment assistance (up to 40 hours), 12-month support contract (8×5, same-business-day best-effort response), all model-refresh updates, compliance evidence pack walkthrough |
+| **Enterprise** | $80,000 / year | Deployment assistance (up to 80 hours), 12-month support contract (best-effort P1 response outside business hours — NOT a staffed 24×7 SLA; same-business-day for P2), all updates, dedicated Slack channel, architecture review session |
 
 All tiers include: source code access (already MIT), right to deploy in client cloud, training session (2 hours), and access to the private issue tracker for security disclosures.
 
@@ -74,20 +78,20 @@ This model follows patterns used by FinOps-native vendors for outcome-linked eng
 
 ---
 
-## 3-Year TCO Comparison
+## 3-Year Cost Comparison — support/license fees only (illustrative, not a TCO)
 
-The following figures are illustrative. Actual costs depend on scope, team size, and vendor negotiation. Big-6 figures derived from publicly available case studies and industry analyst estimates (Gartner, Forrester).
+> **This table is illustrative and incomplete — it is not a total cost of ownership.** It compares only support/license/consulting fees. It excludes cloud infrastructure, Anthropic API usage, implementation and integration labor, and ongoing operations for every row, including this platform's own. A real TCO comparison would need to add those costs to all four rows before they're comparable. Actual costs depend on scope, team size, and vendor negotiation. Big-6 figures are drawn from publicly available case studies and industry analyst estimates (Gartner, Forrester) — not independently audited.
 
-| Option | Year 1 | Year 2 | Year 3 | 3-Year Total |
+| Option | Year 1 (fees only) | Year 2 (fees only) | Year 3 (fees only) | 3-Year Total (fees only) |
 |--------|--------|--------|--------|-------------|
-| **Enterprise AI Accelerator (self-hosted, Standard tier)** | $50K | $50K | $50K | **$150K** |
-| **Enterprise AI Accelerator (self-hosted, Enterprise tier)** | $80K | $80K | $80K | **$240K** |
+| **Enterprise AI Accelerator (self-hosted, Standard tier support)** | $50K | $50K | $50K | **$150K** |
+| **Enterprise AI Accelerator (self-hosted, Enterprise tier support)** | $80K | $80K | $80K | **$240K** |
 | **Commercial AI governance platform (mid-market)** | $180K–$400K | $180K–$400K | $180K–$400K | **$540K–$1.2M** |
 | **Big-6 consulting-led AI transformation (typical scope)** | $1.1M–$4M | $1.1M–$4M | $1.1M–$4M | **$3.2M–$12M** |
 
 Big-6 range reflects engagements from Accenture AI Refinery (NVIDIA NIM-locked, co-built with NVIDIA), Deloitte AI advisory (hallucination incidents documented publicly; see `docs/SOVEREIGN_DEPLOYMENT.md`), IBM watsonx advisory, and comparable large-scale programs. The range is wide because scope varies significantly.
 
-The platform's total cost of ownership is lower primarily because: (1) MIT license eliminates per-seat or per-use licensing; (2) self-hosted deployment keeps cloud costs inside existing contracts; (3) no proprietary dependencies means no vendor renegotiation risk at renewal.
+This platform's *support fee* is lower primarily because: (1) MIT license eliminates per-seat or per-use licensing; (2) self-hosted deployment keeps cloud costs inside existing contracts; (3) no proprietary dependencies means no vendor renegotiation risk at renewal. This is not a claim of "90-95% savings" on your total program cost — your infra, API usage, and integration labor still apply on top of every row above.
 
 ---
 

@@ -719,7 +719,12 @@ class AuditChain:
         Walk the entire chain and verify:
         1. Each entry's entry_hash matches a fresh hash computation.
         2. Each entry's prev_hash matches the entry_hash of the preceding entry.
-        3. Rebuild Merkle tree and confirm root matches latest checkpoint.
+        3. Rebuild the Merkle tree at each stored checkpoint's entry_count and
+           confirm the recomputed root matches the root that was checkpointed
+           at the time. This is what actually catches a full-chain rewrite: an
+           attacker who deletes rows and re-inserts a new, internally-consistent
+           chain still leaves the old chain_checkpoints rows behind, and those
+           stale roots will not match the recomputed history.
 
         Returns TamperReport with:
         - which entries were tampered (entry_id, timestamp, tamper_type)
@@ -768,6 +773,29 @@ class AuditChain:
 
         # Merkle root
         merkle_root = MerkleTree(leaf_hashes).root
+
+        # Verify every stored checkpoint against a recomputed root over the
+        # first entry_count leaves as they exist NOW. A checkpoint that no
+        # longer matches means the chain was rewritten after it was taken.
+        checkpoint_rows = self._conn.execute(
+            "SELECT entry_count, merkle_root FROM chain_checkpoints ORDER BY checkpoint_id ASC"
+        ).fetchall()
+        for cp in checkpoint_rows:
+            cp_count = cp["entry_count"]
+            cp_root = cp["merkle_root"]
+            if cp_count > len(leaf_hashes):
+                errors.append(
+                    f"Checkpoint at entry_count={cp_count} exceeds current chain "
+                    f"length {len(leaf_hashes)} — chain was truncated"
+                )
+                continue
+            recomputed_root = MerkleTree(leaf_hashes[:cp_count]).root
+            if recomputed_root != cp_root:
+                errors.append(
+                    f"Checkpoint mismatch at entry_count={cp_count}: stored root "
+                    f"{cp_root[:16]}… != recomputed root {recomputed_root[:16]}… "
+                    "(chain rewritten after this checkpoint)"
+                )
 
         return TamperReport(
             is_valid=len(errors) == 0,

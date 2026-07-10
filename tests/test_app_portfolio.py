@@ -1,6 +1,8 @@
 """Tests for app_portfolio/ — language_detector, dependency_scanner, containerization_scorer, ci_maturity."""
 
+import asyncio
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from app_portfolio.language_detector import detect_languages
@@ -141,3 +143,152 @@ class TestPortfolioReport:
         d = vuln.to_dict()
         assert d["id"] == "GHSA-xxxx"
         assert d["severity"] == "HIGH"
+
+    def test_default_status_is_complete(self):
+        report = PortfolioReport(repo_name="r", repo_path=".")
+        assert report.status == "COMPLETE"
+        assert report.partial_reasons == []
+
+    def test_dependency_default_cve_scan_status_unscanned(self):
+        dep = Dependency(name="requests", version="2.31.0", ecosystem="pypi")
+        assert dep.cve_scan_status == "UNSCANNED"
+        assert dep.to_dict()["cve_scan_status"] == "UNSCANNED"
+
+
+class TestCVEScanOutageNotCachedClean:
+    """P0-26: a failed OSV lookup must never be cached as (or reported as)
+    a clean 0-vulnerability result."""
+
+    def test_osv_failure_marks_failed_not_cached_clean(self, tmp_path):
+        from app_portfolio.cve_scanner import scan_cves
+
+        deps = [Dependency(name="requests", version="2.31.0", ecosystem="pypi")]
+
+        async def _boom(*args, **kwargs):
+            raise ConnectionError("simulated OSV outage")
+
+        with patch("httpx.AsyncClient.post", side_effect=_boom):
+            result = asyncio.run(scan_cves(deps, tmp_path))
+
+        assert result[0].cve_scan_status == "FAILED"
+        assert result[0].cves == []
+
+        # The failure must not have been persisted to the 24h cache.
+        cache_file = tmp_path / ".eaa_cache" / "osv_results.json"
+        if cache_file.exists():
+            import json
+            cache = json.loads(cache_file.read_text())
+            assert not cache, "a failed OSV lookup must never be cached as clean"
+
+    def test_osv_success_with_zero_vulns_is_cached_and_ok(self, tmp_path, monkeypatch):
+        from app_portfolio import cve_scanner
+
+        deps = [Dependency(name="safe-pkg", version="1.0.0", ecosystem="pypi")]
+
+        async def _fake_query(client, queries):
+            return [{"vulns": []}] * len(queries), True
+
+        monkeypatch.setattr(cve_scanner, "_query_osv_batch", _fake_query)
+        result = asyncio.run(cve_scanner.scan_cves(deps, tmp_path))
+
+        assert result[0].cve_scan_status == "OK"
+        assert result[0].cves == []
+
+        cache_file = tmp_path / ".eaa_cache" / "osv_results.json"
+        assert cache_file.exists()
+
+    def test_unsupported_ecosystem_not_marked_failed(self, tmp_path):
+        from app_portfolio.cve_scanner import scan_cves
+
+        deps = [Dependency(name="weird-pkg", version="1.0.0", ecosystem="not-a-real-ecosystem")]
+        result = asyncio.run(scan_cves(deps, tmp_path))
+        assert result[0].cve_scan_status == "UNSCANNED"
+
+
+class TestRunStalenessDisabledMakesNoNetworkCalls:
+    """MOD-014: run_staleness=False must make ZERO enrichment network calls."""
+
+    def test_scan_dependencies_skips_enrichment_when_disabled(self, tmp_path, monkeypatch):
+        from app_portfolio import dependency_scanner as ds
+
+        (tmp_path / "requirements.txt").write_text("requests==2.31.0\n")
+
+        enrich_mock = AsyncMock()
+        monkeypatch.setattr(ds, "_enrich_staleness", enrich_mock)
+
+        deps = asyncio.run(ds.scan_dependencies(tmp_path, [tmp_path / "requirements.txt"], run_staleness=False))
+        enrich_mock.assert_not_called()
+        assert deps and deps[0].name == "requests"
+
+    def test_scan_dependencies_calls_enrichment_when_enabled(self, tmp_path, monkeypatch):
+        from app_portfolio import dependency_scanner as ds
+
+        (tmp_path / "requirements.txt").write_text("requests==2.31.0\n")
+
+        enrich_mock = AsyncMock()
+        monkeypatch.setattr(ds, "_enrich_staleness", enrich_mock)
+
+        asyncio.run(ds.scan_dependencies(tmp_path, [tmp_path / "requirements.txt"], run_staleness=True))
+        enrich_mock.assert_called_once()
+
+    def test_analyzer_threads_run_staleness_false_through(self, tmp_path, monkeypatch):
+        from app_portfolio.analyzer import RepoAnalyzer
+        from app_portfolio import dependency_scanner as ds
+
+        enrich_mock = AsyncMock()
+        monkeypatch.setattr(ds, "_enrich_staleness", enrich_mock)
+
+        analyzer = RepoAnalyzer(run_staleness=False, run_cve_scan=False)
+        report = asyncio.run(analyzer.analyze(tmp_path))
+
+        enrich_mock.assert_not_called()
+        assert report.status == "COMPLETE"
+
+
+class TestAnalyzerPartialStatus:
+    """P0-26: truncation/skips must surface as report.status=PARTIAL with
+    reasons, and a metadata error must not render as a clean empty report."""
+
+    def test_file_limit_truncation_marks_partial(self, tmp_path, monkeypatch):
+        from app_portfolio import analyzer as an
+
+        (tmp_path / "a.py").write_text("x = 1\n")
+        (tmp_path / "b.py").write_text("y = 2\n")
+        monkeypatch.setattr(an, "_MAX_FILES", 1)
+
+        analyzer = an.RepoAnalyzer(run_staleness=False, run_cve_scan=False)
+        report = asyncio.run(analyzer.analyze(tmp_path))
+
+        assert report.status == "PARTIAL"
+        assert any("file limit" in r for r in report.partial_reasons)
+
+    def test_oversized_file_skip_marks_partial(self, tmp_path, monkeypatch):
+        from app_portfolio import analyzer as an
+
+        big = tmp_path / "big.py"
+        big.write_bytes(b"x = 1\n")
+        monkeypatch.setattr(an, "_MAX_FILE_SIZE_BYTES", 1)  # everything is "oversized"
+
+        analyzer = an.RepoAnalyzer(run_staleness=False, run_cve_scan=False)
+        report = asyncio.run(analyzer.analyze(tmp_path))
+
+        assert report.status == "PARTIAL"
+        assert any("skipped" in r for r in report.partial_reasons)
+
+    def test_clean_small_repo_is_complete(self, tmp_path):
+        from app_portfolio.analyzer import RepoAnalyzer
+
+        (tmp_path / "a.py").write_text("x = 1\n")
+        analyzer = RepoAnalyzer(run_staleness=False, run_cve_scan=False)
+        report = asyncio.run(analyzer.analyze(tmp_path))
+        assert report.status == "COMPLETE"
+        assert report.partial_reasons == []
+
+    def test_analyze_error_reports_failed_not_clean_empty(self, monkeypatch):
+        from app_portfolio.analyzer import RepoAnalyzer
+
+        analyzer = RepoAnalyzer(run_staleness=False, run_cve_scan=False)
+        # A path that doesn't exist triggers the ValueError -> except branch.
+        report = asyncio.run(analyzer.analyze(Path("Z:/definitely/does/not/exist/eaa-test")))
+        assert report.status == "FAILED"
+        assert "error" in report.metadata

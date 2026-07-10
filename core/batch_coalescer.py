@@ -225,12 +225,24 @@ class BatchCoalescer:
             await self._do_flush()
 
     async def _do_flush(self) -> None:
-        """Drain current queue into one batch API call."""
+        """Drain current queue, partitioned into <= max_batch_size chunks.
+
+        P0-29: max_batch_size is a LIMIT, not a trigger — a burst larger than
+        the configured max must become multiple batches, none of which
+        exceed the limit (the Anthropic Batch API itself caps request count
+        per batch).
+        """
         async with self._queue_lock:
             if not self._queue:
                 return
             items, self._queue = self._queue, []
 
+        for i in range(0, len(items), self._max_batch_size):
+            chunk = items[i : i + self._max_batch_size]
+            await self._submit_chunk(chunk)
+
+    async def _submit_chunk(self, items: list[_PendingItem]) -> None:
+        """Submit one batch API call for a single chunk (<= max_batch_size items)."""
         batch_requests = [self._build_batch_params(item.request) for item in items]
 
         try:
@@ -309,6 +321,18 @@ class BatchCoalescer:
             for item in id_map.values():
                 if not item.future._future.done():
                     item.future._future.set_exception(exc)
+            return
+
+        # P0-29: the results stream can omit a custom_id (partial/short read).
+        # Any future not resolved above would hang forever — reject it instead.
+        for item in id_map.values():
+            if not item.future._future.done():
+                item.future._future.set_exception(
+                    RuntimeError(
+                        f"BatchCoalescer: batch {batch_id} results stream did not "
+                        f"include custom_id={item.request.custom_id!r}"
+                    )
+                )
 
     async def _fail_batch(self, batch_id: str, exc: Exception) -> None:
         async with self._in_flight_lock:

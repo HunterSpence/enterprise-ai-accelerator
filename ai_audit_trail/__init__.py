@@ -6,7 +6,7 @@ IBM OpenPages: $500K/yr. Credo AI: $180K/yr. This: $0.
 
 V2 additions:
 - SHA-256 Merkle tree (O(log n) proof verification)
-- Article 62 serious incident detection + 72h reporting
+- Article 73 serious incident detection + tiered reporting deadline
 - NIST AI RMF 1.0 dual-framework mapping (GOVERN/MAP/MEASURE/MANAGE)
 - Incident manager with P0-P3 severity classification
 - FastAPI REST API (api.py) with OpenAPI docs
@@ -77,12 +77,12 @@ from ai_audit_trail.config import settings
 from ai_audit_trail.decorators import AuditContext, audit_llm_call
 from ai_audit_trail.eu_ai_act import (
     Article12Check,
-    Article62Report,
+    Article73Report,
     GPAIComplianceCheck,
     check_article_12_compliance,
     classify_risk_tier,
     days_until_enforcement,
-    detect_article_62_incidents,
+    detect_article_73_incidents,
     enforcement_status,
     generate_article_11_technical_doc,
     generate_article_13_transparency_report,
@@ -120,13 +120,13 @@ __all__ = [
     "classify_risk_tier",
     "check_article_12_compliance",
     "Article12Check",
-    "Article62Report",
+    "Article73Report",
     "GPAIComplianceCheck",
     "generate_article_13_transparency_report",
     "generate_article_11_technical_doc",
     "days_until_enforcement",
     "enforcement_status",
-    "detect_article_62_incidents",
+    "detect_article_73_incidents",
     "check_gpai_obligations",
     # Incident management
     "AIIncident",

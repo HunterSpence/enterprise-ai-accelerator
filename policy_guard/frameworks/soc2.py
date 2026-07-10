@@ -173,7 +173,7 @@ SECURITY_CC_CONTROLS: dict[str, dict] = {
         "ai_extension": "AI-related security incidents are identified, triaged, and communicated to stakeholders.",
         "evidence": ["Incident response plan for AI", "IR ticket examples", "Communication playbook"],
         "severity": "HIGH",
-        "eu_ai_act": "Article 62",
+        "eu_ai_act": "Article 73",
         "nist_mapping": "MANAGE-1.2",
     },
     "CC8.1": {
@@ -504,16 +504,16 @@ AI_SPECIFIC_CONTROLS: dict[str, dict] = {
     },
     "AICC-12": {
         "title": "AI Incident Response and Regulatory Notification",
-        "description": "A documented incident response procedure addresses AI-specific incidents including bias events, accuracy failures, and adversarial attacks. Serious incidents triggering regulatory notification are handled per Article 62 (EU AI Act) procedures.",
+        "description": "A documented incident response procedure addresses AI-specific incidents including bias events, accuracy failures, and adversarial attacks. Serious incidents triggering regulatory notification are handled per Article 73 (EU AI Act) procedures.",
         "evidence": [
             "AI incident response playbook",
             "Incident severity classification matrix (P0-P3)",
-            "Article 62 notification procedure and template",
+            "Article 73 notification procedure and template",
             "Tabletop exercise records for AI incidents",
             "Post-incident review documentation",
         ],
         "severity": "CRITICAL",
-        "eu_ai_act": "Article 62",
+        "eu_ai_act": "Article 73",
         "nist_mapping": "MANAGE-1.2",
         "model_risk_category": "Incident Response",
     },
@@ -551,7 +551,7 @@ Bias Testing Evidence Pack:
     "AICC-12": """
 AI Incident Response Evidence Pack:
 1. ai_incident_response_playbook.pdf — P0-P3 severity classification, response procedures
-2. article_62_notification_template.docx — EU AI Act serious incident notification format
+2. article_73_notification_template.docx — EU AI Act serious incident notification format
 3. tabletop_exercise_[YYYY].pdf — Annual IR exercise covering AI bias and accuracy incidents
 4. incident_register.xlsx — Closed incidents with timeline, root cause, remediation
 5. regulator_contacts.pdf — AI Office and national authority contact information

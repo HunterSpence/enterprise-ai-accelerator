@@ -419,12 +419,15 @@ async def _enrich_staleness(
 async def scan_dependencies(
     repo_path: Path,
     all_files: list[Path],
+    run_staleness: bool = True,
 ) -> list[Dependency]:
-    """Scan *repo_path* for known manifests and return enriched Dependency list.
+    """Scan *repo_path* for known manifests and return a Dependency list.
 
     Args:
         repo_path: Root of the repository (used for cache path).
         all_files: Pre-filtered list of files (post .gitignore filtering).
+        run_staleness: If False, skip the PyPI/npm/Go/Maven staleness
+            lookups entirely (MOD-014) — zero enrichment network calls.
 
     Returns:
         List[Dependency] — never raises, returns [] on error.
@@ -521,10 +524,12 @@ async def scan_dependencies(
             seen.add(key)
             unique_deps.append(dep)
 
-    # Enrich with staleness data
-    try:
-        await _enrich_staleness(unique_deps, repo_path)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("staleness enrichment failed: %s", exc)
+    # Enrich with staleness data — skipped entirely when run_staleness=False
+    # (MOD-014: no PyPI/npm/Go/Maven network calls in that mode).
+    if run_staleness:
+        try:
+            await _enrich_staleness(unique_deps, repo_path)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("staleness enrichment failed: %s", exc)
 
     return unique_deps

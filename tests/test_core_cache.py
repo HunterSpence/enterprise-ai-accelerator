@@ -92,6 +92,29 @@ class TestResultCacheTTL:
         assert result is None
 
 
+class TestResultCacheEviction:
+    async def test_eviction_enforces_byte_cap(self, tmp_path):
+        """P0-27: 200x2KB writes against a small cap must stay near the cap,
+        with no unhandled sqlite errors from the eviction path."""
+        db = tmp_path / "evict_test.db"
+        cap = 32 * 1024  # 32 KiB
+        cache = ResultCache(db_path=db, max_bytes=cap, default_ttl=3600)
+        payload = "x" * 2000
+        for i in range(200):
+            key = ResultCache.make_key(model="m", system_prompt="s", user_prompt=f"u{i}")
+            await cache.put(key, {"data": payload, "tokens_in": 1, "tokens_out": 1})
+
+        def _size(conn):
+            return conn.execute(
+                "SELECT COALESCE(SUM(LENGTH(key) + LENGTH(response_json)), 0) FROM results"
+            ).fetchone()[0]
+
+        actual_bytes = await cache._run_sync(_size)
+        assert actual_bytes <= cap * 1.10
+        stats = await cache.stats()
+        assert stats.evictions > 0
+
+
 class TestResultCacheStats:
     async def test_stats_structure(self, tmp_cache):
         stats = await tmp_cache.stats()

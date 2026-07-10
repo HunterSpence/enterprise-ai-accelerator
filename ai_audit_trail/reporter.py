@@ -6,7 +6,7 @@ V2 upgrades:
 - Merkle root included in report
 - Cost tracking (total_cost_usd, cost_by_system)
 - NIST AI RMF score section in HTML report
-- Article 62 incident section in HTML report
+- Article 73 incident section in HTML report
 - V2 version string in HTML footer
 
 Generates HTML and JSON audit reports for any time period, including:
@@ -427,7 +427,7 @@ class ReportGenerator:
   <div class="footer">
     AIAuditTrail V2 &mdash; Open-source EU AI Act compliance logging &mdash;
     EU AI Act HIGH-RISK enforcement: December 2, 2027 &mdash;
-    SHA-256 Merkle chain + Article 62 + NIST AI RMF
+    SHA-256 Merkle chain + Article 73 + NIST AI RMF
   </div>
 
 </div>

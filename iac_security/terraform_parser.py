@@ -94,15 +94,23 @@ def _build_line_index(raw: str) -> dict[str, int]:
 # ---------------------------------------------------------------------------
 
 
-def _parse_file(path: Path) -> list[TerraformResource]:
-    """Parse a single .tf file. Returns [] and logs a warning on any error."""
+def _parse_file(path: Path) -> tuple[list[TerraformResource], str | None]:
+    """Parse a single .tf file.
+
+    Returns (resources, skip_reason). skip_reason is None on success; a
+    short human-readable string when the file could not be parsed (missing
+    parser dependency or malformed HCL) — callers must NOT treat an empty
+    resource list as a clean pass without checking skip_reason (P0-08:
+    parser-absence/parse-failure must fail closed, not silently report 0
+    findings as passed).
+    """
     try:
         import hcl2  # python-hcl2
     except ImportError:
         logger.error(
             "python-hcl2 is not installed. Run: pip install python-hcl2>=4.3.3"
         )
-        return []
+        return [], "python-hcl2 not installed"
 
     raw = path.read_text(encoding="utf-8", errors="replace")
     line_index = _build_line_index(raw)
@@ -111,7 +119,7 @@ def _parse_file(path: Path) -> list[TerraformResource]:
         data: dict[str, Any] = hcl2.loads(raw)
     except Exception as exc:  # hcl2 raises lark.exceptions.* or similar
         logger.warning("Skipping malformed HCL file %s: %s", path, exc)
-        return []
+        return [], f"parse error: {exc}"
 
     resources: list[TerraformResource] = []
 
@@ -201,7 +209,7 @@ def _parse_file(path: Path) -> list[TerraformResource]:
                         )
                     )
 
-    return resources
+    return resources, None
 
 
 # ---------------------------------------------------------------------------
@@ -209,34 +217,69 @@ def _parse_file(path: Path) -> list[TerraformResource]:
 # ---------------------------------------------------------------------------
 
 
-def parse_terraform(root: Path) -> list[TerraformResource]:
+@dataclass
+class TerraformParseStats:
+    """Parse coverage stats for one parse_terraform() call.
+
+    Used by IaCScanner/cli.py to fail closed (P0-08) instead of silently
+    reporting a clean 0-resource, 0-finding, passed:true scan when the
+    parser is missing or files fail to parse.
+    """
+
+    files_seen: int = 0
+    files_parsed: int = 0
+    files_skipped: int = 0
+    skip_reasons: list[str] = field(default_factory=list)
+
+
+def parse_terraform(root: Path) -> tuple[list[TerraformResource], TerraformParseStats]:
     """
     Recursively parse all *.tf files under *root* and return a flat list
-    of TerraformResource objects.
+    of TerraformResource objects plus TerraformParseStats describing how
+    many files were actually parsed vs skipped (and why).
 
     Skips:
       - .terraform/ directories (provider cache)
       - **/.terraform.lock.hcl (lock files, not HCL2 compliant)
       - Files larger than 5 MB (pathological generated configs)
     """
+    stats = TerraformParseStats()
+
     if not root.is_dir():
         # Accept single-file invocations too
         if root.suffix == ".tf":
-            return _parse_file(root)
+            stats.files_seen = 1
+            resources, reason = _parse_file(root)
+            if reason:
+                stats.files_skipped = 1
+                stats.skip_reasons.append(f"{root}: {reason}")
+            else:
+                stats.files_parsed = 1
+            return resources, stats
         logger.warning("terraform_parser: path is not a directory or .tf file: %s", root)
-        return []
+        return [], stats
 
     results: list[TerraformResource] = []
     for tf_file in sorted(root.rglob("*.tf")):
         # Skip provider cache and lock files
         if ".terraform" in tf_file.parts:
             continue
+        stats.files_seen += 1
         if tf_file.stat().st_size > 5 * 1024 * 1024:
             logger.warning("Skipping oversized .tf file: %s", tf_file)
+            stats.files_skipped += 1
+            stats.skip_reasons.append(f"{tf_file}: oversized (>5MB)")
             continue
-        results.extend(_parse_file(tf_file))
+        resources, reason = _parse_file(tf_file)
+        if reason:
+            stats.files_skipped += 1
+            stats.skip_reasons.append(f"{tf_file}: {reason}")
+        else:
+            stats.files_parsed += 1
+        results.extend(resources)
 
     logger.info(
-        "Terraform parser: found %d resources in %s", len(results), root
+        "Terraform parser: found %d resources in %s (%d/%d files parsed)",
+        len(results), root, stats.files_parsed, stats.files_seen,
     )
-    return results
+    return results, stats

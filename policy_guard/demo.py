@@ -361,7 +361,7 @@ async def run_scenario_a() -> None:
         f"[bold]Scenario A Complete — The Accelerant[/bold]\n\n"
         f"Baseline Compliance Score: [{overall_color}]{report.overall_score:.1f}%[/{overall_color}]  "
         f"({report.risk_rating})\n"
-        f"With remediation plan fully applied: [green]89%[/green]  (Compliant)\n\n"
+        f"With remediation plan fully applied: [green]89%[/green]  (Strong Readiness)\n\n"
         f"[red]Critical: {report.critical_findings}[/red]  "
         f"[orange3]High: {report.high_findings}[/orange3]  "
         f"Medium: {report.medium_findings}  "
@@ -626,11 +626,12 @@ async def run_incident_demo() -> None:
 
         console.print(steps_table)
 
-        if response.article_62_required:
+        if response.article_73_required:
             console.print(
-                f"\n  [bold red]Article 62 Notification Required:[/bold red] "
-                f"EU supervisory authority must be notified within 72 hours.\n"
-                f"  [dim]Template generated automatically by PolicyGuard.[/dim]\n"
+                f"\n  [bold red]Article 73 Notification Required:[/bold red] "
+                f"EU supervisory authority must be notified under Article 73's tiered "
+                f"deadlines (not a universal 72 hours — verify against the official text).\n"
+                f"  [dim]Template generated automatically by PolicyGuard. Not legal advice.[/dim]\n"
             )
         else:
             console.print(
@@ -646,7 +647,7 @@ async def run_incident_demo() -> None:
         f"[orange3]P2 (Accuracy): {incident_report.p2_count}[/orange3]  "
         f"[yellow]P3 (Performance): {incident_report.p3_count}[/yellow]\n\n"
         f"Regulatory notifications required: [bold red]{incident_report.regulatory_notifications_required}[/bold red]\n"
-        f"(EU AI Act Article 62 — 72-hour notification window)\n\n"
+        f"(EU AI Act Article 73 — 72-hour notification window)\n\n"
         f"[dim]All playbooks aligned to NIST AI RMF RESPOND function (MANAGE-1.2)[/dim]",
         border_style="red" if incident_report.p0_count > 0 else "orange3",
     ))
@@ -711,7 +712,7 @@ async def run_demo(scenario: str = "all") -> None:
         f"  [green]•[/green] NIST AI RMF 1.0 — 72 subcategories, 5-level maturity\n"
         f"  [green]•[/green] SOC 2 AICC-12 (2024) — 50 total controls\n"
         f"  [green]•[/green] Bias detection: Demographic Parity + Equalized Odds + EEOC 4/5ths\n"
-        f"  [green]•[/green] AI Incident Response: P0-P3 with Article 62 notification\n"
+        f"  [green]•[/green] AI Incident Response: P0-P3 with Article 73 notification\n"
         f"  [green]•[/green] Cross-framework efficiency: 1 implementation → multiple controls\n"
         f"  [green]•[/green] Board-ready HTML/PDF report with SVG radar chart\n"
         f"  [green]•[/green] FastAPI REST API + WebSocket live scanning\n\n"

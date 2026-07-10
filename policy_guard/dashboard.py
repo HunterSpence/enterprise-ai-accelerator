@@ -73,7 +73,7 @@ def _risk_badge(risk_tier: str) -> str:
         "Critical Risk": "bold white on red",
         "Medium Risk": "bold black on yellow",
         "Low Risk": "bold black on green3",
-        "Compliant": "bold white on green",
+        "Strong Readiness": "bold white on green",
     }
     color = colors.get(risk_tier, "white")
     return f"[{color}] {risk_tier} [/{color}]"
@@ -126,7 +126,7 @@ def _make_framework_scores_panel(scores: dict[str, float]) -> Panel:
         range(0, 50): ("[red]Critical[/red]", "red"),
         range(50, 70): ("[yellow]High Risk[/yellow]", "yellow"),
         range(70, 85): ("[orange3]Medium[/orange3]", "orange3"),
-        range(85, 101): ("[green]Compliant[/green]", "green"),
+        range(85, 101): ("[green]Strong[/green]", "green"),
     }
 
     def get_status(s: float) -> str:

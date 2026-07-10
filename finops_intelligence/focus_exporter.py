@@ -1,29 +1,31 @@
 """
-FinOps Intelligence — FOCUS 1.3 Specification Exporter
+FinOps Intelligence — FOCUS-inspired cost export
 ========================================================
-Converts FinOps Intelligence cost data to FinOps Foundation FOCUS 1.3 format.
+Evaluation prototype — pre-production, solo-maintained. Not a certification
+and not a compliance determination.
+
+Converts FinOps Intelligence cost data to a FOCUS-inspired export shape.
 
 FOCUS (FinOps Open Cost and Usage Specification) is the emerging standard for
-billing data normalization across cloud providers. Organizations adopting FOCUS
-can plug FinOps Intelligence output into any FOCUS-compatible toolchain:
-  - OpenCost (CNCF, Apache 2.0)
-  - focus_converters (FinOps Foundation reference implementation)
-  - Apptio Cloudability (commercial)
-  - Spot by NetApp (commercial)
-  - Any enterprise FinOps platform built on the spec
+billing data normalization across cloud providers. This exporter borrows FOCUS
+column names and conventions where practical, but it has NOT been validated
+against the official FOCUS spec or run through the FinOps Foundation's
+focus_validator — do not represent its output as FOCUS-conformant to a
+toolchain that expects the real spec.
 
 The FOCUS spec defines a normalized schema so multi-cloud cost data from AWS,
 Azure, GCP, and Oracle can be queried with the same field names.
 
 This exporter implements:
-  - FOCUS 1.0: all 33 required columns
-  - FOCUS 1.2/1.3: optional columns (InvoiceId, PricingCurrency, ServiceProvider,
-    HostProvider, CapacityReservationId, CapacityReservationStatus)
-  - AI/LLM cost rows: per-model token spend in FOCUS format (unique in OSS)
+  - A FOCUS-inspired row shape covering the commonly-referenced FOCUS 1.0
+    columns (not independently verified against the full official column set)
+  - Optional columns: InvoiceId, PricingCurrency, CapacityReservationId,
+    CapacityReservationStatus
+  - AI/LLM cost rows: per-model token spend in the same row shape
   - Multi-cloud normalization: AWS, Azure, GCP service category mapping
-  - Parquet export: FOCUS 1.4-ready columnar output
+  - Parquet export: columnar output
 
-Key FOCUS 1.0 column definitions implemented here:
+Key column definitions implemented here (FOCUS-inspired, not spec-verified):
   BilledCost          — The charge after all discounts (what you actually pay)
   EffectiveCost       — Amortized cost including RI/SP prepayments
   ListCost            — On-demand cost without discounts
@@ -32,8 +34,8 @@ Key FOCUS 1.0 column definitions implemented here:
   ServiceCategory     — Compute | Storage | Database | Network | AI | Other
   RegionId            — Cloud-neutral region identifier
   ResourceId          — Provider-specific resource identifier
-  UsageQuantity       — Consumption amount in UsageUnit
-  UsageUnit           — Unit of measure (Hours, GB, Requests, Tokens)
+  ConsumedQuantity    — Consumption amount in ConsumedUnit
+  ConsumedUnit        — Unit of measure (Hours, GB, Requests, Tokens)
   Tags                — Key-value cost allocation metadata
 
 Reference: https://focus.finops.org/#specification
@@ -290,10 +292,11 @@ _CHARGE_TYPE_CREDIT = "Credit"
 @dataclass
 class FOCUSRow:
     """
-    A single FOCUS 1.3 row representing one billing line item.
+    A single FOCUS-inspired row representing one billing line item.
 
-    Field names match FOCUS spec column names exactly for toolchain compatibility.
-    Implements all 33 FOCUS 1.0 required columns plus FOCUS 1.2/1.3 optional columns.
+    Field names follow FOCUS spec column naming conventions, but this row
+    shape has NOT been validated against the official FOCUS spec — treat it
+    as FOCUS-inspired, not FOCUS-conformant.
     """
     # Required FOCUS fields
     BilledCost: float
@@ -327,21 +330,20 @@ class FOCUSRow:
     SkuPriceId: str
     SubAccountId: str
     SubAccountName: str
-    UsageQuantity: float
-    UsageUnit: str
+    ConsumedQuantity: float
+    ConsumedUnit: str
 
     # Optional: cost allocation tags (FOCUS custom column convention)
     Tags: dict[str, str] = field(default_factory=dict)
 
-    # FOCUS 1.2 optional columns
+    # FOCUS optional columns
     InvoiceId: Optional[str] = None
     PricingCurrency: Optional[str] = None
-
-    # FOCUS 1.3 optional columns
-    ServiceProvider: Optional[str] = None
-    HostProvider: Optional[str] = None
     CapacityReservationId: Optional[str] = None
     CapacityReservationStatus: Optional[str] = None  # "Used" | "Unused" | "Unallocated"
+    # ponytail: ServiceProvider/HostProvider were dropped — they aren't real
+    # FOCUS columns (no such field in the spec) and duplicated ProviderName/
+    # PublisherName, which this exporter already sets to the same value.
 
     # FinOps Intelligence extension fields (FOCUS allows custom columns with x_ prefix)
     x_anomaly_score: float = 0.0
@@ -354,9 +356,9 @@ class FOCUSRow:
     x_cost_per_1k_tokens: Optional[float] = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to FOCUS-compliant dict (flat, for CSV/JSON/Parquet output)."""
+        """Serialize to a FOCUS-inspired dict (flat, for CSV/JSON/Parquet output)."""
         d: dict[str, Any] = {
-            # FOCUS 1.0 required columns (33)
+            # FOCUS-inspired required columns
             "BilledCost": self.BilledCost,
             "BillingAccountId": self.BillingAccountId,
             "BillingAccountName": self.BillingAccountName,
@@ -388,8 +390,8 @@ class FOCUSRow:
             "SkuPriceId": self.SkuPriceId,
             "SubAccountId": self.SubAccountId,
             "SubAccountName": self.SubAccountName,
-            "UsageQuantity": self.UsageQuantity,
-            "UsageUnit": self.UsageUnit,
+            "ConsumedQuantity": self.ConsumedQuantity,
+            "ConsumedUnit": self.ConsumedUnit,
             # Tags as JSON string (FOCUS recommendation for flat formats)
             "Tags": json.dumps(self.Tags) if self.Tags else "{}",
             # Extension columns (x_ prefix per FOCUS custom column convention)
@@ -399,16 +401,12 @@ class FOCUSRow:
             "x_finops_maturity_stage": self.x_finops_maturity_stage,
             "x_ri_sp_coverage": self.x_ri_sp_coverage,
         }
-        # FOCUS 1.2/1.3 optional columns — only include when populated to keep
-        # 1.0-only consumers from seeing unexpected columns unless data is present
+        # FOCUS optional columns — only include when populated to keep
+        # minimal consumers from seeing unexpected columns unless data is present
         if self.InvoiceId is not None:
             d["InvoiceId"] = self.InvoiceId
         if self.PricingCurrency is not None:
             d["PricingCurrency"] = self.PricingCurrency
-        if self.ServiceProvider is not None:
-            d["ServiceProvider"] = self.ServiceProvider
-        if self.HostProvider is not None:
-            d["HostProvider"] = self.HostProvider
         if self.CapacityReservationId is not None:
             d["CapacityReservationId"] = self.CapacityReservationId
         if self.CapacityReservationStatus is not None:
@@ -425,20 +423,23 @@ class FOCUSRow:
 
 class FOCUSExporter:
     """
-    Exports FinOps Intelligence data to FOCUS 1.3 format.
+    Exports FinOps Intelligence data to a FOCUS-inspired format.
 
-    Supports multi-cloud providers (AWS, Azure, GCP) and AI/LLM cost tracking —
-    the only open-source FinOps tool that combines FOCUS 1.3 export with
-    per-model LLM token costs.
+    Evaluation prototype — pre-production, solo-maintained. Not a certification
+    and not a compliance determination. Column names and conventions follow the
+    FOCUS spec where practical, but this output has NOT been validated against
+    the official FOCUS spec or the FinOps Foundation's focus_validator.
+
+    Supports multi-cloud providers (AWS, Azure, GCP) and AI/LLM cost tracking.
 
     Methods:
       - from_spend_data(): Convert SpendData / ServiceSpend objects
-      - export_ai_model_costs(): Convert per-model LLM spend to FOCUS rows
-      - to_focus(): Convenience method that returns a list of FOCUS dicts
-      - export_jsonl(): Write FOCUS JSONL (one JSON object per line)
-      - export_csv(): Write FOCUS CSV (header + data rows)
-      - export_parquet(): Write Parquet (FOCUS 1.4-ready columnar format)
-      - validate_focus_compliance(): Validate rows and report FOCUS version level
+      - export_ai_model_costs(): Convert per-model LLM spend to FOCUS-inspired rows
+      - to_focus(): Convenience method that returns a list of row dicts
+      - export_jsonl(): Write JSONL (one JSON object per line)
+      - export_csv(): Write CSV (header + data rows)
+      - export_parquet(): Write Parquet (columnar output)
+      - validate_focus_compliance(): Internal shape check — NOT spec conformance
 
     Example::
 
@@ -452,7 +453,7 @@ class FOCUSExporter:
              "output_tokens": 100_000, "total_cost": 2.10},
         ])
         result = exporter.validate_focus_compliance(rows + ai_rows)
-        print(result["focus_version"])  # "1.3"
+        print(result["focus_version"])  # e.g. "1.0" — internal tier, not a spec claim
     """
 
     def __init__(
@@ -667,12 +668,9 @@ class FOCUSExporter:
             SkuPriceId=sku_price_id,
             SubAccountId=self.account_id,
             SubAccountName=self.account_name,
-            UsageQuantity=1.0,
-            UsageUnit="Hours",
+            ConsumedQuantity=1.0,
+            ConsumedUnit="Hours",
             Tags=tags or {},
-            # FOCUS 1.3 optional columns
-            ServiceProvider=self._provider_name,
-            HostProvider=self._provider_name,
         )
 
     def to_focus(self, spend_data: Any) -> list[dict[str, Any]]:
@@ -738,7 +736,7 @@ class FOCUSExporter:
         period_end: Optional[str] = None,
     ) -> list[FOCUSRow]:
         """
-        Convert per-model LLM spend into FOCUS 1.3 rows.
+        Convert per-model LLM spend into FOCUS-inspired rows.
 
         Each entry in ``model_costs`` should contain:
           - model (str): model identifier, e.g. "claude-sonnet-4-6"
@@ -749,8 +747,8 @@ class FOCUSExporter:
         Returns one FOCUSRow per model with:
           - ServiceCategory: "AI and Machine Learning"
           - ResourceType: "LLM Inference"
-          - UsageUnit: "Tokens"
-          - ServiceProvider populated from AI_MODEL_PROVIDERS prefix match
+          - ConsumedUnit: "Tokens"
+          - ProviderName/PublisherName populated from AI_MODEL_PROVIDERS prefix match
           - x_input_tokens, x_output_tokens, x_cost_per_1k_tokens extensions
 
         Example::
@@ -829,11 +827,8 @@ class FOCUSExporter:
                 SkuPriceId=f"{sku_id}/per-token",
                 SubAccountId=self.account_id,
                 SubAccountName=self.account_name,
-                UsageQuantity=float(total_tokens),
-                UsageUnit="Tokens",
-                # FOCUS 1.3 optional columns
-                ServiceProvider=provider_name,
-                HostProvider=provider_name,
+                ConsumedQuantity=float(total_tokens),
+                ConsumedUnit="Tokens",
                 # AI extension columns
                 x_input_tokens=input_tokens,
                 x_output_tokens=output_tokens,
@@ -892,15 +887,16 @@ class FOCUSExporter:
 
     def validate_focus_compliance(self, rows: list[FOCUSRow]) -> dict[str, Any]:
         """
-        FOCUS spec validation — checks required fields, detects spec version level.
+        Shape check against this exporter's own FOCUS-inspired row — NOT a
+        validation against the official FOCUS spec. "compliant"/"focus_version"
+        below describe internal shape consistency only; they are not a FOCUS
+        conformance determination. For real spec conformance, run output
+        through the FinOps Foundation's focus_validator tool.
 
-        Reports the highest FOCUS version level supported by the rows:
-          - 1.0: all 33 required columns populated
+        Reports a version-like tier based on which optional columns are populated:
+          - 1.0: required columns populated, no optional columns
           - 1.2: 1.0 + InvoiceId and/or PricingCurrency present
-          - 1.3: 1.2 + ServiceProvider and/or HostProvider present
-
-        This is a lightweight validator; for full compliance use the
-        FinOps Foundation's focus_validator tool.
+          - 1.3: 1.2 + CapacityReservationId and/or CapacityReservationStatus present
 
         Returns:
             Dict with 'compliant', 'focus_version', 'errors', and 'warnings' keys.
@@ -942,10 +938,11 @@ class FOCUSExporter:
                     f"Must be one of: {', '.join(sorted(valid_charge_categories))}"
                 )
 
-            # Detect FOCUS 1.2/1.3 optional column usage
+            # Detect optional-column usage (tiers named after FOCUS spec releases
+            # that introduced them; not an independent conformance check)
             if row.InvoiceId is not None or row.PricingCurrency is not None:
                 has_1_2_cols = True
-            if row.ServiceProvider is not None or row.HostProvider is not None:
+            if row.CapacityReservationId is not None or row.CapacityReservationStatus is not None:
                 has_1_3_cols = True
 
             # Validate CapacityReservationStatus if present

@@ -27,13 +27,14 @@ class Settings:
 
     Production environment variables:
         AUDIT_DB_PATH          — SQLite database file path
-        AUDIT_API_KEY          — API key for REST endpoints (X-AIAuditTrail-Key header)
-        AUDIT_DEV_MODE         — "true" to bypass auth for local demo
+        AUDIT_API_KEY          — API key for REST endpoints (X-AIAuditTrail-Key header).
+                                  No default — unset means auth is unconfigured (fail-closed 503).
+        AUDIT_DEV_MODE         — "true" to bypass auth for local demo. Default: false (fail-closed).
         AUDIT_STORE_PLAINTEXT  — "true" to persist prompt/response text (dev only)
         AUDIT_LOG_LEVEL        — DEBUG | INFO | WARNING | ERROR
         AUDIT_HOST             — API server host (default: 0.0.0.0)
         AUDIT_PORT             — API server port (default: 8000)
-        AUDIT_CORS_ORIGINS     — Comma-separated allowed CORS origins
+        AUDIT_CORS_ORIGINS     — Comma-separated allowed CORS origins. Default: none (empty list).
         AUDIT_MAX_PAGE_SIZE    — Max entries per paginated API response
         AUDIT_CHECKPOINT_INTERVAL — Merkle checkpoint frequency (entries)
     """
@@ -42,11 +43,11 @@ class Settings:
         self.db_path: str = os.environ.get(
             "AUDIT_DB_PATH", "audit_trail.db"
         )
-        self.api_key: str = os.environ.get(
-            "AUDIT_API_KEY", "dev-key-change-in-production"
-        )
+        # Secure-by-default: no shipped credential. Unset -> api_key is None ->
+        # api.py's _verify_api_key fails closed (503) instead of silently allowing.
+        self.api_key: Optional[str] = os.environ.get("AUDIT_API_KEY") or None
         self.dev_mode: bool = os.environ.get(
-            "AUDIT_DEV_MODE", "true"
+            "AUDIT_DEV_MODE", "false"
         ).lower() in ("true", "1", "yes")
         self.store_plaintext: bool = os.environ.get(
             "AUDIT_STORE_PLAINTEXT", "false"
@@ -56,9 +57,11 @@ class Settings:
         ).upper()
         self.host: str = os.environ.get("AUDIT_HOST", "0.0.0.0")
         self.port: int = int(os.environ.get("AUDIT_PORT", "8000"))
+        # Default: no cross-origin access (empty list), not "*". Set AUDIT_CORS_ORIGINS
+        # explicitly to allow specific origins.
+        _raw_cors = os.environ.get("AUDIT_CORS_ORIGINS", "")
         self.cors_origins: list[str] = [
-            o.strip()
-            for o in os.environ.get("AUDIT_CORS_ORIGINS", "*").split(",")
+            o.strip() for o in _raw_cors.split(",") if o.strip()
         ]
         self.max_page_size: int = int(os.environ.get("AUDIT_MAX_PAGE_SIZE", "500"))
         self.checkpoint_interval: int = int(

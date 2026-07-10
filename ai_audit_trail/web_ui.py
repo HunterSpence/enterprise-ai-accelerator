@@ -22,7 +22,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 # ---------------------------------------------------------------------------
 # Streamlit must be available; install via: pip install streamlit
@@ -42,6 +42,7 @@ except ImportError:
     HAS_PLOTLY = False
 
 from ai_audit_trail.chain import AuditChain, DecisionType, RiskTier
+from ai_audit_trail.config import settings
 from ai_audit_trail.eu_ai_act import (
     check_article_12_compliance,
     days_until_enforcement,
@@ -99,12 +100,25 @@ _COSTS = {
 }
 
 
-def _ensure_demo_chain() -> AuditChain:
-    """Create or open the demo chain, seed with data if empty."""
-    chain = AuditChain(_DEMO_DB, store_plaintext=False)
-    if chain.count() < 50:
-        _seed_demo_data(chain)
-    return chain
+def _demo_mode_enabled() -> bool:
+    return os.environ.get("AUDIT_DEMO_MODE", "").strip().lower() in ("true", "1", "yes")
+
+
+def _ensure_chain() -> tuple[AuditChain, bool]:
+    """
+    Open the chain to display. Returns (chain, is_demo_data).
+
+    Synthetic demo entries are seeded ONLY when AUDIT_DEMO_MODE is explicitly
+    set — the dashboard no longer silently fabricates data by default. When
+    demo mode is off, this opens the real configured chain (AUDIT_DB_PATH)
+    with no seeding.
+    """
+    if _demo_mode_enabled():
+        chain = AuditChain(_DEMO_DB, store_plaintext=False)
+        if chain.count() < 50:
+            _seed_demo_data(chain)
+        return chain, True
+    return AuditChain(settings.db_path, store_plaintext=settings.store_plaintext), False
 
 
 def _seed_demo_data(chain: AuditChain, n: int = 120) -> None:
@@ -183,6 +197,20 @@ def render_sidebar(chain: AuditChain) -> dict[str, Any]:
     }
 
 
+def _date_range_bounds(filters: dict[str, Any]) -> tuple[Optional[str], Optional[str]]:
+    """
+    Convert the sidebar's start_date/end_date (date objects) into ISO 8601
+    since/until bounds for AuditChain.query(). until is bumped to the start
+    of the NEXT day so the end_date's whole day is included (a bare date-only
+    string would otherwise lexically exclude every timestamped entry on that day).
+    """
+    start_date = filters.get("start_date")
+    end_date = filters.get("end_date")
+    since = start_date.isoformat() if start_date else None
+    until = (end_date + timedelta(days=1)).isoformat() if end_date else None
+    return since, until
+
+
 # ---------------------------------------------------------------------------
 # Tab 1: Live Audit Feed
 # ---------------------------------------------------------------------------
@@ -193,9 +221,12 @@ def render_live_feed(chain: AuditChain, filters: dict[str, Any]) -> None:
     with col2:
         auto_refresh = st.toggle("Auto-refresh", value=False)
 
-    # Fetch last 50 entries
+    # Fetch last 50 entries within the selected date range
+    since, until = _date_range_bounds(filters)
     entries = chain.query(
         system_id=filters["system_id"],
+        since=since,
+        until=until,
         limit=50,
     )
     entries = [e for e in entries if e.risk_tier in filters["risk_filter"]]
@@ -381,11 +412,11 @@ def render_eu_ai_act(chain: AuditChain, filters: dict[str, Any]) -> None:
     systems = _DEMO_SYSTEMS if not filters["system_id"] else [filters["system_id"]]
     cols = st.columns(len(systems))
     for col, system in zip(cols, systems):
-        # Use a system-scoped sub-chain check via the shared chain
-        check = check_article_12_compliance(chain)
+        # System-scoped check — each card reflects that system's own entries,
+        # not one global number repeated across every card.
+        check = check_article_12_compliance(chain, system_id=system)
         with col:
-            st.metric(system, f"{check.score}/100")
-            color = "green" if check.score >= 80 else "orange" if check.score >= 50 else "red"
+            st.metric(system, f"{check.score}/100", help=check.status)
             st.progress(check.score / 100)
 
     st.divider()
@@ -487,7 +518,7 @@ def render_nist_rmf(chain: AuditChain) -> None:
         ("MAP 1.1", "DONE ✅", "EU Art. 6/7", "risk_tier per entry"),
         ("MEASURE 2.5", "DONE ✅", "EU Art. 12.2", "SHA-256 Merkle chain"),
         ("MEASURE 2.6", "IN PROGRESS ⏳", "EU Art. 12(d)", "Add model perf metrics"),
-        ("MANAGE 1.3", "DONE ✅", "EU Art. 62", "IncidentManager playbooks"),
+        ("MANAGE 1.3", "DONE ✅", "EU Art. 73", "IncidentManager playbooks"),
         ("MANAGE 2.2", "DONE ✅", "EU Art. 14", "Human oversight workflow"),
         ("GOVERN 5.2", "DONE ✅", "EU Art. 28", "Third-party AI inventory"),
     ]
@@ -654,13 +685,13 @@ def render_incidents(chain: AuditChain) -> None:
 
     im = _get_incident_manager()
     open_incidents = im.get_open_incidents()
-    p0_pending = im.get_article_62_pending()
+    p0_pending = im.get_article_73_pending()
 
-    # Article 62 urgent banner
+    # Article 73 urgent banner
     if p0_pending:
         st.error(
-            f"🚨 **{len(p0_pending)} P0 incident(s) require Article 62 notification "
-            "within 24 hours to national supervisory authority.**"
+            f"🚨 **{len(p0_pending)} P0 incident(s) require Article 73 notification "
+            "to the national supervisory authority per their tiered deadline.**"
         )
 
     # Incidents table
@@ -668,13 +699,13 @@ def render_incidents(chain: AuditChain) -> None:
         st.markdown("### Open Incidents")
         for inc in open_incidents:
             severity_color = "red" if "P0" in inc.severity.value else "orange" if "P1" in inc.severity.value else "blue"
-            hrs = inc.hours_until_article_62_deadline
+            hrs = inc.hours_until_article_73_deadline
             deadline_str = ""
             if hrs is not None:
                 if hrs > 0:
-                    deadline_str = f" | Art.62 deadline: **{hrs:.1f}h remaining**"
+                    deadline_str = f" | Art.73 deadline: **{hrs:.1f}h remaining**"
                 else:
-                    deadline_str = " | Art.62: **OVERDUE**"
+                    deadline_str = " | Art.73: **OVERDUE**"
             with st.expander(
                 f"[{inc.severity.value}] {inc.title}{deadline_str}",
                 expanded="P0" in inc.severity.value,
@@ -686,13 +717,13 @@ def render_incidents(chain: AuditChain) -> None:
                 col2.markdown(f"**Affected:** {inc.affected_persons_estimate:,} persons")
                 st.markdown(f"**Description:** {inc.description}")
 
-                if inc.article_62_required:
-                    if st.button(f"📋 Generate Article 62 Report ({inc.incident_id[:8]}…)"):
-                        report = inc.generate_article_62_report(provider_name="Your Organization")
+                if inc.article_73_required:
+                    if st.button(f"📋 Generate Article 73 Report ({inc.incident_id[:8]}…)"):
+                        report = inc.generate_article_73_report(provider_name="Your Organization")
                         st.download_button(
                             "⬇️ Download Report (Markdown)",
                             data=report.to_markdown(),
-                            file_name=f"article62_{inc.incident_id[:8]}.md",
+                            file_name=f"article73_{inc.incident_id[:8]}.md",
                             mime="text/markdown",
                         )
     else:
@@ -724,10 +755,10 @@ def render_incidents(chain: AuditChain) -> None:
                 detected_by="human",
             )
             st.success(f"Incident {new_inc.incident_id[:8]}… filed. Severity: {severity}")
-            if new_inc.article_62_required:
+            if new_inc.article_73_required:
                 st.warning(
-                    "⚠️ P0 incident: Article 62 requires national authority notification "
-                    "within 24 hours."
+                    "⚠️ P0 incident: Article 73 requires national authority notification "
+                    f"by {new_inc.article_73_deadline} (tiered deadline, see incident record)."
                 )
             st.rerun()
 
@@ -739,7 +770,8 @@ def render_incidents(chain: AuditChain) -> None:
 def render_cost_analytics(chain: AuditChain, filters: dict[str, Any]) -> None:
     st.subheader("Cost Analytics")
 
-    entries = chain.query(system_id=filters["system_id"], limit=500)
+    since, until = _date_range_bounds(filters)
+    entries = chain.query(system_id=filters["system_id"], since=since, until=until, limit=500)
     if not entries:
         st.info("No data available.")
         return
@@ -837,8 +869,15 @@ def main() -> None:
         "EU AI Act Article 12 · NIST AI RMF · Merkle-tree tamper detection · "
         "5 SDK integrations · Zero mandatory dependencies"
     )
+    st.caption("Evaluation prototype — pre-production, solo-maintained. Not a certification and not a compliance determination.")
 
-    chain = _ensure_demo_chain()
+    chain, is_demo = _ensure_chain()
+    if is_demo:
+        st.warning(
+            "⚠️ DEMO DATA — this view is showing synthetic seeded entries "
+            "(AUDIT_DEMO_MODE is set), not real audit records.",
+            icon="⚠️",
+        )
     filters = render_sidebar(chain)
 
     tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([

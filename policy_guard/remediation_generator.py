@@ -293,12 +293,26 @@ class RemediationGenerator:
         self._max_findings = max_findings
         self._cache: dict[str, RemediationResult] = {}
 
-        # Lazy-load anthropic client
+        # P0-04: route through core's governed AIClient instead of
+        # constructing a raw anthropic.Anthropic client — keeps refusal
+        # handling / fallback policy / model routing consistent with the
+        # rest of the platform. AIClient wraps AsyncAnthropic (async-only);
+        # _generate_via_claude() stays a sync method for API compatibility
+        # and drives it with asyncio.run() (see ponytail note there).
         self._client: Any = None
         if anthropic_api_key:
             try:
-                import anthropic
-                self._client = anthropic.Anthropic(api_key=anthropic_api_key)
+                import sys
+                from pathlib import Path
+                _repo_root = str(Path(__file__).resolve().parent.parent)
+                if _repo_root not in sys.path:
+                    sys.path.insert(0, _repo_root)
+                from anthropic import AsyncAnthropic
+                from core.ai_client import AIClient
+                self._client = AIClient(
+                    AsyncAnthropic(api_key=anthropic_api_key),
+                    default_model=model,
+                )
             except ImportError:
                 pass  # Fall back to template mode
 
@@ -409,9 +423,9 @@ class RemediationGenerator:
             "hipaa": "HIPAA Security Rule with AI/cloud extensions",
         }.get(framework, framework)
 
-        prompt = f"""You are a senior cloud security engineer specializing in Terraform and compliance.
+        system_prompt = "You are a senior cloud security engineer specializing in Terraform and compliance."
 
-A PolicyGuard compliance scan found this violation:
+        prompt = f"""A PolicyGuard compliance scan found this violation:
 
 Rule ID: {rule_id}
 Framework: {framework_context}
@@ -435,14 +449,24 @@ Respond with ONLY valid HCL code. No markdown fences, no explanation text outsid
 Start directly with the first resource block or comment."""
 
         try:
-            response = self._client.messages.create(
-                model=self._model,
-                max_tokens=800,
-                messages=[{"role": "user", "content": prompt}],
+            import asyncio
+            # ponytail: generate_for_finding()/_generate_via_claude() are a
+            # sync public API (callers like enrich_findings() are sync too);
+            # AIClient is async-only (wraps AsyncAnthropic), so drive one
+            # governed call per finding via asyncio.run() rather than making
+            # the whole RemediationGenerator surface async. Upgrade path if
+            # this is ever called from inside a running event loop: make
+            # generate_for_finding/enrich_findings async and drop asyncio.run.
+            thinking_response = asyncio.run(
+                self._client.thinking(
+                    system=system_prompt,
+                    user=prompt,
+                    max_tokens=800,
+                )
             )
             time.sleep(self._rate_limit_delay)
 
-            hcl = response.content[0].text.strip()
+            hcl = thinking_response.text.strip()
             # Remove markdown fences if Claude accidentally included them
             if hcl.startswith("```"):
                 lines = hcl.split("\n")

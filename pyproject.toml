@@ -75,6 +75,11 @@ dependencies = [
     "jinja2>=3.1.4",
     "python-dateutil>=2.9.0",
     "python-multipart>=0.0.9",
+    # IaC HCL parsing (iac_security) — absence silently degrades scanner to a
+    # regex fallback that false-clean-passes; must be a hard dependency.
+    "python-hcl2>=4.3.3",
+    # Dependency graph (migration_scout)
+    "networkx>=3.2",
 ]
 
 [project.optional-dependencies]
@@ -130,6 +135,15 @@ include = [
     "policy_guard*",
     "cloud_iq*",
     "agent_ops*",
+    "core*",
+    "auth*",
+    "iac_security*",
+    "app_portfolio*",
+    "executive_chat*",
+    "integrations*",
+    "compliance_citations*",
+    "observability*",
+    "evals*",
 ]
 
 [tool.ruff]
@@ -153,6 +167,7 @@ testpaths = [
     "ai_audit_trail/tests",
     "cloud_iq/tests",
     "finops_intelligence/tests",
+    "migration_scout/tests",
     "policy_guard/tests",
 ]
 addopts = "--tb=short -q"

@@ -4,8 +4,8 @@ test_eu_ai_act.py — Tests for EU AI Act compliance engine.
 Tests:
 - Risk tier classification for known system types
 - Enforcement timeline dates are correct
-- Article 62 incident detection from audit log patterns
-- Article 12 compliance scoring
+- Article 73 incident detection from audit log patterns
+- Article 12 compliance scoring (fail-closed)
 - GPAI obligation assessment
 - HTML report generation
 """
@@ -19,13 +19,14 @@ import pytest
 from ai_audit_trail.chain import AuditChain, DecisionType, RiskTier
 from ai_audit_trail.eu_ai_act import (
     Article12Check,
-    Article62Report,
+    Article73Report,
+    ARTICLE_73_REPORTING_HOURS,
     check_article_12_compliance,
     check_gpai_obligations,
     classify_risk_tier,
     days_until_enforcement,
     detect_annex_iii_categories,
-    detect_article_62_incidents,
+    detect_article_73_incidents,
     enforcement_status,
     generate_article_12_html_report,
     generate_article_13_transparency_report,
@@ -164,10 +165,77 @@ class TestArticle12Compliance:
         check = check_article_12_compliance(empty_chain)
         assert check.score == 0
         assert check.compliant is False
+        assert check.status == "NOT_ASSESSED"
 
     def test_populated_chain_has_positive_score(self, populated_chain: AuditChain):
         check = check_article_12_compliance(populated_chain)
         assert check.score > 0
+
+    def test_single_record_is_not_assessed_not_compliant(self, empty_chain: AuditChain):
+        """
+        Regression for P0-21: a single (or otherwise too-small) logged decision
+        must never read back as compliant=True — fail closed instead.
+        """
+        empty_chain.append(
+            session_id="s1", model="m", input_text="in", output_text="out",
+            input_tokens=10, output_tokens=10, latency_ms=100.0,
+            system_id="loan-approval-v2",
+        )
+        check = check_article_12_compliance(empty_chain, system_id="loan-approval-v2")
+        assert check.compliant is False
+        assert check.status == "NOT_ASSESSED"
+        assert check.score == 0
+
+    def test_missing_human_oversight_evidence_blocks_compliance(self, populated_chain: AuditChain):
+        """
+        Regression for P0-21: session_id is a conversation id, not a human
+        identity — entries without a real reviewer/oversight signal in
+        metadata must never satisfy the human-oversight requirement.
+        """
+        check = check_article_12_compliance(populated_chain)
+        assert "human_oversight_evidence" not in " ".join(check.requirements_met).lower().replace(" ", "_")
+        missing_text = " ".join(check.requirements_missing)
+        assert "oversight" in missing_text.lower() or "human" in missing_text.lower()
+        assert check.compliant is False
+        assert check.status == "NON_COMPLIANT"
+
+    def test_human_oversight_evidence_present_is_credited(self, empty_chain: AuditChain):
+        """A chain with a real reviewer signal in metadata gets credit for it."""
+        for i in range(12):
+            empty_chain.append(
+                session_id=f"s{i}", model="m", input_text="in", output_text="out",
+                input_tokens=10, output_tokens=10, latency_ms=100.0,
+                system_id="loan-approval-v2",
+                metadata={"reviewer_id": "analyst-42"},
+            )
+        check = check_article_12_compliance(empty_chain, system_id="loan-approval-v2")
+        met_text = " ".join(check.requirements_met).lower()
+        assert "oversight" in met_text
+
+    def test_system_id_scopes_the_assessment(self, empty_chain: AuditChain):
+        """
+        Regression for P0-10/P0-21: check_article_12_compliance(chain, system_id=...)
+        must assess only that system's entries, not the whole (possibly
+        multi-tenant) chain — one system with too little evidence must come
+        back NOT_ASSESSED even while another system on the same chain has plenty.
+        """
+        for i in range(15):
+            empty_chain.append(
+                session_id=f"a{i}", model="m", input_text="in", output_text="out",
+                input_tokens=10, output_tokens=10, latency_ms=100.0,
+                system_id="system-a", metadata={"reviewer_id": "r1"},
+            )
+        empty_chain.append(
+            session_id="b0", model="m", input_text="in", output_text="out",
+            input_tokens=10, output_tokens=10, latency_ms=100.0,
+            system_id="system-b",
+        )
+
+        check_a = check_article_12_compliance(empty_chain, system_id="system-a")
+        check_b = check_article_12_compliance(empty_chain, system_id="system-b")
+
+        assert check_a.status != "NOT_ASSESSED"
+        assert check_b.status == "NOT_ASSESSED"  # only 1 entry logged for system-b
 
     def test_compliance_check_has_required_fields(self, populated_chain: AuditChain):
         check = check_article_12_compliance(populated_chain)
@@ -204,12 +272,12 @@ class TestArticle12Compliance:
 
 
 # ---------------------------------------------------------------------------
-# Article 62 incident detection
+# Article 73 incident detection
 # ---------------------------------------------------------------------------
 
-class TestArticle62Detection:
+class TestArticle73Detection:
     def test_clean_chain_has_no_incidents(self, populated_chain: AuditChain):
-        incidents = detect_article_62_incidents(populated_chain, system_id="loan-approval-v2")
+        incidents = detect_article_73_incidents(populated_chain, system_id="loan-approval-v2")
         # Chain is valid, no error metadata → should have no or few incidents
         integrity_incidents = [i for i in incidents if i["type"] == "P1-INTEGRITY"]
         assert len(integrity_incidents) == 0
@@ -225,7 +293,7 @@ class TestArticle62Detection:
         entry = empty_chain.query(limit=1)[0]
         empty_chain._tamper_entry_for_demo(entry.entry_id, "input_tokens", 99999)
 
-        incidents = detect_article_62_incidents(empty_chain, system_id="test-system")
+        incidents = detect_article_73_incidents(empty_chain, system_id="test-system")
         incident_types = [i["type"] for i in incidents]
         assert "P1-INTEGRITY" in incident_types
 
@@ -236,17 +304,28 @@ class TestArticle62Detection:
         High-risk CLASSIFICATION entries with <30% output diversity
         should trigger a P0-DISCRIMINATION incident.
         """
-        incidents = detect_article_62_incidents(high_risk_chain, system_id="loan-approval-v2")
+        incidents = detect_article_73_incidents(high_risk_chain, system_id="loan-approval-v2")
         incident_types = [i["type"] for i in incidents]
         assert "P0-DISCRIMINATION" in incident_types
 
     def test_incidents_have_required_fields(self, high_risk_chain: AuditChain):
-        incidents = detect_article_62_incidents(high_risk_chain, system_id="loan-approval-v2")
+        incidents = detect_article_73_incidents(high_risk_chain, system_id="loan-approval-v2")
         for inc in incidents:
             assert "type" in inc
             assert "severity" in inc
             assert "description" in inc
             assert "evidence_entry_ids" in inc
+
+    def test_article_73_reporting_hours_are_tiered(self):
+        """
+        Regression for P0-19: Article 73 has NO single flat reporting window —
+        the mapping must expose multiple distinct tiers, and none of them may
+        silently be the old (wrong-article) 72-hour figure by coincidence of
+        being the only value.
+        """
+        assert len(set(ARTICLE_73_REPORTING_HOURS.values())) > 1
+        assert "default" in ARTICLE_73_REPORTING_HOURS
+        assert all(h > 0 for h in ARTICLE_73_REPORTING_HOURS.values())
 
 
 # ---------------------------------------------------------------------------

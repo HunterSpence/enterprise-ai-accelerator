@@ -97,6 +97,47 @@ class TestBatchCoalescerFlush:
         assert "tools" not in params["params"]
 
 
+class TestBatchCoalescerPartition:
+    """P0-29: max_batch_size is a limit — a burst larger than it must become
+    multiple batches, none oversized, and every future must resolve."""
+
+    async def test_burst_partitions_and_every_future_resolves(self):
+        create_calls = []
+
+        async def _create(requests):
+            create_calls.append(requests)
+            batch_obj = MagicMock()
+            batch_obj.id = f"batch-{len(create_calls)}"
+            return batch_obj
+
+        ai = MagicMock()
+        ai.raw.messages.batches.create = AsyncMock(side_effect=_create)
+        ai.raw.messages.batches.retrieve = AsyncMock(return_value=MagicMock(processing_status="ended"))
+        ai.raw.messages.batches.results = AsyncMock(return_value=_aiter([]))  # empty -> no custom_ids match
+
+        # Queue the whole burst with the submit-time auto-trigger disabled
+        # (huge max_batch_size) so the single _do_flush() below is the only
+        # partitioning event and the test is deterministic.
+        coalescer = BatchCoalescer(ai=ai, max_batch_size=1_000_000, flush_interval_s=999)
+        futures = []
+        for i in range(2000):
+            req = BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user=f"u{i}", custom_id=f"id-{i}")
+            futures.append(await coalescer.submit(req))
+
+        coalescer._max_batch_size = 1000
+        await coalescer._do_flush()
+
+        results = await asyncio.gather(*[f._future for f in futures], return_exceptions=True)
+
+        assert len(create_calls) >= 2
+        assert all(len(chunk) <= 1000 for chunk in create_calls)
+        assert sum(len(chunk) for chunk in create_calls) == 2000
+        # Every future reached a terminal state (here: rejected, since the
+        # mocked results stream never supplies their custom_id) — none hang.
+        assert len(results) == 2000
+        assert all(isinstance(r, BaseException) for r in results)
+
+
 class TestExtractBatchResult:
     def test_extracts_tool_use(self):
         block = MagicMock()

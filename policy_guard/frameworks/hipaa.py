@@ -515,6 +515,8 @@ class HIPAAReport:
     low_count: int = 0
     baa_required_vendors: list[str] = field(default_factory=list)
 
+    not_assessed_count: int = 0
+
     def compute(self) -> None:
         self.total_findings = len([f for f in self.findings if f.status == "FAIL"])
         self.critical_count = len([f for f in self.findings if f.status == "FAIL" and f.severity == "CRITICAL"])
@@ -522,8 +524,11 @@ class HIPAAReport:
         self.medium_count = len([f for f in self.findings if f.status == "FAIL" and f.severity == "MEDIUM"])
         self.low_count = len([f for f in self.findings if f.status == "FAIL" and f.severity == "LOW"])
         pass_count = len([f for f in self.findings if f.status == "PASS"])
-        total = pass_count + self.total_findings
-        self.compliance_score = (pass_count / total * 100) if total > 0 else 100.0
+        self.not_assessed_count = len([f for f in self.findings if f.status == "NOT_ASSESSED"])
+        # P0-22: NOT_ASSESSED controls count in the denominator but never as a
+        # pass — an empty-evidence scan must not be able to score 100%.
+        total = pass_count + self.total_findings + self.not_assessed_count
+        self.compliance_score = (pass_count / total * 100) if total > 0 else 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -559,29 +564,53 @@ class HIPAAScanner:
 
         for category, controls in all_control_sets:
             for control_id, control in controls.items():
-                passed = state.get(control_id, True)
                 severity = control["severity"]
+
+                # P0-22: fail-closed evidence lookup. In mock mode the demo
+                # state dict covers every control explicitly, so the `True`
+                # default never actually fires. In non-mock (live) mode there
+                # is no evidence collector wired up yet, so `state` is empty —
+                # a missing key must never be silently treated as PASS
+                # (that is exactly the bug: an empty-evidence scan scoring
+                # 100%). Missing evidence in live mode = NOT_ASSESSED.
+                if self.mock:
+                    status = "PASS" if state.get(control_id, True) else "FAIL"
+                else:
+                    val = state.get(control_id)
+                    status = "NOT_ASSESSED" if val is None else ("PASS" if val else "FAIL")
+
+                if status == "PASS":
+                    details = f"[{control_id}] COMPLIANT — {control['title']}"
+                    remediation = ""
+                elif status == "NOT_ASSESSED":
+                    details = (
+                        f"[{control_id}] NOT ASSESSED — {control['title']}\n"
+                        f"No evidence was supplied for this control. This is a control-mapping "
+                        f"gap, not a pass — do not report this control as compliant."
+                    )
+                    remediation = (
+                        f"Supply evidence for {control_id} (policy docs, config export, attestation) "
+                        f"and re-run the scan to get a real PASS/FAIL determination."
+                    )
+                else:
+                    details = (
+                        f"[{control_id}] NON-COMPLIANT — {control['title']}\n"
+                        f"Requirement: {control['requirement']}\n"
+                        f"AI Context: {control['ai_context']}"
+                    )
+                    remediation = (
+                        f"To remediate {control_id}:\n"
+                        + "\n".join(f"  - {r}" for r in control["required"])
+                    )
 
                 all_findings.append(HIPAAFinding(
                     control_id=control_id,
                     title=control["title"],
-                    status="PASS" if passed else "FAIL",
+                    status=status,
                     severity=severity,
                     category=category,
-                    details=(
-                        f"[{control_id}] COMPLIANT — {control['title']}" if passed
-                        else (
-                            f"[{control_id}] NON-COMPLIANT — {control['title']}\n"
-                            f"Requirement: {control['requirement']}\n"
-                            f"AI Context: {control['ai_context']}"
-                        )
-                    ),
-                    remediation=(
-                        "" if passed else (
-                            f"To remediate {control_id}:\n"
-                            + "\n".join(f"  - {r}" for r in control["required"])
-                        )
-                    ),
+                    details=details,
+                    remediation=remediation,
                 ))
 
         # Identify BAA-required AI vendors from mock data

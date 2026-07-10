@@ -90,10 +90,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -752,14 +755,31 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     from mcp_transports import audit_tool_call
     _start_ms = _time.monotonic() * 1000
 
+    # OMISSION fix: attribute this call to its real MCP session instead of the
+    # hardcoded "mcp-server" constant every call used to share. The low-level
+    # Server exposes the active session via request_context; id() gives a
+    # stable per-connection identifier for the life of that connection (the
+    # SDK's ServerSession has no public session id of its own).
+    try:
+        session_id = f"mcp-session-{id(server.request_context.session):x}"
+    except LookupError:
+        session_id = "mcp-server-unknown"
+
     error_str: str | None = None
     try:
         result = await _dispatch(name, arguments)
     except Exception as exc:
-        error_str = str(exc)
+        # OMISSION fix: don't leak raw exception text (which can include
+        # internal paths/stack detail) back to the caller — log the detail
+        # server-side and return a generic, non-identifying message instead.
+        logger.exception("call_tool: tool=%s failed", name)
+        error_str = "Internal error while executing tool. See server logs for detail."
         result = {"error": error_str, "tool": name}
     finally:
-        audit_tool_call(name, arguments, result if not error_str else None, error_str, _start_ms)
+        audit_tool_call(
+            name, arguments, result if not error_str else None, error_str, _start_ms,
+            session_id=session_id,
+        )
 
     return [TextContent(type="text", text=json.dumps(result, indent=2, default=str))]
 

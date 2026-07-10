@@ -20,7 +20,8 @@ V2 upgrades:
 
 from __future__ import annotations
 
-import json
+import asyncio
+import concurrent.futures
 import os
 import random
 import time
@@ -28,7 +29,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-import anthropic
 import numpy as np
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn
@@ -36,7 +36,33 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 
+from core.ai_client import get_client
+from core.models import MODEL_HAIKU_4_5
+
 console = Console()
+
+
+def _run_async(coro: Any) -> Any:
+    """Sync bridge for the governed (async-only) AIClient.
+
+    assess_workload() stays synchronous — the CLI demo, wave planner, TCO
+    calculator, and runbook generator all call it synchronously, and a full
+    async refactor of the assessor is out of scope for this fix. When called
+    from a context that already has a running event loop (e.g. api.py's
+    FastAPI background task, which invokes assess_workload without awaiting
+    it), asyncio.run() would raise; that case is bridged through a dedicated
+    thread instead.
+
+    ponytail: threaded bridge, not a full async assess_workload(). Upgrade
+    path if this becomes a hot path: make assess_workload/assess_inventory
+    async and have callers await them directly.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
 
 
 # ---------------------------------------------------------------------------
@@ -676,16 +702,19 @@ class WorkloadAssessor:
         self.use_ml = use_ml
         self.use_ai = use_ai
         self.confidence_threshold = confidence_threshold
-        self._client: anthropic.Anthropic | None = None
+        # ``_client`` is just a readiness flag now — the actual call goes
+        # through core.ai_client.get_client() (the governed AIClient), which
+        # lazily constructs its own AsyncAnthropic. Kept as a bool (not the
+        # client itself) so `if not self._client:` below is unchanged.
+        self._client: bool = False
         self._ml: SixRMLClassifier | None = None
 
         if self.use_ml:
             self._ml = get_ml_classifier()
 
         if self.use_ai:
-            api_key = os.environ.get("ANTHROPIC_API_KEY")
-            if api_key:
-                self._client = anthropic.Anthropic(api_key=api_key)
+            if os.environ.get("ANTHROPIC_API_KEY"):
+                self._client = True
             else:
                 console.print("[yellow]ANTHROPIC_API_KEY not set — AI enrichment disabled[/yellow]")
                 self.use_ai = False
@@ -724,27 +753,40 @@ Database type: {w.database_type or 'none'}
 ML preliminary strategy ({ml_confidence:.0%} confidence): {ml_strategy.value}
 Notes: {w.notes if w.notes else 'None'}
 
-Respond in JSON only:
-{{
-  "strategy": "Rehost|Replatform|Repurchase|Refactor|Retire|Retain",
-  "rationale": "2-3 sentences explaining the strategy, citing specific workload attributes",
-  "quick_wins": ["specific win 1", "specific win 2", "specific win 3"],
-  "risks": ["specific risk 1", "specific risk 2"],
-  "confidence": 0.0-1.0
-}}"""
+Respond with the workload's classification and guidance."""
+
+        schema = {
+            "type": "object",
+            "properties": {
+                "strategy": {
+                    "type": "string",
+                    "enum": ["Rehost", "Replatform", "Repurchase", "Refactor", "Retire", "Retain"],
+                },
+                "rationale": {
+                    "type": "string",
+                    "description": "2-3 sentences explaining the strategy, citing specific workload attributes",
+                },
+                "quick_wins": {"type": "array", "items": {"type": "string"}},
+                "risks": {"type": "array", "items": {"type": "string"}},
+                "confidence": {"type": "number"},
+            },
+            "required": ["strategy", "rationale", "quick_wins", "risks", "confidence"],
+        }
 
         try:
-            response = self._client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=500,
-                messages=[{"role": "user", "content": prompt}],
+            # Routed through the governed AIClient (core/ai_client.py) rather
+            # than a raw anthropic.Anthropic client — structured outputs
+            # replace the old fence-stripped-JSON parsing.
+            structured = _run_async(
+                get_client().structured(
+                    system="You are an expert cloud migration architect.",
+                    user=prompt,
+                    schema=schema,
+                    model=MODEL_HAIKU_4_5,
+                    max_tokens=500,
+                )
             )
-            raw = response.content[0].text.strip()
-            if raw.startswith("```"):
-                raw = raw.split("```")[1]
-                if raw.startswith("json"):
-                    raw = raw[4:]
-            data = json.loads(raw)
+            data = structured.data
 
             strategy_str = data.get("strategy", ml_strategy.value)
             try:

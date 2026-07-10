@@ -1,8 +1,8 @@
 """
-incident_manager.py — AI Incident Management for EU AI Act Article 62 compliance.
+incident_manager.py — AI Incident Management for EU AI Act Article 73 compliance.
 
 NEW in V2. Classifies, tracks, and responds to AI system incidents with
-automated playbooks and Article 62 report generation.
+automated playbooks and Article 73 report generation.
 
 Incident classification (P0 → P3 severity):
 - P0-SAFETY:          Output caused or could cause physical harm
@@ -12,8 +12,11 @@ Incident classification (P0 → P3 severity):
 - P2-PERFORMANCE:     Latency/throughput SLA breach
 - P3-COST:            Token spend exceeded budget
 
-EU AI Act Article 62: Serious incidents (P0) must be reported to national
-market surveillance authority within 72 hours.
+EU AI Act Article 73: Serious incidents (P0) must be reported to the national
+market surveillance authority within a deadline TIERED by incident type (see
+ARTICLE_73_REPORTING_HOURS in eu_ai_act.py) — not a flat window. The severity
+-> tier mapping below is an engineering approximation, not legal advice;
+verify against the primary source and qualified counsel before relying on it.
 
 Stdlib only — zero mandatory dependencies.
 """
@@ -29,7 +32,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from ai_audit_trail.chain import AuditChain
-from ai_audit_trail.eu_ai_act import Article62Report, ARTICLE_62_REPORTING_HOURS
+from ai_audit_trail.eu_ai_act import Article73Report, ARTICLE_73_REPORTING_HOURS
 
 
 # ---------------------------------------------------------------------------
@@ -53,10 +56,25 @@ class IncidentStatus(str, Enum):
     CLOSED = "CLOSED"
 
 
-_SEVERITY_REQUIRES_ARTICLE_62 = {
+_SEVERITY_REQUIRES_ARTICLE_73 = {
     IncidentSeverity.P0_SAFETY,
     IncidentSeverity.P0_DISCRIMINATION,
 }
+
+# Best-effort mapping from our internal severity taxonomy to an Article 73
+# incident-type tier (see ARTICLE_73_REPORTING_HOURS). P0-SAFETY may involve
+# physical/health harm -> the faster tier; P0-DISCRIMINATION is treated as a
+# potential widespread fundamental-rights infringement -> the faster tier.
+# Everything else required falls back to the "default" (slowest) tier.
+_SEVERITY_TO_ARTICLE_73_TIER = {
+    IncidentSeverity.P0_SAFETY: "serious_harm_or_widespread_infringement",
+    IncidentSeverity.P0_DISCRIMINATION: "serious_harm_or_widespread_infringement",
+}
+
+
+def _article_73_deadline_hours(severity: "IncidentSeverity") -> int:
+    tier = _SEVERITY_TO_ARTICLE_73_TIER.get(severity, "default")
+    return ARTICLE_73_REPORTING_HOURS.get(tier, ARTICLE_73_REPORTING_HOURS["default"])
 
 _SEVERITY_ORDER = {
     IncidentSeverity.P0_SAFETY: 0,
@@ -76,7 +94,8 @@ _PLAYBOOKS: dict[IncidentSeverity, list[str]] = {
     IncidentSeverity.P0_SAFETY: [
         "IMMEDIATE: Halt AI system output for affected use case",
         "IMMEDIATE: Notify safety officer and legal counsel",
-        "NOTIFY EU Article 62: File incident report within 72 hours to national authority",
+        "NOTIFY EU Article 73: File incident report to national authority per the "
+        "tiered deadline on this incident record (see article_73_deadline)",
         "INVESTIGATE: Identify affected outputs from audit trail",
         "REMEDIATE: Human review of all impacted decisions",
         "VALIDATE: Retrain or rollback model before re-enabling",
@@ -85,7 +104,8 @@ _PLAYBOOKS: dict[IncidentSeverity, list[str]] = {
     IncidentSeverity.P0_DISCRIMINATION: [
         "IMMEDIATE: Throttle output for affected demographic segment",
         "IMMEDIATE: Activate human review queue for pending decisions",
-        "NOTIFY EU Article 62: File incident report within 72 hours",
+        "NOTIFY EU Article 73: File incident report per the tiered deadline on "
+        "this incident record (see article_73_deadline)",
         "INVESTIGATE: Run disparate impact analysis (80% rule) across audit log",
         "REMEDIATE: Suspend automated decision-making for affected group",
         "VALIDATE: Bias testing before re-enabling (per Article 10.2)",
@@ -104,7 +124,7 @@ _PLAYBOOKS: dict[IncidentSeverity, list[str]] = {
         "PRESERVE: Export current chain state as evidence",
         "NOTIFY: Inform legal and compliance teams — regulatory impact likely",
         "RECOVER: Restore from last verified checkpoint if backup available",
-        "DOCUMENT: Article 62 report may be required (review with counsel)",
+        "DOCUMENT: Article 73 report may be required (review with counsel)",
     ],
     IncidentSeverity.P2_PERFORMANCE: [
         "ALERT: Notify infrastructure and ML ops teams",
@@ -140,33 +160,33 @@ class AIIncident:
     evidence_entry_ids: list[str]
     affected_persons_estimate: int
     playbook_steps: list[str]
-    article_62_required: bool
-    article_62_deadline: Optional[str]  # ISO 8601 UTC, 72h after detected_at
+    article_73_required: bool
+    article_73_deadline: Optional[str]  # ISO 8601 UTC, detected_at + tiered Article 73 hours
     resolved_at: Optional[str] = None
     resolution_notes: str = ""
     mttr_minutes: Optional[float] = None  # Mean time to resolution
     tags: list[str] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        self.article_62_required = self.severity in _SEVERITY_REQUIRES_ARTICLE_62
-        if self.article_62_required and not self.article_62_deadline:
+        self.article_73_required = self.severity in _SEVERITY_REQUIRES_ARTICLE_73
+        if self.article_73_required and not self.article_73_deadline:
             detected = datetime.fromisoformat(self.detected_at)
-            deadline = detected + timedelta(hours=ARTICLE_62_REPORTING_HOURS)
-            self.article_62_deadline = deadline.isoformat()
+            deadline = detected + timedelta(hours=_article_73_deadline_hours(self.severity))
+            self.article_73_deadline = deadline.isoformat()
 
     @property
-    def hours_until_article_62_deadline(self) -> Optional[float]:
-        if not self.article_62_deadline:
+    def hours_until_article_73_deadline(self) -> Optional[float]:
+        if not self.article_73_deadline:
             return None
-        deadline = datetime.fromisoformat(self.article_62_deadline)
+        deadline = datetime.fromisoformat(self.article_73_deadline)
         now = datetime.now(timezone.utc)
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=timezone.utc)
         return (deadline - now).total_seconds() / 3600.0
 
     @property
-    def is_overdue_article_62(self) -> bool:
-        hrs = self.hours_until_article_62_deadline
+    def is_overdue_article_73(self) -> bool:
+        hrs = self.hours_until_article_73_deadline
         return hrs is not None and hrs < 0 and self.status != IncidentStatus.CLOSED
 
     def to_dict(self) -> dict[str, Any]:
@@ -182,23 +202,23 @@ class AIIncident:
             "detected_by": self.detected_by,
             "evidence_entry_ids": self.evidence_entry_ids,
             "affected_persons_estimate": self.affected_persons_estimate,
-            "article_62_required": self.article_62_required,
-            "article_62_deadline": self.article_62_deadline,
+            "article_73_required": self.article_73_required,
+            "article_73_deadline": self.article_73_deadline,
             "resolved_at": self.resolved_at,
             "mttr_minutes": self.mttr_minutes,
         }
         return d
 
-    def generate_article_62_report(self, provider_name: str = "[Organization]") -> Article62Report:
-        """Generate EU AI Act Article 62 serious incident report for submission."""
-        return Article62Report(
+    def generate_article_73_report(self, provider_name: str = "[Organization]") -> Article73Report:
+        """Generate EU AI Act Article 73 serious incident report for submission."""
+        return Article73Report(
             incident_id=self.incident_id,
             system_id=self.system_id,
             system_name=self.system_name,
             incident_type=self.severity.value,
             detected_at=self.detected_at,
-            reporting_deadline=self.article_62_deadline or "",
-            hours_remaining=self.hours_until_article_62_deadline or 0.0,
+            reporting_deadline=self.article_73_deadline or "",
+            hours_remaining=self.hours_until_article_73_deadline or 0.0,
             description=self.description,
             affected_persons_estimate=self.affected_persons_estimate,
             severity=self.severity.value,
@@ -215,7 +235,7 @@ class AIIncident:
 class IncidentManager:
     """
     Manages AI system incidents with automated detection, classification,
-    playbook execution, and Article 62 report generation.
+    playbook execution, and Article 73 report generation.
 
     Usage::
 
@@ -229,7 +249,7 @@ class IncidentManager:
             evidence_entry_ids=["entry-uuid-1", ...],
             affected_persons_estimate=1250,
         )
-        report = incident.generate_article_62_report()
+        report = incident.generate_article_73_report()
         print(report.to_markdown())
     """
 
@@ -263,18 +283,18 @@ class IncidentManager:
             evidence_entry_ids=evidence_entry_ids or [],
             affected_persons_estimate=affected_persons_estimate,
             playbook_steps=_PLAYBOOKS.get(severity, []),
-            article_62_required=False,  # set by __post_init__
-            article_62_deadline=None,   # set by __post_init__
+            article_73_required=False,  # set by __post_init__
+            article_73_deadline=None,   # set by __post_init__
             tags=tags or [],
         )
-        # Trigger __post_init__ to compute article_62 fields
+        # Trigger __post_init__ to compute article_73 fields
         # (already called by dataclass, but we need to re-trigger after assignment)
-        object.__setattr__(incident, "article_62_required",
-                           severity in _SEVERITY_REQUIRES_ARTICLE_62)
-        if incident.article_62_required:
+        object.__setattr__(incident, "article_73_required",
+                           severity in _SEVERITY_REQUIRES_ARTICLE_73)
+        if incident.article_73_required:
             detected = datetime.fromisoformat(incident.detected_at)
-            deadline = detected + timedelta(hours=ARTICLE_62_REPORTING_HOURS)
-            object.__setattr__(incident, "article_62_deadline", deadline.isoformat())
+            deadline = detected + timedelta(hours=_article_73_deadline_hours(severity))
+            object.__setattr__(incident, "article_73_deadline", deadline.isoformat())
 
         self._incidents[incident_id] = incident
         return incident
@@ -312,11 +332,11 @@ class IncidentManager:
             incidents = [i for i in incidents if i.severity in severity_filter]
         return sorted(incidents, key=lambda x: _SEVERITY_ORDER.get(x.severity, 99))
 
-    def get_article_62_pending(self) -> list[AIIncident]:
-        """Return P0 incidents requiring Article 62 submission."""
+    def get_article_73_pending(self) -> list[AIIncident]:
+        """Return P0 incidents requiring Article 73 submission."""
         return [
             i for i in self._incidents.values()
-            if i.article_62_required and i.status != IncidentStatus.CLOSED
+            if i.article_73_required and i.status != IncidentStatus.CLOSED
         ]
 
     def summary(self) -> dict[str, Any]:
@@ -324,7 +344,7 @@ class IncidentManager:
         all_incidents = list(self._incidents.values())
         open_incidents = self.get_open_incidents()
         p0_incidents = [i for i in all_incidents if "P0" in i.severity.value]
-        overdue = [i for i in all_incidents if i.is_overdue_article_62]
+        overdue = [i for i in all_incidents if i.is_overdue_article_73]
 
         resolved = [i for i in all_incidents if i.mttr_minutes is not None]
         avg_mttr = (
@@ -340,8 +360,8 @@ class IncidentManager:
             "total": len(all_incidents),
             "open": len(open_incidents),
             "p0_critical": len(p0_incidents),
-            "article_62_pending": len(self.get_article_62_pending()),
-            "article_62_overdue": len(overdue),
+            "article_73_pending": len(self.get_article_73_pending()),
+            "article_73_overdue": len(overdue),
             "avg_mttr_minutes": round(avg_mttr, 1) if avg_mttr else None,
             "by_severity": by_severity,
         }
@@ -354,10 +374,10 @@ class IncidentManager:
     ) -> list[AIIncident]:
         """
         Auto-detect incidents from audit log patterns and create incident records.
-        Wraps eu_ai_act.detect_article_62_incidents() with full incident creation.
+        Wraps eu_ai_act.detect_article_73_incidents() with full incident creation.
         """
-        from ai_audit_trail.eu_ai_act import detect_article_62_incidents
-        raw_incidents = detect_article_62_incidents(chain, system_id)
+        from ai_audit_trail.eu_ai_act import detect_article_73_incidents
+        raw_incidents = detect_article_73_incidents(chain, system_id)
 
         created: list[AIIncident] = []
         for raw in raw_incidents:

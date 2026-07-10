@@ -55,9 +55,11 @@ class QueryEngine:
         decision_type: Optional[DecisionType | str] = None,
         risk_tier: Optional[RiskTier | str] = None,
         model: Optional[str] = None,
+        system_id: Optional[str] = None,
         since: Optional[str] = None,
         until: Optional[str] = None,
         limit: Optional[int] = None,
+        offset: int = 0,
     ) -> list[LogEntry]:
         """
         Filter audit entries. All parameters are optional AND conditions.
@@ -68,9 +70,11 @@ class QueryEngine:
         decision_type: RECOMMENDATION | CLASSIFICATION | GENERATION | AUTONOMOUS_ACTION
         risk_tier: MINIMAL | LIMITED | HIGH | UNACCEPTABLE
         model: exact model name match
+        system_id: filter to a specific registered AI system (tenant scoping)
         since: ISO 8601 UTC start timestamp (inclusive)
         until: ISO 8601 UTC end timestamp (inclusive)
         limit: maximum number of entries to return
+        offset: number of matching entries to skip (pagination; requires limit)
         """
         if isinstance(decision_type, DecisionType):
             decision_type = decision_type.value
@@ -82,9 +86,11 @@ class QueryEngine:
             decision_type=decision_type,
             risk_tier=risk_tier,
             model=model,
+            system_id=system_id,
             since=since,
             until=until,
             limit=limit,
+            offset=offset,
         )
 
     def get_by_session(self, session_id: str) -> list[LogEntry]:

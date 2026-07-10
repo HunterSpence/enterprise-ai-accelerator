@@ -1,8 +1,16 @@
 """
-benchmark.py — AIAuditTrail v2.0 competitive compliance benchmark.
+benchmark.py — AIAuditTrail v2.0 illustrative compliance comparison.
 
-Compares AIAuditTrail against IBM OpenPages and Credo AI across
-features most relevant to EU AI Act Article 12 and NIST AI RMF compliance.
+Evaluation prototype — pre-production, solo-maintained. Not a certification and
+not a compliance determination.
+
+ILLUSTRATIVE ONLY, NOT A REAL BENCHMARK. The IBM OpenPages / Credo AI figures
+below (cost, feature-coverage percentages, SDK counts) are unverified estimates
+with no cited source — nobody ran IBM OpenPages or Credo AI to measure them.
+They exist to sketch a plausible competitive shape, not to be quoted as fact.
+Treat every competitor number here as a placeholder pending a real, sourced
+comparison. AIAuditTrail's own figures are self-reported by this codebase, not
+independently audited.
 
 Run:
     python benchmark.py
@@ -17,7 +25,8 @@ import time
 
 
 # ---------------------------------------------------------------------------
-# Benchmark data
+# Benchmark data — UNVERIFIED / ILLUSTRATIVE for the two competitors. See
+# module docstring: these are placeholders, not measured or sourced figures.
 # ---------------------------------------------------------------------------
 
 _COMPETITORS = {
@@ -30,7 +39,7 @@ _COMPETITORS = {
         "zero_dependency_core": False,
         "open_source": False,
         "gpai_coverage": False,
-        "article_62_automation": False,
+        "article_73_automation": False,
     },
     "Credo AI": {
         "annual_cost_usd": 180_000,
@@ -41,7 +50,7 @@ _COMPETITORS = {
         "zero_dependency_core": False,
         "open_source": False,
         "gpai_coverage": True,
-        "article_62_automation": False,
+        "article_73_automation": False,
     },
     "AIAuditTrail v2.0": {
         "annual_cost_usd": 0,
@@ -52,7 +61,7 @@ _COMPETITORS = {
         "zero_dependency_core": True,
         "open_source": True,
         "gpai_coverage": True,
-        "article_62_automation": True,
+        "article_73_automation": True,
     },
 }
 
@@ -107,8 +116,9 @@ def _print_bool_row(feature: str, competitors: dict[str, dict], key: str) -> Non
 def run_benchmark() -> None:
     print()
     print("=" * 72)
-    print("  AIAuditTrail v2.0 — Compliance Benchmark")
-    print("  Compared against IBM OpenPages and Credo AI (Apr 2026 pricing)")
+    print("  AIAuditTrail v2.0 — Illustrative Compliance Comparison")
+    print("  vs IBM OpenPages and Credo AI — UNVERIFIED estimates, not a real benchmark.")
+    print("  No source cited for competitor figures; do not quote these as fact.")
     print("=" * 72)
 
     time.sleep(0.2)  # Slight pause for dramatic effect
@@ -152,7 +162,7 @@ def run_benchmark() -> None:
     )
     _print_bool_row("Open source", _COMPETITORS, "open_source")
     _print_bool_row("GPAI model obligations coverage", _COMPETITORS, "gpai_coverage")
-    _print_bool_row("Article 62 automated detection", _COMPETITORS, "article_62_automation")
+    _print_bool_row("Article 73 automated detection", _COMPETITORS, "article_73_automation")
 
     time.sleep(0.2)
 
@@ -227,7 +237,7 @@ def run_benchmark() -> None:
         ("Article 13", "Transparency report generation",  "✓ HTML + Markdown export"),
         ("Article 51", "GPAI systemic risk threshold",     "✓ 10^25 FLOPs check"),
         ("Article 53", "GPAI transparency obligations",    "✓ Checklist + obligations"),
-        ("Article 62", "Serious incident notification",    "✓ Auto-detect + 72h tracker"),
+        ("Article 73", "Serious incident notification",    "✓ Auto-detect + tiered deadline tracker"),
     ]
     for article, desc, coverage in articles:
         print(f"  {article:<12} {desc:<40} {coverage}")

@@ -171,8 +171,8 @@ _RMF_SUBCATEGORIES: list[RMFSubcategory] = [
         subcategory_id="MANAGE 2.2",
         title="Mechanisms in place to respond to anomalous AI system behavior",
         description="Mechanisms are in place to respond to anomalous AI system behavior.",
-        audit_trail_evidence="detect_article_62_incidents() + IncidentManager auto-detects anomalies from log patterns",
-        eu_ai_act_crossref="Article 62 (Reporting serious incidents)",
+        audit_trail_evidence="detect_article_73_incidents() + IncidentManager auto-detects anomalies from log patterns",
+        eu_ai_act_crossref="Article 73 (Reporting serious incidents)",
     ),
     RMFSubcategory(
         function="MANAGE",
@@ -447,8 +447,8 @@ def assess_nist_rmf(
         },
         {
             "nist": "MANAGE 2.2",
-            "eu_ai_act": "Article 62",
-            "evidence": "detect_article_62_incidents() anomaly detection from log patterns",
+            "eu_ai_act": "Article 73",
+            "evidence": "detect_article_73_incidents() anomaly detection from log patterns",
             "status": "SATISFIED" if total_entries > 0 else "PENDING",
         },
         {

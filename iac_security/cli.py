@@ -57,6 +57,21 @@ def cmd_scan(args: argparse.Namespace) -> int:
     else:
         print(output)
 
+    # P0-08: a PARTIAL/FAILED scan (missing parser, unparseable files) must
+    # not exit 0 unless the caller explicitly opted into partial results.
+    if report.status in {"FAILED", "PARTIAL"} and not args.allow_partial:
+        print(
+            f"ERROR: scan status={report.status} "
+            f"({report.files_parsed}/{report.files_seen} .tf files parsed, "
+            f"{report.files_skipped} skipped) — results are incomplete, not a "
+            f"clean pass. Re-run with --allow-partial to accept a degraded "
+            f"scan.",
+            file=sys.stderr,
+        )
+        for reason in report.parse_errors:
+            print(f"  - {reason}", file=sys.stderr)
+        return 1
+
     # Exit code: 1 if any CRITICAL or HIGH, 0 otherwise
     return 0 if report.passed else 1
 
@@ -154,7 +169,7 @@ def cmd_mlbom(args: argparse.Namespace) -> int:
     comp_count = len(mlbom.get("components", []))
     print(
         f"ML-BOM written to {out_path} "
-        f"({comp_count} ml-model components, CycloneDX {mlbom['specVersion']})"
+        f"({comp_count} machine-learning-model components, CycloneDX {mlbom['specVersion']})"
     )
     return 0
 
@@ -179,6 +194,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output format (default: json)"
     )
     p_scan.add_argument("--out", metavar="FILE", help="Write output to FILE instead of stdout")
+    p_scan.add_argument(
+        "--allow-partial", action="store_true", default=False,
+        help=(
+            "Accept a PARTIAL/FAILED parse-coverage scan (missing parser or "
+            "unparseable files) and exit based on findings alone instead of "
+            "failing closed. Off by default."
+        ),
+    )
 
     # sbom
     p_sbom = sub.add_parser("sbom", help="Generate CycloneDX 1.5 SBOM for a repository")

@@ -12,12 +12,13 @@ Endpoints:
   POST   /systems/register                  — Register an AI system
   GET    /systems/{id}/compliance-status    — EU AI Act + NIST RMF posture
   GET    /systems/{id}/report               — HTML Article 12 compliance report
-  POST   /systems/{id}/incident             — Log AI incident (Article 62)
+  POST   /systems/{id}/incident             — Log AI incident (Article 73)
   GET    /dashboard                         — Aggregate compliance posture
   POST   /verify-chain                      — Full chain verification, tamper report
 
-Auth: X-AIAuditTrail-Key header.
-Dev bypass: AUDIT_DEV_MODE=true (default) bypasses auth for demo.
+Auth: X-AIAuditTrail-Key header. Fail-closed by default: with neither
+AUDIT_API_KEY nor AUDIT_DEV_MODE set, business routes return 503.
+Dev bypass: AUDIT_DEV_MODE=true (opt-in, NOT the default) bypasses auth for demo.
 
 Requires: pip install fastapi uvicorn pydantic
 
@@ -29,6 +30,7 @@ Run::
 
 from __future__ import annotations
 
+import hmac
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -40,7 +42,7 @@ from ai_audit_trail.eu_ai_act import (
     check_article_12_compliance,
     classify_risk_tier,
     days_until_enforcement,
-    detect_article_62_incidents,
+    detect_article_73_incidents,
     enforcement_status,
     generate_article_13_transparency_report,
 )
@@ -81,10 +83,24 @@ def _get_chain() -> AuditChain:
 
 
 def _verify_api_key(x_aiaudittrail_key: str = Header(default="")) -> None:
-    """Dependency: verify API key. Dev mode bypasses auth."""
+    """
+    Dependency: verify API key. Dev mode bypasses auth.
+
+    Fail-closed: if no AUDIT_API_KEY is configured and dev mode is off, the
+    server refuses to serve the request (503) rather than silently running
+    unauthenticated. Every non-health business route below depends on this.
+    """
     if settings.dev_mode:
         return
-    if not x_aiaudittrail_key or x_aiaudittrail_key != settings.api_key:
+    if settings.api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "Server auth is not configured. Set AUDIT_API_KEY, or "
+                "AUDIT_DEV_MODE=true for local demos."
+            ),
+        )
+    if not x_aiaudittrail_key or not hmac.compare_digest(x_aiaudittrail_key, settings.api_key):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing X-AIAuditTrail-Key header",
@@ -237,6 +253,7 @@ if _HAS_FASTAPI:
         try:
             qe = QueryEngine(chain)
             entries = qe.filter(
+                system_id=system_id,
                 session_id=session_id,
                 decision_type=decision_type,
                 risk_tier=risk_tier,
@@ -244,6 +261,7 @@ if _HAS_FASTAPI:
                 since=since,
                 until=until,
                 limit=limit,
+                offset=offset,
             )
             total = chain.count(system_id=system_id)
         finally:
@@ -440,7 +458,7 @@ if _HAS_FASTAPI:
         system_info = _registered_systems.get(system_id, {"system_name": system_id})
         chain = _get_chain()
         try:
-            a12 = check_article_12_compliance(chain)
+            a12 = check_article_12_compliance(chain, system_id=system_id)
             rmf = assess_nist_rmf(
                 chain, system_id=system_id, system_name=system_info.get("system_name", system_id)
             )
@@ -515,7 +533,7 @@ if _HAS_FASTAPI:
 
     @app.post(
         "/systems/{system_id}/incident",
-        summary="Log an AI incident (Article 62 serious incident report)",
+        summary="Log an AI incident (Article 73 serious incident report)",
         tags=["Systems"],
     )
     async def log_incident(
@@ -548,18 +566,19 @@ if _HAS_FASTAPI:
             "incident_id": incident.incident_id,
             "severity": incident.severity.value,
             "status": incident.status.value,
-            "article_62_required": incident.article_62_required,
+            "article_73_required": incident.article_73_required,
             "playbook_steps": incident.playbook_steps,
         }
 
-        if incident.article_62_required:
-            result["article_62_deadline"] = incident.article_62_deadline
+        if incident.article_73_required:
+            result["article_73_deadline"] = incident.article_73_deadline
             result["hours_remaining"] = round(
-                incident.hours_until_article_62_deadline or 0, 1
+                incident.hours_until_article_73_deadline or 0, 1
             )
-            result["article_62_warning"] = (
-                "SERIOUS INCIDENT: EU AI Act Article 62 report required within 72 hours. "
-                f"Deadline: {incident.article_62_deadline}"
+            result["article_73_warning"] = (
+                "SERIOUS INCIDENT: EU AI Act Article 73 report required. Deadline is "
+                "TIERED by incident type, not a flat window — verify against the "
+                f"primary source. Deadline: {incident.article_73_deadline}"
             )
 
         return result

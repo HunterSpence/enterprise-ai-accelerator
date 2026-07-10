@@ -16,6 +16,8 @@ New in V2:
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import hashlib
 import json
 import os
@@ -541,28 +543,56 @@ class AnomalyDetectorV2:
             return anomalies
 
         try:
-            import anthropic
-            client = anthropic.Anthropic(api_key=self.api_key)
+            from anthropic import AsyncAnthropic
+            from core.ai_client import AIClient
+            from core.models import MODEL_HAIKU_4_5
         except ImportError:
             for a in anomalies:
                 a.explanation = self._fallback_explanation(a)
             return anomalies
 
+        # P0-04: route through the governed AIClient (refusal handling +
+        # server-side fallback chain) instead of a bare anthropic client.
+        # AIClient is async-only; explain_all stays a sync entry point for
+        # existing callers (same sync-wraps-async pattern as
+        # iac_security/scanner.py IaCScanner.scan).
+        ai = AIClient(AsyncAnthropic(api_key=self.api_key), default_model=MODEL_HAIKU_4_5)
+        return self._run_sync(self._explain_all_async(ai, anomalies, spend_data))
+
+    @staticmethod
+    def _run_sync(coro: Any) -> Any:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # Already inside an event loop (e.g. FastAPI, Jupyter) — run the
+                # coroutine on a dedicated thread instead of trying to nest loops.
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                    future = ex.submit(asyncio.run, coro)
+                    return future.result()
+            return loop.run_until_complete(coro)
+        except RuntimeError:
+            return asyncio.run(coro)
+
+    async def _explain_all_async(
+        self,
+        ai: Any,
+        anomalies: list[Anomaly],
+        spend_data: SpendData,
+    ) -> list[Anomaly]:
         for anomaly in anomalies:
             context = self._build_anomaly_context(anomaly, spend_data)
             try:
-                response = client.messages.create(
-                    model="claude-haiku-4-5",
-                    max_tokens=450,
+                response = await ai.thinking(
                     system=(
                         "You are a senior FinOps engineer analyzing AWS cost anomalies. "
                         "Provide concise root cause analysis in 2-4 sentences using specific "
                         "AWS service names and metrics. If correlated services are shown, "
                         "explain the causal relationship. End with one specific CLI command or console action."
                     ),
-                    messages=[{"role": "user", "content": context}],
+                    user=context,
+                    max_tokens=450,
                 )
-                anomaly.explanation = response.content[0].text.strip()
+                anomaly.explanation = response.text.strip() or self._fallback_explanation(anomaly)
             except Exception:
                 anomaly.explanation = self._fallback_explanation(anomaly)
 

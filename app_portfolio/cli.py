@@ -126,6 +126,11 @@ async def _run(args: argparse.Namespace) -> int:
 
     _print_report(report, args.out)
 
+    if report.status != "COMPLETE":
+        print(f"\nWarning: report status={report.status} — see reasons above/in JSON.", file=sys.stderr)
+        for reason in report.partial_reasons:
+            print(f"  - {reason}", file=sys.stderr)
+
     # Exit code: 1 if critical CVEs found, 0 otherwise
     if report.critical_cve_count > 0:
         if _RICH:

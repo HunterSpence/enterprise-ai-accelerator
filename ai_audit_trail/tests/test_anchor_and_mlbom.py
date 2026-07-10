@@ -285,10 +285,13 @@ class TestMLBOMGenerator:
         assert len(components) == 3
 
     def test_all_components_type_ml_model(self):
+        # P0-24: CycloneDX 1.7 has no "ml-model" enum member; the valid
+        # component.type for a model is "machine-learning-model".
         mlbom = self._gen()
         for comp in mlbom["components"]:
-            assert comp["type"] == "ml-model", (
-                f"Component {comp.get('name')} has type {comp['type']!r}, expected 'ml-model'"
+            assert comp["type"] == "machine-learning-model", (
+                f"Component {comp.get('name')} has type {comp['type']!r}, "
+                "expected 'machine-learning-model'"
             )
 
     def test_all_components_have_purl(self):

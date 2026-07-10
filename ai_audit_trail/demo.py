@@ -9,7 +9,7 @@ Three dramatic scenarios demonstrating production-grade enterprise AI governance
 
   Scenario 2: "The Incident"
       A loan-scoring model starts drifting. Bias proxy triggers P0-DISCRIMINATION.
-      Article 62 report auto-generated. 72-hour reporting deadline shown.
+      Article 73 report auto-generated. Tiered reporting deadline shown.
 
   Scenario 3: "The Audit"
       90-day log simulated (2,500 entries). Chain verification O(log n) via
@@ -305,13 +305,13 @@ def _scenario_2_the_incident(chain_path: str) -> None:
     _header("Scenario 2: The Incident")
     _blank()
     _print("  [bold]A loan-scoring model starts drifting in production.[/bold]")
-    _print("  Bias proxy triggers. Article 62 auto-report generated.")
-    _print("  [red bold]72-hour reporting window to national supervisory authority.[/red bold]")
+    _print("  Bias proxy triggers. Article 73 auto-report generated.")
+    _print("  [red bold]Tiered reporting window to national supervisory authority (Article 73).[/red bold]")
     _blank()
 
     from ai_audit_trail.chain import AuditChain, DecisionType, RiskTier
     from ai_audit_trail.incident_manager import IncidentManager, IncidentSeverity
-    from ai_audit_trail.eu_ai_act import detect_article_62_incidents
+    from ai_audit_trail.eu_ai_act import detect_article_73_incidents
 
     chain = AuditChain(chain_path)
 
@@ -356,7 +356,7 @@ def _scenario_2_the_incident(chain_path: str) -> None:
     mgr = IncidentManager(chain)
     chain._incident_manager = mgr
 
-    _print("  [bold]Running Article 62 incident detection...[/bold]")
+    _print("  [bold]Running Article 73 incident detection...[/bold]")
     incidents = mgr.detect_from_chain(chain, "acmebank-loan-v3", "AcmeBank Loan Scoring v3")
 
     if incidents:
@@ -364,34 +364,34 @@ def _scenario_2_the_incident(chain_path: str) -> None:
             _err(f"INCIDENT DETECTED: [{inc.severity.value}] {inc.title}")
             _info(f"  ID: {inc.incident_id}")
             _info(f"  Detected: {inc.detected_at.strftime('%Y-%m-%d %H:%M UTC')}")
-            if inc.article_62_deadline:
-                hours = (inc.article_62_deadline - datetime.now(timezone.utc)).total_seconds() / 3600
-                deadline_str = inc.article_62_deadline.strftime('%Y-%m-%d %H:%M UTC')
+            if inc.article_73_deadline:
+                hours = (inc.article_73_deadline - datetime.now(timezone.utc)).total_seconds() / 3600
+                deadline_str = inc.article_73_deadline.strftime('%Y-%m-%d %H:%M UTC')
                 if hours > 0:
-                    _warn(f"  Article 62 deadline: {deadline_str} ({hours:.1f}h remaining)")
+                    _warn(f"  Article 73 deadline: {deadline_str} ({hours:.1f}h remaining)")
                 else:
-                    _err(f"  Article 62 deadline: {deadline_str} (OVERDUE by {abs(hours):.1f}h)")
+                    _err(f"  Article 73 deadline: {deadline_str} (OVERDUE by {abs(hours):.1f}h)")
 
         _blank()
 
-        # Generate Article 62 report for the first P0 incident
+        # Generate Article 73 report for the first P0 incident
         p0_incidents = [i for i in incidents if "P0" in i.severity.value]
         if p0_incidents:
             inc = p0_incidents[0]
-            _print("  [bold]Auto-generating Article 62 Incident Report...[/bold]")
-            art62_report = inc.generate_article_62_report(provider_name="AcmeBank")
+            _print("  [bold]Auto-generating Article 73 Incident Report...[/bold]")
+            art73_report = inc.generate_article_73_report(provider_name="AcmeBank")
 
             if _HAS_RICH:
                 report_panel = Panel(
-                    art62_report.to_markdown()[:800] + "\n  [dim]... (truncated)[/dim]",
-                    title=f"[bold red]EU AI Act Article 62 Report — {art62_report.incident_id[:12]}[/bold red]",
+                    art73_report.to_markdown()[:800] + "\n  [dim]... (truncated)[/dim]",
+                    title=f"[bold red]EU AI Act Article 73 Report — {art73_report.incident_id[:12]}[/bold red]",
                     border_style="red",
                     padding=(1, 2),
                 )
                 _console.print(report_panel)
             else:
                 print("\n" + "─" * 60)
-                print(art62_report.to_markdown()[:600])
+                print(art73_report.to_markdown()[:600])
                 print("─" * 60)
     else:
         _print("  [dim]No incidents auto-detected (increase entry count for better detection)[/dim]")
@@ -414,14 +414,14 @@ def _scenario_2_the_incident(chain_path: str) -> None:
     )
 
     _err(f"P0-DISCRIMINATION raised: {manual_inc.incident_id}")
-    if manual_inc.article_62_deadline:
-        hours = (manual_inc.article_62_deadline - datetime.now(timezone.utc)).total_seconds() / 3600
-        _warn(f"EU Article 62 reporting deadline: {hours:.1f} hours")
+    if manual_inc.article_73_deadline:
+        hours = (manual_inc.article_73_deadline - datetime.now(timezone.utc)).total_seconds() / 3600
+        _warn(f"EU Article 73 reporting deadline: {hours:.1f} hours")
 
-    art62 = manual_inc.generate_article_62_report(provider_name="AcmeBank")
-    _ok(f"Article 62 report generated: {len(art62.to_markdown())} characters")
-    _info(f"Incident type: {art62.incident_type}")
-    _info(f"Affected persons estimate: {art62.affected_persons_estimate:,}")
+    art73 = manual_inc.generate_article_73_report(provider_name="AcmeBank")
+    _ok(f"Article 73 report generated: {len(art73.to_markdown())} characters")
+    _info(f"Incident type: {art73.incident_type}")
+    _info(f"Affected persons estimate: {art73.affected_persons_estimate:,}")
 
     chain.close()
 
@@ -599,7 +599,7 @@ def _scenario_3_the_audit(chain_path: str) -> None:
                     f"  [dim]This demo proves the full compliance stack works:[/dim]\n"
                     f"  [green]✓[/green] SHA-256 Merkle chain (tamper-evident)\n"
                     f"  [green]✓[/green] Article 12 Annex IV logging\n"
-                    f"  [green]✓[/green] Article 62 incident reporting\n"
+                    f"  [green]✓[/green] Article 73 incident reporting\n"
                     f"  [green]✓[/green] NIST AI RMF dual-framework mapping\n"
                     f"  [green]✓[/green] 5-SDK drop-in integrations\n\n"
                     f"  [bold]Cost:[/bold] [green]$0[/green]  "
@@ -653,7 +653,7 @@ def main() -> None:
             Panel(
                 "[bold white]AIAuditTrail[/bold white] [dim]V2[/dim]\n\n"
                 "[dim]Tamper-evident AI audit logging + EU AI Act compliance\n"
-                "SHA-256 Merkle chain · Article 62 incident reporting · NIST AI RMF[/dim]\n\n"
+                "SHA-256 Merkle chain · Article 73 incident reporting · NIST AI RMF[/dim]\n\n"
                 "[bold]Cost:[/bold] [green]$0[/green]   vs   "
                 "IBM OpenPages [red]$500,000/yr[/red]   "
                 "Credo AI [red]$180,000/yr[/red]",

@@ -330,6 +330,50 @@ class TestCheckpointAndResume:
         except FileNotFoundError:
             pass
 
+    def test_checkpoint_path_rejects_traversal_run_id(self, tmp_path, monkeypatch):
+        """OMISSION: run_id is caller-supplied (run_pipeline/resume) and must
+        not be able to escape _CHECKPOINT_DIR via '../' or an absolute path."""
+        import agent_ops.orchestrator as orch_mod
+        monkeypatch.setattr(orch_mod, "_CHECKPOINT_DIR", tmp_path)
+
+        for bad_run_id in ("../evil", "../../etc/passwd", "/etc/passwd", "a/b", "a\\b", ".."):
+            try:
+                path = orch_mod._checkpoint_path(bad_run_id)
+            except ValueError:
+                continue  # rejected outright — acceptable
+            # If not rejected outright, it must still resolve inside the checkpoint dir.
+            assert tmp_path.resolve() in path.resolve().parents or path.resolve() == tmp_path.resolve()
+
+    def test_resume_rejects_traversal_run_id(self, tmp_path, monkeypatch):
+        import agent_ops.orchestrator as orch_mod
+        monkeypatch.setattr(orch_mod, "_CHECKPOINT_DIR", tmp_path)
+
+        orch = object.__new__(Orchestrator)
+
+        async def _run():
+            return await orch.resume("../evil")
+
+        try:
+            asyncio.run(_run())
+            assert False, "Should have raised (ValueError or FileNotFoundError)"
+        except (ValueError, FileNotFoundError):
+            pass
+
+    def test_run_pipeline_rejects_traversal_run_id(self, tmp_path, monkeypatch):
+        import agent_ops.orchestrator as orch_mod
+        monkeypatch.setattr(orch_mod, "_CHECKPOINT_DIR", tmp_path)
+
+        orch = TestBudgetAbort()._make_orchestrator()
+
+        async def _run():
+            return await orch.run_pipeline("task", {}, run_id="../evil")
+
+        try:
+            asyncio.run(_run())
+            assert False, "Should have raised ValueError for unsafe run_id"
+        except ValueError:
+            pass
+
     def test_agent_result_from_dict_roundtrip(self):
         d = {
             "agent_name": "TestAgent",

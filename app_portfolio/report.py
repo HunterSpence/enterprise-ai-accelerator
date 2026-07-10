@@ -31,6 +31,10 @@ class Dependency:
     latest_version: str = ""         # filled in by staleness check
     days_since_latest: int | None = None  # None = unknown
     cves: list["Vulnerability"] = field(default_factory=list)
+    # UNSCANNED (never queried) | OK (queried successfully, cves is trustworthy)
+    # | FAILED (OSV lookup errored — cves is NOT a confirmed-clean result;
+    # P0-26: an outage must never look like "0 vulnerabilities").
+    cve_scan_status: str = "UNSCANNED"
 
     @property
     def is_stale(self) -> bool:
@@ -50,6 +54,7 @@ class Dependency:
             "days_since_latest": self.days_since_latest,
             "is_stale": self.is_stale,
             "cves": [c.to_dict() for c in self.cves],
+            "cve_scan_status": self.cve_scan_status,
         }
 
 
@@ -133,6 +138,13 @@ class PortfolioReport:
     # Six-R recommendation (None until scorer runs)
     six_r_recommendation: SixRRecommendation | None = None
 
+    # Scan completeness (P0-26): COMPLETE by default; PARTIAL when files
+    # were truncated/skipped or CVE lookups failed; FAILED when the scan
+    # errored before producing usable data. Never DEMO here — this scanner
+    # has no synthetic-data mode.
+    status: str = "COMPLETE"
+    partial_reasons: list[str] = field(default_factory=list)
+
     # Metadata
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -175,6 +187,8 @@ class PortfolioReport:
             "repo_name": self.repo_name,
             "repo_path": self.repo_path,
             "scanned_at": self.scanned_at.isoformat(),
+            "status": self.status,
+            "partial_reasons": self.partial_reasons,
             "languages": self.languages,
             "total_loc": self.total_loc,
             "primary_language": self.primary_language,
@@ -216,6 +230,12 @@ class PortfolioReport:
 
         lines.append(f"# Portfolio Analysis: {self.repo_name}")
         lines.append(f"\n_Scanned {self.scanned_at.strftime('%Y-%m-%d %H:%M UTC')}_\n")
+
+        if self.status != "COMPLETE":
+            lines.append(f"> **Status: {self.status}** — this report is incomplete.")
+            for reason in self.partial_reasons:
+                lines.append(f"> - {reason}")
+            lines.append("")
 
         # --- Language breakdown ---
         lines.append("## Language Breakdown")

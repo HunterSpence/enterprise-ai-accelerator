@@ -3,7 +3,7 @@ eu_ai_act.py — EU AI Act compliance engine v2.
 
 V2 additions over V1:
 - Complete Article 12 mandatory fields per Annex IV
-- Article 62 serious incident reporting (72-hour window tracker)
+- Article 73 serious incident reporting (tiered deadline tracker — NOT a flat window)
 - GPAI model obligations (in force August 2025):
   - Provider obligations for general-purpose AI models
   - Systemic risk classification (>10^25 FLOPs threshold)
@@ -19,6 +19,12 @@ EU AI Act timeline (Regulation (EU) 2024/1689):
 - Aug 2, 2027:  Remaining provisions
 
 Reference: EUR-Lex 32024R1689
+
+NOT LEGAL ADVICE. Article numbers, deadlines, and sub-clause references in this
+module (including the Article 73 tiered reporting hours below) are engineering
+defaults derived from a best-effort reading of the regulation, not a substitute
+for qualified EU AI Act counsel. Verify against the primary source before relying
+on any of it for an actual regulatory filing.
 """
 
 from __future__ import annotations
@@ -30,7 +36,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any, Optional
 
-from ai_audit_trail.chain import AuditChain, RiskTier
+from ai_audit_trail.chain import AuditChain, LogEntry, RiskTier
 
 
 # ---------------------------------------------------------------------------
@@ -45,8 +51,24 @@ _ENFORCEMENT_DATES: dict[str, date] = {
     "remaining_provisions": date(2027, 8, 2),
 }
 
-# Article 62 serious incident reporting window
-ARTICLE_62_REPORTING_HOURS = 72
+# EU AI Act Article 73 — Reporting of serious incidents (Regulation (EU) 2024/1689).
+# Reporting deadlines are TIERED by incident type, NOT a flat 72-hour window (that was
+# an earlier, incorrect simplification of what is actually Article 73, not Article 62).
+#
+# Figures below are an approximate engineering summary of Article 73(2)-(3) for use as
+# defaults ONLY — this is not legal advice; verify the exact wording and any applicable
+# guidance against the primary source (EUR-Lex 32024R1689, Article 73) before relying on
+# it for an actual filing.
+ARTICLE_73_REPORTING_HOURS: dict[str, int] = {
+    # Death of a person, or serious and irreversible disruption of critical
+    # infrastructure management/operation — the fastest tier.
+    "death_or_critical_infrastructure": 2 * 24,
+    # Serious harm to a person's health, or a widespread infringement.
+    "serious_harm_or_widespread_infringement": 10 * 24,
+    # All other serious incidents within the meaning of Article 3(49) — the
+    # default/slowest tier.
+    "default": 15 * 24,
+}
 
 
 def days_until_enforcement(phase: str = "high_risk_systems") -> int:
@@ -196,7 +218,7 @@ Respond in JSON only:
   "reasoning": "2-3 sentence explanation citing the relevant article/annex",
   "confidence": "HIGH|MEDIUM|LOW",
   "gpai_applicable": true|false,
-  "article_62_risk": true|false
+  "article_73_risk": true|false
 }}"""
 
     response = anthropic_client.messages.create(
@@ -223,9 +245,17 @@ Respond in JSON only:
 
 @dataclass
 class Article12Check:
-    """Result of an Article 12 record-keeping compliance assessment."""
+    """
+    Result of an Article 12 record-keeping compliance assessment.
+
+    status is fail-closed: it is only ever "COMPLIANT" when there is enough
+    logged evidence (volume + real human-oversight signal) to assess. Empty
+    or near-empty chains, or chains missing human-oversight evidence, come
+    back "NOT_ASSESSED" with compliant=False — never a rubber-stamped True.
+    """
     compliant: bool
     score: int  # 0-100
+    status: str = "NOT_ASSESSED"  # NOT_ASSESSED | NON_COMPLIANT | COMPLIANT
     requirements_met: list[str] = field(default_factory=list)
     requirements_missing: list[str] = field(default_factory=list)
     recommendations: list[str] = field(default_factory=list)
@@ -268,8 +298,14 @@ _ARTICLE_12_REQUIREMENTS = {
         "Merkle tree + SHA-256 hash chain provides tamper evidence",
     ),
     "session_tracking": (
-        "Session/interaction tracking (Article 12.1.f)",
+        "Session/interaction tracking",
         "Chain records session_id per conversation",
+    ),
+    "human_oversight_evidence": (
+        "Human oversight / natural-person identity evidence (Article 12.1.e/f)",
+        "Entry metadata identifies the human reviewer or oversight action taken "
+        "(e.g. reviewer_id / human_oversight / reviewed_by) — a session_id alone "
+        "identifies a conversation, not a natural person, and does not satisfy this.",
     ),
     "system_identification": (
         "AI system identification (Article 12.1.d)",
@@ -286,10 +322,23 @@ _ARTICLE_12_REQUIREMENTS = {
 }
 
 
-def check_article_12_compliance(chain: AuditChain) -> Article12Check:
+# A single (or handful of) logged decision is not evidence of a working
+# process — fail closed rather than let a demo/smoke-test record read as
+# "compliant".
+_MIN_ENTRIES_FOR_ASSESSMENT = 10
+
+
+def check_article_12_compliance(
+    chain: AuditChain, system_id: Optional[str] = None
+) -> Article12Check:
     """
     Check whether an AuditChain satisfies EU AI Act Article 12 requirements.
     V2: validates all Annex IV mandatory fields, includes system_id check.
+
+    Fail-closed: too little logged evidence, or missing real human-oversight
+    evidence, comes back status="NOT_ASSESSED" / compliant=False rather than a
+    rubber-stamped pass. Pass system_id to scope the assessment to a single
+    registered AI system instead of the whole (possibly multi-tenant) chain.
     """
     met: list[str] = []
     missing: list[str] = []
@@ -297,17 +346,33 @@ def check_article_12_compliance(chain: AuditChain) -> Article12Check:
     annex_present: list[str] = []
     annex_missing: list[str] = []
 
-    total = chain.count()
+    total = chain.count(system_id=system_id)
     if total == 0:
         return Article12Check(
             compliant=False,
             score=0,
+            status="NOT_ASSESSED",
             requirements_missing=[r[0] for r in _ARTICLE_12_REQUIREMENTS.values()],
             recommendations=["No entries in audit log — begin logging AI decisions."],
             annex_iv_fields_missing=list(_ANNEX_IV_MANDATORY_FIELDS.values()),
         )
 
-    sample = chain.query(limit=5)
+    if total < _MIN_ENTRIES_FOR_ASSESSMENT:
+        return Article12Check(
+            compliant=False,
+            score=0,
+            status="NOT_ASSESSED",
+            requirements_missing=[r[0] for r in _ARTICLE_12_REQUIREMENTS.values()],
+            recommendations=[
+                f"Only {total} entr{'y' if total == 1 else 'ies'} logged — at least "
+                f"{_MIN_ENTRIES_FOR_ASSESSMENT} are required before Article 12 "
+                "compliance can be meaningfully assessed. A single record is not "
+                "evidence of a working process."
+            ],
+            annex_iv_fields_missing=list(_ANNEX_IV_MANDATORY_FIELDS.values()),
+        )
+
+    sample = chain.query(limit=5, system_id=system_id)
 
     def check_field(entry_field: str) -> bool:
         return all(
@@ -374,16 +439,41 @@ def check_article_12_compliance(chain: AuditChain) -> Article12Check:
             "Audit logs may have been tampered with."
         )
 
-    # session_tracking
+    # session_tracking — interaction/conversation tracking only. This does NOT
+    # satisfy 12.1.f (identity of the natural person involved in verification):
+    # a session_id identifies a conversation, not a human. See
+    # human_oversight_evidence below for the actual 12.1.e/f check.
     if check_field("session_id"):
         met.append(_ARTICLE_12_REQUIREMENTS["session_tracking"][0])
-        annex_present.append(_ANNEX_IV_MANDATORY_FIELDS["12.1.f"])
     else:
         missing.append(_ARTICLE_12_REQUIREMENTS["session_tracking"][0])
+
+    # human_oversight_evidence — fail closed. Requires a real reviewer/oversight
+    # signal in entry metadata; session_id alone never satisfies this.
+    def _has_oversight_signal(e: LogEntry) -> bool:
+        meta = e.metadata if isinstance(e.metadata, dict) else {}
+        return any(
+            meta.get(k) not in (None, "", False)
+            for k in ("reviewer_id", "human_oversight", "reviewed_by", "human_review")
+        )
+
+    if sample and all(_has_oversight_signal(e) for e in sample):
+        met.append(_ARTICLE_12_REQUIREMENTS["human_oversight_evidence"][0])
+        annex_present.append(_ANNEX_IV_MANDATORY_FIELDS["12.1.e"])
+        annex_present.append(_ANNEX_IV_MANDATORY_FIELDS["12.1.f"])
+    else:
+        missing.append(_ARTICLE_12_REQUIREMENTS["human_oversight_evidence"][0])
+        annex_missing.append(_ANNEX_IV_MANDATORY_FIELDS["12.1.e"])
         annex_missing.append(_ANNEX_IV_MANDATORY_FIELDS["12.1.f"])
+        recommendations.append(
+            "Article 12.1.e/f: no human-oversight evidence found in entry metadata "
+            "(e.g. reviewer_id / human_oversight / reviewed_by). session_id identifies "
+            "a conversation, not the natural person who reviewed the decision, and "
+            "does not satisfy this requirement on its own."
+        )
 
     # high_risk_coverage
-    high_risk_entries = chain.query(risk_tier=RiskTier.HIGH.value, limit=1)
+    high_risk_entries = chain.query(risk_tier=RiskTier.HIGH.value, limit=1, system_id=system_id)
     if high_risk_entries:
         met.append(_ARTICLE_12_REQUIREMENTS["high_risk_coverage"][0])
     else:
@@ -398,17 +488,15 @@ def check_article_12_compliance(chain: AuditChain) -> Article12Check:
         "Retention policy (Article 12.3): Annex III systems require logs for "
         "minimum 10 years. Implement database backup + retention enforcement."
     )
-    recommendations.append(
-        "Article 12.1.e: Document human oversight measures applied per decision "
-        "(e.g., reviewer_id in metadata)."
-    )
 
     score = int((len(met) / len(_ARTICLE_12_REQUIREMENTS)) * 100)
     compliant = len(missing) == 0 and report.is_valid
+    status = "COMPLIANT" if compliant else "NON_COMPLIANT"
 
     return Article12Check(
         compliant=compliant,
         score=score,
+        status=status,
         requirements_met=met,
         requirements_missing=missing,
         recommendations=recommendations,
@@ -418,22 +506,26 @@ def check_article_12_compliance(chain: AuditChain) -> Article12Check:
 
 
 # ---------------------------------------------------------------------------
-# Article 62 serious incident reporting
+# Article 73 serious incident reporting
 # ---------------------------------------------------------------------------
 
 @dataclass
-class Article62Report:
+class Article73Report:
     """
-    EU AI Act Article 62 serious incident report template.
-    Must be submitted to national market surveillance authority within 72 hours
-    of becoming aware of a serious incident.
+    EU AI Act Article 73 serious incident report template.
+
+    Must be submitted to the national market surveillance authority within a
+    TIERED deadline (see ARTICLE_73_REPORTING_HOURS) that depends on the
+    incident type — not a single flat window. NOT LEGAL ADVICE: verify the
+    computed deadline against the primary source (Article 73) and qualified
+    counsel before an actual submission.
     """
     incident_id: str
     system_id: str
     system_name: str
     incident_type: str
     detected_at: str
-    reporting_deadline: str          # detected_at + 72 hours
+    reporting_deadline: str          # detected_at + tiered Article 73 hours
     hours_remaining: float
     description: str
     affected_persons_estimate: int
@@ -450,9 +542,9 @@ class Article62Report:
             self.generated_at = datetime.now(timezone.utc).isoformat()
 
     def to_markdown(self) -> str:
-        """Generate Article 62 report as Markdown for submission."""
-        return f"""# EU AI Act Article 62 Serious Incident Report
-Regulation (EU) 2024/1689, Article 62
+        """Generate Article 73 report as Markdown for submission."""
+        return f"""# EU AI Act Article 73 Serious Incident Report
+Regulation (EU) 2024/1689, Article 73
 
 **Incident ID:** {self.incident_id}
 **Generated:** {self.generated_at[:19]} UTC
@@ -460,27 +552,27 @@ Regulation (EU) 2024/1689, Article 62
 
 ---
 
-## 1. Provider Information (Article 62.1)
+## 1. Provider Information (Article 73)
 
 - **Provider:** {self.provider_name}
 - **Contact:** {self.provider_contact}
 - **Submitting to:** {self.national_authority}
 
-## 2. AI System Identification (Article 62.2.a)
+## 2. AI System Identification (Article 73)
 
 - **System ID:** {self.system_id}
 - **System Name:** {self.system_name}
 - **Risk Classification:** HIGH (Annex III)
 
-## 3. Incident Description (Article 62.2.b)
+## 3. Incident Description (Article 73)
 
 - **Incident Type:** {self.incident_type}
 - **Severity:** {self.severity}
 - **Date/Time Detected:** {self.detected_at[:19]} UTC
-- **72-Hour Reporting Deadline:** {self.reporting_deadline[:19]} UTC
+- **Reporting Deadline (tiered — see Article 73):** {self.reporting_deadline[:19]} UTC
 - **Description:** {self.description}
 
-## 4. Affected Persons (Article 62.2.c)
+## 4. Affected Persons (Article 73)
 
 - **Estimated Affected Persons:** {self.affected_persons_estimate:,}
 - **Categories of Persons:** [Describe — customers/employees/citizens]
@@ -491,7 +583,7 @@ Regulation (EU) 2024/1689, Article 62
 Audit trail entries supporting this report:
 {chr(10).join(f"- {eid}" for eid in self.evidence_entry_ids) or "- See attached audit log export"}
 
-## 6. Immediate Actions Taken (Article 62.2.d)
+## 6. Immediate Actions Taken (Article 73)
 
 {chr(10).join(f"- {action}" for action in self.immediate_actions_taken) or "- Under investigation"}
 
@@ -506,14 +598,15 @@ Audit trail entries supporting this report:
 ---
 
 *This report was generated automatically by AIAuditTrail v2.0.0.*
-*Article 62 requires notification to competent national authority.*
-*Verify with qualified EU AI Act counsel before official submission.*
+*Article 73 requires notification to the competent national market surveillance authority,*
+*within a deadline tiered by incident type (see ARTICLE_73_REPORTING_HOURS) — not a flat window.*
+*NOT LEGAL ADVICE. Verify with qualified EU AI Act counsel before official submission.*
 """
 
 
-def detect_article_62_incidents(chain: AuditChain, system_id: str) -> list[dict[str, Any]]:
+def detect_article_73_incidents(chain: AuditChain, system_id: str) -> list[dict[str, Any]]:
     """
-    Scan audit log patterns to detect potential Article 62 serious incidents.
+    Scan audit log patterns to detect potential Article 73 serious incidents.
 
     Detection patterns:
     - High error rate in recent window

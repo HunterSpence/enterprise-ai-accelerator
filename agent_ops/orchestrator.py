@@ -27,6 +27,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 import uuid
 from collections.abc import Callable
@@ -248,9 +249,23 @@ async def _default_approval_handler(req: ApprovalRequest) -> bool:
 # Checkpoint helpers
 # ---------------------------------------------------------------------------
 
+_SAFE_RUN_ID_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+
+
 def _checkpoint_path(run_id: str) -> Path:
+    """Build the checkpoint file path for run_id, rejecting anything that
+    could escape _CHECKPOINT_DIR (OMISSION: run_id is caller-supplied via
+    run_pipeline()/resume() and was previously interpolated unchecked)."""
+    if not run_id or not _SAFE_RUN_ID_RE.match(run_id):
+        raise ValueError(
+            f"Invalid run_id {run_id!r}: must match {_SAFE_RUN_ID_RE.pattern}"
+        )
     _CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
-    return _CHECKPOINT_DIR / f"{run_id}.json"
+    path = (_CHECKPOINT_DIR / f"{run_id}.json").resolve()
+    checkpoint_root = _CHECKPOINT_DIR.resolve()
+    if checkpoint_root not in path.parents and path != checkpoint_root:
+        raise ValueError(f"Invalid run_id {run_id!r}: escapes checkpoint directory")
+    return path
 
 
 def _write_checkpoint(
@@ -365,6 +380,7 @@ class Orchestrator:
         activity_log: list[AgentActivity] = []
         hitl_audit: list[dict[str, Any]] = []
         _run_id = run_id or str(uuid.uuid4())
+        _checkpoint_path(_run_id)  # fail fast on an unsafe caller-supplied run_id
         budget = BudgetGuard(
             max_tokens_budget=max_tokens_budget,
             max_cost_usd=max_cost_usd,

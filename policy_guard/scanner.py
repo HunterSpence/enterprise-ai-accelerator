@@ -77,8 +77,15 @@ class ScanConfig:
     run_fedramp: bool = True
     fedramp_baseline: str = FEDRAMP_MODERATE
     run_pci_dss_40: bool = True
-    run_colorado_sb26189: bool = True
-    run_texas_traiga: bool = True
+    # P0-23: both scanners are quarantined (fabricated statutory citations —
+    # see policy_guard/frameworks/colorado_sb26189.py and texas_traiga.py
+    # module docstrings). Their .scan() always raises NotImplementedError;
+    # default them off so a routine scan never hits that. If a caller
+    # deliberately flips one on, the scan continues with that framework
+    # simply absent from the report (see the _quarantined_scan guard below)
+    # rather than crashing the whole run.
+    run_colorado_sb26189: bool = False
+    run_texas_traiga: bool = False
 
     # AI system metadata (for EU AI Act + NIST)
     ai_systems: list[dict] = field(default_factory=list)
@@ -126,7 +133,10 @@ class ComplianceReport:
     # Aggregated scores
     framework_scores: list[FrameworkScore] = field(default_factory=list)
     overall_score: float = 0.0      # weighted average, 0–100
-    risk_rating: str = "Unknown"    # Critical / High / Medium / Low / Compliant
+    # P0-12/COMP-007: "Compliant" was a hardcoded-checklist-pass label that
+    # read as a legal compliance determination. This is a control-mapping
+    # readiness score, not a certification — see risk_rating tiers below.
+    risk_rating: str = "Unknown"    # Critical Risk / High Risk / Medium Risk / Low Risk / Strong Readiness
 
     # Totals
     total_findings: int = 0
@@ -213,7 +223,7 @@ class ComplianceReport:
             ) / sum(fs.weight for fs in self.framework_scores)
 
         if self.overall_score >= 90:
-            self.risk_rating = "Compliant"
+            self.risk_rating = "Strong Readiness"
         elif self.overall_score >= 75:
             self.risk_rating = "Low Risk"
         elif self.overall_score >= 60:
@@ -261,6 +271,19 @@ class ComplianceScanner:
 
             async def run_framework(name: str, coro) -> tuple[str, object]:
                 result = await coro
+                progress.advance(master)
+                return name, result
+
+            async def run_quarantined_framework(name: str, coro) -> tuple[str, object]:
+                # P0-23: colorado_sb26189 / texas_traiga always raise
+                # NotImplementedError (quarantined — fabricated statutory
+                # content). Swallow it here so an operator who explicitly
+                # re-enables one doesn't take down the whole scan; the
+                # framework just comes back absent from the report.
+                try:
+                    result = await coro
+                except NotImplementedError:
+                    result = None
                 progress.advance(master)
                 return name, result
 
@@ -336,14 +359,14 @@ class ComplianceScanner:
                     ai_systems=self.config.ai_systems,
                     mock=self.config.mock_mode,
                 )
-                active_tasks.append(run_framework("colorado_sb26189", scanner.scan()))
+                active_tasks.append(run_quarantined_framework("colorado_sb26189", scanner.scan()))
 
             if self.config.run_texas_traiga:
                 scanner = TexasTRAIGAScanner(
                     ai_systems=self.config.ai_systems,
                     mock=self.config.mock_mode,
                 )
-                active_tasks.append(run_framework("texas_traiga", scanner.scan()))
+                active_tasks.append(run_quarantined_framework("texas_traiga", scanner.scan()))
 
             results = await asyncio.gather(*active_tasks)
 
@@ -458,7 +481,7 @@ class ComplianceScanner:
         # Overall score
         overall_color = score_color(report.overall_score)
         risk_color = {
-            "Compliant": "green",
+            "Strong Readiness": "green",
             "Low Risk": "bright_yellow",
             "Medium Risk": "yellow",
             "High Risk": "red",
@@ -466,7 +489,7 @@ class ComplianceScanner:
         }.get(report.risk_rating, "white")
 
         console.print(
-            f"  [bold]Overall Compliance Score:[/bold] "
+            f"  [bold]Overall Readiness Score:[/bold] "
             f"[{overall_color}]{report.overall_score:.1f}%[/{overall_color}]   "
             f"[bold]Risk Rating:[/bold] [{risk_color}]{report.risk_rating}[/{risk_color}]"
         )
@@ -476,6 +499,10 @@ class ComplianceScanner:
             f"[yellow]High: {report.high_findings}[/yellow]   "
             f"Medium: {report.medium_findings}   "
             f"[dim]Low: {report.low_findings}[/dim]"
+        )
+        console.print(
+            "  [dim]Control-mapping readiness score — not a compliance determination, "
+            "not legal advice, not a certification.[/dim]"
         )
         console.print()
 

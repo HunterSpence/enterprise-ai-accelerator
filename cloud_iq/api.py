@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -28,6 +29,7 @@ from typing import Any, AsyncGenerator
 
 import structlog
 from fastapi import (
+    Depends,
     FastAPI,
     HTTPException,
     Query,
@@ -38,6 +40,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from core.api_key_auth import api_key_dependency
 from cloud_iq.models import (
     AnomalyAlert,
     CloudProvider,
@@ -46,6 +49,7 @@ from cloud_iq.models import (
     NLQueryRequest,
     NLQueryResponse,
     RecommendationsResponse,
+    ScanDataStatus,
     ScanProgressEvent,
     ScanRequest,
     ScanResponse,
@@ -99,12 +103,21 @@ app = FastAPI(
     },
     license_info={"name": "MIT"},
     lifespan=lifespan,
+    dependencies=[Depends(api_key_dependency())],
 )
 
+# ponytail: allowlist-only CORS, read from env so ops can add origins without a
+# code change. Never combine "*" with allow_credentials=True (browsers reject
+# it anyway, and it's a CSRF hole on any origin that isn't blocked).
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get("CLOUDIQ_CORS_ORIGINS", "").split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=bool(_cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -212,7 +225,10 @@ async def trigger_scan(request: ScanRequest) -> ScanResponse:
     Returns a job_id immediately. Poll GET /scan/{job_id} for status or connect
     to WS /ws/scan/{job_id} for real-time progress events.
 
-    In demo/dry-run mode, returns mock data without requiring cloud credentials.
+    dry_run=true returns the labeled demo dataset (status=DEMO) without requiring
+    cloud credentials. dry_run=false currently fails with status=FAILED — no live
+    provider scan is wired into this evaluation prototype, and it will never
+    silently return demo data as if it were a real completed scan.
     """
     job_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
@@ -374,7 +390,7 @@ async def nl_query(request: NLQueryRequest) -> NLQueryResponse:
             cost_report=MOCK_COST_REPORT,
             anthropic_api_key=api_key,
         )
-        result = engine.query(request.question)
+        result = await engine.query(request.question)
     except Exception as exc:
         # Catches invalid/placeholder keys (401 AuthenticationError) and any
         # other initialisation failure — fall back to demo mode so the endpoint
@@ -532,6 +548,26 @@ async def _run_scan(job_id: str, request: ScanRequest) -> None:
     try:
         _JOBS[job_id]["status"] = ScanStatus.RUNNING
 
+        if not request.dry_run:
+            # ponytail: this pipeline has no live provider wired in (it only
+            # ever assembles cloud_iq.demo_data.MOCK_SNAPSHOT below) — refuse
+            # to hand back fabricated data labeled as a real completed scan.
+            # Upgrade path: wire a real AbstractCloudProvider scan here and
+            # set data_status=COMPLETE/PARTIAL from its actual result.
+            await _emit(
+                "failed",
+                "Live scanning is not implemented in this build; use dry_run=true "
+                "for the demo dataset.",
+                100.0,
+            )
+            _JOBS[job_id]["status"] = ScanStatus.FAILED
+            _JOBS[job_id]["completed_at"] = datetime.now(timezone.utc)
+            _JOBS[job_id]["error"] = (
+                "Live AWS/Azure/GCP scanning is not implemented in this evaluation "
+                "prototype. Set dry_run=true to see the demo dataset (status=DEMO)."
+            )
+            return
+
         stages = [
             ("init", "Authenticating with AWS STS...", 5),
             ("discovery", "Discovering EC2 instances across 3 regions...", 15),
@@ -544,18 +580,19 @@ async def _run_scan(job_id: str, request: ScanRequest) -> None:
             ("analysis", "Computing rightsizing recommendations...", 80),
             ("analysis", "Generating 90-day cost forecast (Prophet)...", 88),
             ("analysis", "Correlating Terraform state drift...", 94),
-            ("complete", "Scan complete. 47 findings identified.", 100),
+            ("complete", "Demo scan complete. 47 sample findings generated.", 100),
         ]
 
         for stage, message, pct in stages:
             await _emit(stage, message, float(pct))
-            await asyncio.sleep(0.4 if request.dry_run else 1.2)
+            await asyncio.sleep(0.4)
 
         from cloud_iq.demo_data import MOCK_COST_REPORT, MOCK_SNAPSHOT
 
         _JOBS[job_id]["status"] = ScanStatus.COMPLETED
         _JOBS[job_id]["completed_at"] = datetime.now(timezone.utc)
         _JOBS[job_id]["summary"] = ScanResultSummary(
+            data_status=ScanDataStatus.DEMO,
             total_resources=sum(MOCK_SNAPSHOT.resource_counts.values()),
             monthly_cost_usd=MOCK_SNAPSHOT.total_estimated_monthly_cost,
             total_waste_usd=MOCK_COST_REPORT.total_identified_waste,

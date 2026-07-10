@@ -148,15 +148,15 @@ class TestIncidentResponse:
         )
         assert result is not None
 
-    def test_article_62_notification_generated(self):
-        from incident_response import generate_article_62_notification
-        text = generate_article_62_notification(
+    def test_article_73_notification_generated(self):
+        from incident_response import generate_article_73_notification
+        text = generate_article_73_notification(
             incident_id="TEST-001",
             system_name="HiringAI",
             incident_summary="Bias detected",
             affected_persons_estimate=100,
         )
-        assert "Article 62" in text or "serious incident" in text.lower()
+        assert "Article 73" in text or "serious incident" in text.lower()
 
     def test_demo_incidents_defined(self):
         from incident_response import DEMO_INCIDENTS

@@ -101,8 +101,8 @@ def _make_focus_row(**overrides):
         SkuPriceId="aws/amazon-ec2/us-east-1/standard",
         SubAccountId="123456789012",
         SubAccountName="production",
-        UsageQuantity=200.0,
-        UsageUnit="Hours",
+        ConsumedQuantity=200.0,
+        ConsumedUnit="Hours",
     )
     defaults.update(overrides)
     return FOCUSRow(**defaults)
@@ -123,8 +123,6 @@ class TestFOCUSRow:
         row = _make_focus_row()
         assert row.InvoiceId is None
         assert row.PricingCurrency is None
-        assert row.ServiceProvider is None
-        assert row.HostProvider is None
         assert row.CapacityReservationId is None
         assert row.CapacityReservationStatus is None
 
@@ -132,11 +130,12 @@ class TestFOCUSRow:
         row = _make_focus_row(
             InvoiceId="INV-001",
             PricingCurrency="USD",
-            ServiceProvider="Amazon Web Services",
-            HostProvider="Amazon Web Services",
+            CapacityReservationId="cr-001",
+            CapacityReservationStatus="Used",
         )
         assert row.InvoiceId == "INV-001"
         assert row.PricingCurrency == "USD"
+        assert row.CapacityReservationId == "cr-001"
 
     def test_to_dict_contains_required_fields(self):
         row = _make_focus_row()
@@ -154,14 +153,14 @@ class TestFOCUSRow:
         d = row.to_dict()
         assert "InvoiceId" not in d
         assert "PricingCurrency" not in d
-        assert "ServiceProvider" not in d
-        assert "HostProvider" not in d
+        assert "CapacityReservationId" not in d
+        assert "CapacityReservationStatus" not in d
 
     def test_to_dict_optional_present_when_set(self):
-        row = _make_focus_row(InvoiceId="INV-2025", ServiceProvider="AWS")
+        row = _make_focus_row(InvoiceId="INV-2025", CapacityReservationId="cr-001")
         d = row.to_dict()
         assert "InvoiceId" in d
-        assert "ServiceProvider" in d
+        assert "CapacityReservationId" in d
 
     def test_to_dict_tags_serialized_as_json(self):
         row = _make_focus_row(Tags={"env": "prod", "team": "devops"})
@@ -261,21 +260,21 @@ class TestExportAIModelCosts:
         rows = exporter.export_ai_model_costs([
             {"model": "claude-haiku-4-5", "total_cost": 1.0, "input_tokens": 100000}
         ])
-        assert rows[0].ServiceProvider == "Anthropic"
+        assert rows[0].ProviderName == "Anthropic"
 
     def test_gpt_provider_detected(self):
         exporter = FOCUSExporter()
         rows = exporter.export_ai_model_costs([
             {"model": "gpt-4o", "total_cost": 5.0}
         ])
-        assert rows[0].ServiceProvider == "OpenAI"
+        assert rows[0].ProviderName == "OpenAI"
 
     def test_unknown_model_provider_is_unknown(self):
         exporter = FOCUSExporter()
         rows = exporter.export_ai_model_costs([
             {"model": "unknown-model-xyz", "total_cost": 2.0}
         ])
-        assert rows[0].ServiceProvider == "Unknown"
+        assert rows[0].ProviderName == "Unknown"
 
     def test_ai_row_service_category(self):
         exporter = FOCUSExporter()
@@ -291,13 +290,13 @@ class TestExportAIModelCosts:
         ])
         assert rows[0].ResourceType == "LLM Inference"
 
-    def test_ai_row_usage_unit_tokens(self):
+    def test_ai_row_consumed_unit_tokens(self):
         exporter = FOCUSExporter()
         rows = exporter.export_ai_model_costs([
             {"model": "claude-sonnet-4-6", "total_cost": 1.0,
              "input_tokens": 500000, "output_tokens": 100000}
         ])
-        assert rows[0].UsageUnit == "Tokens"
+        assert rows[0].ConsumedUnit == "Tokens"
 
     def test_ai_row_token_extension_fields(self):
         exporter = FOCUSExporter()
@@ -374,9 +373,9 @@ class TestValidateFOCUSCompliance:
         assert result["focus_version"] in ("1.2", "1.3")
         assert result["focus_1_2_columns_present"] is True
 
-    def test_focus_version_13_with_service_provider(self):
+    def test_focus_version_13_with_capacity_reservation(self):
         exporter = FOCUSExporter()
-        row = _make_focus_row(ServiceProvider="AWS", HostProvider="AWS")
+        row = _make_focus_row(CapacityReservationId="cr-001", CapacityReservationStatus="Used")
         result = exporter.validate_focus_compliance([row])
         assert result["focus_version"] == "1.3"
         assert result["focus_1_3_columns_present"] is True

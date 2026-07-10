@@ -143,18 +143,26 @@ _MAX_FILES = 50_000
 _MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024  # 5 MB — skip huge generated files
 
 
-def _walk_repo(repo_path: Path) -> list[Path]:
+def _walk_repo(repo_path: Path) -> tuple[list[Path], dict[str, Any]]:
     """Walk *repo_path* respecting .gitignore rules.
 
-    Returns a flat list of file paths (not directories).
+    Returns (files, stats). stats surfaces truncation/skip info so callers
+    can mark the report PARTIAL instead of returning a normal-looking
+    report that silently dropped files (P0-26).
     """
     gi_filter = _GitignoreFilter(repo_path)
     files: list[Path] = []
+    stats: dict[str, Any] = {
+        "truncated": False,
+        "oversized_skipped": 0,
+        "walk_error": "",
+    }
 
     try:
         for item in repo_path.rglob("*"):
             if len(files) >= _MAX_FILES:
                 logger.warning("File limit (%d) reached — truncating scan", _MAX_FILES)
+                stats["truncated"] = True
                 break
             if not item.is_file():
                 continue
@@ -162,14 +170,16 @@ def _walk_repo(repo_path: Path) -> list[Path]:
                 continue
             try:
                 if item.stat().st_size > _MAX_FILE_SIZE_BYTES:
+                    stats["oversized_skipped"] += 1
                     continue
             except OSError:
                 continue
             files.append(item)
     except Exception as exc:  # noqa: BLE001
         logger.warning("repo walk error: %s", exc)
+        stats["walk_error"] = str(exc)
 
-    return files
+    return files, stats
 
 
 # ---------------------------------------------------------------------------
@@ -250,9 +260,13 @@ class RepoAnalyzer:
             return await self._analyze_inner(repo_path)
         except Exception as exc:  # noqa: BLE001
             logger.error("RepoAnalyzer.analyze failed for %s: %s", repo_path, exc)
+            # P0-26: a metadata error must not render as a clean empty
+            # report — mark it FAILED so consumers can't mistake "we
+            # couldn't scan this repo" for "this repo has zero findings".
             return PortfolioReport(
                 repo_name=repo_path.name,
                 repo_path=str(repo_path),
+                status="FAILED",
                 metadata={"error": str(exc)},
             )
 
@@ -267,8 +281,21 @@ class RepoAnalyzer:
         # ----------------------------------------------------------------
         # Step 1: Walk the file tree
         # ----------------------------------------------------------------
-        all_files = _walk_repo(repo_path)
+        all_files, walk_stats = _walk_repo(repo_path)
         logger.info("Found %d files", len(all_files))
+
+        partial_reasons: list[str] = []
+        if walk_stats["truncated"]:
+            partial_reasons.append(
+                f"file limit ({_MAX_FILES:,}) reached — scan truncated, "
+                "not all files were analyzed"
+            )
+        if walk_stats["oversized_skipped"]:
+            partial_reasons.append(
+                f"{walk_stats['oversized_skipped']} file(s) skipped (>{_MAX_FILE_SIZE_BYTES // (1024*1024)}MB)"
+            )
+        if walk_stats["walk_error"]:
+            partial_reasons.append(f"directory walk error: {walk_stats['walk_error']}")
 
         # ----------------------------------------------------------------
         # Step 2: Language detection (CPU-bound, run synchronously)
@@ -277,23 +304,26 @@ class RepoAnalyzer:
         total_loc = sum(languages.values())
 
         # ----------------------------------------------------------------
-        # Step 3: Dependency scan (async, hits PyPI/npm/etc. if enabled)
+        # Step 3: Dependency scan (async, hits PyPI/npm/etc. iff run_staleness)
         # ----------------------------------------------------------------
-        if self.run_staleness:
-            deps = await scan_dependencies(repo_path, all_files)
-        else:
-            # Parse manifests without staleness enrichment
-            from app_portfolio.dependency_scanner import (
-                _parse_requirements_txt, _parse_package_json, _parse_go_mod,
-                _parse_pom_xml,
-            )
-            deps = await scan_dependencies(repo_path, all_files)
+        # MOD-014: run_staleness=False must make ZERO enrichment network
+        # calls — threaded straight through to scan_dependencies() instead
+        # of the old dead-code branch that called the same enriching path
+        # either way.
+        deps = await scan_dependencies(repo_path, all_files, run_staleness=self.run_staleness)
 
         # ----------------------------------------------------------------
         # Step 4: CVE scan (async, hits OSV.dev if enabled)
         # ----------------------------------------------------------------
         if self.run_cve_scan and deps:
             deps = await scan_cves(deps, repo_path)
+            cve_failed = sum(1 for d in deps if d.cve_scan_status == "FAILED")
+            if cve_failed:
+                partial_reasons.append(
+                    f"{cve_failed} dependenc{'y' if cve_failed == 1 else 'ies'} "
+                    "could not be checked for CVEs (OSV.dev lookup failed) — "
+                    "not confirmed clean"
+                )
 
         # ----------------------------------------------------------------
         # Steps 5-7: Synchronous scorers (no I/O after file list built)
@@ -328,6 +358,8 @@ class RepoAnalyzer:
             test_ratio=test_ratio,
             test_config_found=test_config,
             security_hotspots=hotspots,
+            status="PARTIAL" if partial_reasons else "COMPLETE",
+            partial_reasons=partial_reasons,
             metadata={
                 "file_count": len(all_files),
                 "scan_duration_seconds": round(scan_duration_s, 2),

@@ -7,7 +7,13 @@
 #   docker compose up ai_audit_trail      # start single service
 #
 # Prerequisites:
-#   Copy .env.example to .env and fill in ANTHROPIC_API_KEY
+#   Copy .env.example to .env and fill in ANTHROPIC_API_KEY and EAA_API_KEY
+#   (EAA_API_KEY gates every business route on the API services below —
+#   see core/api_key_auth.py. It is required; compose fails fast if unset.)
+#
+# Ports are bound to 127.0.0.1 only — `docker compose up` never exposes
+# these unauthenticated-by-default API surfaces to the network. Front them
+# with a reverse proxy / port-forward deliberately if you need remote access.
 
 networks:
   ai_stack:
@@ -24,9 +30,10 @@ services:
     image: enterprise-ai/ai-audit-trail:latest
     container_name: ai-audit-trail
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}
+      EAA_API_KEY: ${EAA_API_KEY:?EAA_API_KEY must be set — see core/api_key_auth.py}
       AUDIT_DB_PATH: /data/audit.db
       AUDIT_PORT: "8000"
       AUDIT_DEV_MODE: "false"
@@ -52,9 +59,10 @@ services:
     image: enterprise-ai/cloud-iq:latest
     container_name: cloud-iq
     ports:
-      - "8002:8080"
+      - "127.0.0.1:8002:8080"
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}
+      EAA_API_KEY: ${EAA_API_KEY:?EAA_API_KEY must be set — see core/api_key_auth.py}
       PYTHONUNBUFFERED: "1"
     networks:
       - ai_stack
@@ -75,9 +83,10 @@ services:
     image: enterprise-ai/finops-intelligence:latest
     container_name: finops-intelligence
     ports:
-      - "8003:8000"
+      - "127.0.0.1:8003:8000"
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}
+      EAA_API_KEY: ${EAA_API_KEY:?EAA_API_KEY must be set — see core/api_key_auth.py}
       PYTHONUNBUFFERED: "1"
       PYTHONDONTWRITEBYTECODE: "1"
     networks:
@@ -99,9 +108,10 @@ services:
     image: enterprise-ai/migration-scout:latest
     container_name: migration-scout
     ports:
-      - "8004:8080"
+      - "127.0.0.1:8004:8080"
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}
+      EAA_API_KEY: ${EAA_API_KEY:?EAA_API_KEY must be set — see core/api_key_auth.py}
       HOST: "0.0.0.0"
       PORT: "8080"
       LOG_LEVEL: info
@@ -125,9 +135,10 @@ services:
     image: enterprise-ai/policy-guard:latest
     container_name: policy-guard
     ports:
-      - "8005:8080"
+      - "127.0.0.1:8005:8080"
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}
+      EAA_API_KEY: ${EAA_API_KEY:?EAA_API_KEY must be set — see core/api_key_auth.py}
       POLICYGUARD_ENV: production
       POLICYGUARD_HOST: "0.0.0.0"
       POLICYGUARD_PORT: "8080"
@@ -152,10 +163,12 @@ services:
       dockerfile: Dockerfile
     image: enterprise-ai/agent-ops:latest
     container_name: agent-ops
-    ports:
-      - "8006:8006"
+    # No ports: block — this image runs the CLI demo (agent_ops.demo), not a
+    # persistent API server. Its own Dockerfile HEALTHCHECK confirms this
+    # ("import agent_ops; print('ok')", not an HTTP probe). A published
+    # 8006 mapping here was phantom — nothing ever listened on it.
     environment:
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       PYTHONUNBUFFERED: "1"
     networks:

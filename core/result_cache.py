@@ -19,8 +19,9 @@ WIRING (one-liner):
 Cache key is sha256 of the tuple:
     (model, system_prompt, user_prompt, schema_json, tool_name, thinking_budget)
 
-LRU eviction fires when total on-disk size exceeds ``max_bytes`` (default 500MB).
-Eviction removes the oldest-accessed rows in batches of 5% until under limit.
+LRU eviction fires (inline, after every ``put()``) when the logical stored
+size exceeds ``max_bytes`` (default 500MB). Removes the oldest-accessed rows
+until back under the cap.
 
 Schema (table: results):
     key          TEXT PRIMARY KEY
@@ -38,15 +39,17 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
 import sqlite3
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 _DEFAULT_DB_PATH = Path.home() / ".eaa_cache" / "results.db"
 _DEFAULT_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
-_EVICT_FRACTION = 0.05                  # remove 5% oldest rows per eviction pass
 _SCHEMA_VERSION = 1
 
 
@@ -143,6 +146,8 @@ class ResultCache:
         self._evictions = 0
         self._initialized = False
         self._init_lock = asyncio.Lock()
+        # Serializes eviction against concurrent puts — see put()/._maybe_evict.
+        self._evict_lock = asyncio.Lock()
 
     # ------------------------------------------------------------------
     # Public API
@@ -269,8 +274,16 @@ class ResultCache:
             conn.commit()
 
         await self._run_sync(_write)
-        # Evict asynchronously — don't block the caller
-        asyncio.get_event_loop().call_soon(lambda: asyncio.ensure_future(self._maybe_evict()))
+        # ponytail: inline eviction under a lock instead of the old fire-and-forget
+        # call_soon(ensure_future(...)) task, which raced the next put()'s own
+        # sqlite connection and produced unhandled/unretrieved exceptions on lock
+        # contention. Correct-but-simple single-writer eviction; upgrade to a
+        # background eviction queue if put() latency becomes a bottleneck.
+        async with self._evict_lock:
+            try:
+                await self._maybe_evict()
+            except Exception:
+                logger.exception("ResultCache: eviction after put() failed")
 
     async def delete(self, key: str) -> bool:
         """Delete a single entry. Returns True if it existed."""
@@ -351,30 +364,39 @@ class ResultCache:
         conn.commit()
 
     async def _maybe_evict(self) -> None:
-        """Check size and evict LRU rows if over limit."""
+        """Check logical size and evict LRU rows until under the byte cap.
+
+        ponytail: sizes on the *stored payload* (SUM of row lengths), not
+        PRAGMA page_count — physical file pages don't shrink on DELETE
+        without VACUUM/auto_vacuum, so the old page_count check under-counted
+        evictions to zero even after rows were removed. Row-by-row LRU scan
+        is O(n) on cache size; fine at cache scale, revisit if the table
+        grows past ~10^5 rows.
+        """
         def _check_and_evict(conn: sqlite3.Connection) -> int:
-            page_count = conn.execute("PRAGMA page_count").fetchone()[0]
-            page_size = conn.execute("PRAGMA page_size").fetchone()[0]
-            db_bytes = page_count * page_size
-            if db_bytes <= self._max_bytes:
+            total_bytes = conn.execute(
+                "SELECT COALESCE(SUM(LENGTH(key) + LENGTH(response_json)), 0) FROM results"
+            ).fetchone()[0]
+            if total_bytes <= self._max_bytes:
                 return 0
-            # Count rows to remove
-            total = conn.execute("SELECT COUNT(*) FROM results").fetchone()[0]
-            to_remove = max(1, int(total * _EVICT_FRACTION))
-            conn.execute(
+            rows = conn.execute(
                 """
-                DELETE FROM results
-                WHERE key IN (
-                    SELECT key FROM results
-                    ORDER BY last_hit_at ASC
-                    LIMIT ?
+                SELECT key, LENGTH(key) + LENGTH(response_json)
+                FROM results ORDER BY last_hit_at ASC
+                """
+            ).fetchall()
+            to_remove: list[str] = []
+            for key, size in rows:
+                if total_bytes <= self._max_bytes:
+                    break
+                to_remove.append(key)
+                total_bytes -= size
+            if to_remove:
+                conn.executemany(
+                    "DELETE FROM results WHERE key = ?", [(k,) for k in to_remove]
                 )
-                """,
-                (to_remove,),
-            )
-            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
-            conn.commit()
-            return to_remove
+                conn.commit()
+            return len(to_remove)
 
         removed = await self._run_sync(_check_and_evict)
         if removed:

@@ -36,7 +36,7 @@ python -m app_portfolio.cli .
 ### Step 2 — IaC Security Scan (60 seconds)
 
 ```bash
-python -m iac_security . --format json | python -c "
+python -m iac_security scan . --format json | python -c "
 import json,sys
 d=json.load(sys.stdin)
 print(f'Findings: {d[\"summary\"][\"total\"]} ({d[\"summary\"][\"critical\"]} critical)')
@@ -127,7 +127,7 @@ for task, tokens in tasks:
 python -c "from iac_security.policies import POLICIES; [print(p.id, p.severity, p.name) for p in POLICIES]"
 
 # Run with SARIF output
-python -m iac_security . --sarif /tmp/findings.sarif
+python -m iac_security scan . --sarif /tmp/findings.sarif
 cat /tmp/findings.sarif | python -m json.tool | head -60
 ```
 

@@ -22,15 +22,26 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional
 
+# `core` lives at the repo root, one level above this package. api.py is
+# imported both as `policy_guard.api` and (in tests) as a bare top-level
+# `api` module with only policy_guard/ on sys.path — make sure the repo
+# root is importable either way before reaching for `core.api_key_auth`.
+_repo_root = str(Path(__file__).resolve().parent.parent)
+if _repo_root not in sys.path:
+    sys.path.insert(0, _repo_root)
+
 try:
-    from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
+    from fastapi import Depends, FastAPI, Header, HTTPException, Request, WebSocket, WebSocketDisconnect, BackgroundTasks
     from fastapi.responses import HTMLResponse, JSONResponse
     from pydantic import BaseModel, Field
+    from core.api_key_auth import api_key_dependency
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
@@ -39,6 +50,12 @@ except ImportError:
         pass
     def Field(*args, **kwargs):  # type: ignore
         return None
+
+
+if FASTAPI_AVAILABLE:
+    # P0-01 auth gate — use the shared fail-closed factory (works for HTTP and
+    # WebSocket routes alike). Built once here and mounted app-level below.
+    _require_api_key = api_key_dependency()
 
 
 # ---------------------------------------------------------------------------
@@ -250,11 +267,18 @@ if FASTAPI_AVAILABLE:
         description=(
             "AI Governance and Cloud Compliance API. "
             "Covers EU AI Act, NIST AI RMF, SOC 2 AICC, CIS AWS, and HIPAA. "
-            "High-risk enforcement deadline: December 2, 2027 (deferred from August 2, 2026 by the Digital Omnibus)."
+            "High-risk enforcement deadline: December 2, 2027 (deferred from August 2, 2026 by the Digital Omnibus). "
+            "Evaluation prototype — pre-production, solo-maintained. Not a certification and not a "
+            "compliance determination."
         ),
         version="2.0.0",
         docs_url="/docs",
         redoc_url="/redoc",
+        # P0-01: every business route is fail-closed by default (503 unless
+        # EAA_API_KEY or EAA_DEV_MODE is set). /health, /docs, /openapi.json
+        # stay open — decision logic is core.api_key_auth._decide(), see
+        # _require_api_key() above for why it's wired in directly.
+        dependencies=[Depends(_require_api_key)],
     )
 
     @app.get("/health")

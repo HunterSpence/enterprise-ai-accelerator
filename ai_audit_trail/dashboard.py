@@ -342,7 +342,7 @@ class AuditDashboard:
             "Severity",
             "System",
             "Title",
-            "Art.62",
+            "Art.73",
             "Status",
             box=box.SIMPLE,
             show_header=True,
@@ -361,21 +361,21 @@ class AuditDashboard:
             else:
                 sev_str = sev
 
-            art62 = inc.get("article_62_deadline")
-            if art62:
+            art73 = inc.get("article_73_deadline")
+            if art73:
                 try:
-                    deadline = datetime.fromisoformat(art62)
+                    deadline = datetime.fromisoformat(art73)
                     remaining = (deadline - datetime.now(timezone.utc)).total_seconds() / 3600
                     if remaining < 0:
-                        art62_str = "[red]OVERDUE[/red]"
+                        art73_str = "[red]OVERDUE[/red]"
                     elif remaining < 12:
-                        art62_str = f"[red]{remaining:.0f}h[/red]"
+                        art73_str = f"[red]{remaining:.0f}h[/red]"
                     else:
-                        art62_str = f"[yellow]{remaining:.0f}h[/yellow]"
+                        art73_str = f"[yellow]{remaining:.0f}h[/yellow]"
                 except Exception:
-                    art62_str = art62[:10] if art62 else "—"
+                    art73_str = art73[:10] if art73 else "—"
             else:
-                art62_str = "—"
+                art73_str = "—"
 
             status = str(inc.get("status", ""))
             status_str = "[green]resolved[/green]" if status == "resolved" else f"[yellow]{status}[/yellow]"
@@ -385,7 +385,7 @@ class AuditDashboard:
                 sev_str,
                 str(inc.get("system_id", "—"))[:10],
                 str(inc.get("title", "—"))[:30],
-                art62_str,
+                art73_str,
                 status_str,
             )
 
@@ -532,10 +532,9 @@ class AuditDashboard:
                     "system_id": inc.system_id,
                     "title": inc.title,
                     "status": inc.status,
-                    "article_62_deadline": (
-                        inc.article_62_deadline.isoformat()
-                        if inc.article_62_deadline else None
-                    ),
+                    # ponytail: article_73_deadline is already an ISO string (see
+                    # AIIncident), not a datetime — no .isoformat() call needed/possible.
+                    "article_73_deadline": inc.article_73_deadline,
                 }
                 for inc in mgr._incidents.values()
                 if inc.status not in ("resolved", "closed")

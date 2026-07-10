@@ -1,0 +1,43 @@
+# enterprise-ai-accelerator — root .dockerignore
+# Applies to every `docker build` context rooted here (Dockerfile.demo and
+# any per-module Dockerfile built with `context: .`). Keeps secrets, VCS
+# history, and local build/test artifacts out of every image layer.
+
+.git
+.github
+
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.venv/
+venv/
+env/
+*.egg-info/
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+reports/
+
+tests/
+**/tests/
+
+*.db
+*.sqlite
+*.sqlite3
+
+.env
+.env.*
+!.env.example
+
+node_modules/
+
+# scratch / build artifacts
+build/
+dist/
+*.log
+.DS_Store
