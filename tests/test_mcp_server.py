@@ -763,41 +763,37 @@ class TestToolAuditChain:
 
 
 # ---------------------------------------------------------------------------
-# Input validation tests (MCP03/05)
+# Input validation tests (MCP05)
 # ---------------------------------------------------------------------------
 
 class TestInputValidation:
-    """Verify path traversal, enum, and numeric bounds validation."""
+    """Verify enum and numeric bounds validation.
 
-    def test_path_traversal_dotdot_slash_rejected(self):
-        """Args with ../ must be rejected."""
+    OMISSION fix (mcp_transports.py): the old path-traversal check fired only
+    on args.items() key *names* containing "path"/"dir"/"file" — no tool's
+    inputSchema declares such a property, and no dispatch path reads a
+    caller-supplied filesystem path, so it was dead by construction and has
+    been removed along with its misleading "MCP03/05 active control" claim.
+    """
+
+    def test_no_tool_schema_declares_a_filesystem_path_arg(self):
+        """Documents why there is no traversal check: nothing to protect."""
+        from mcp_server import _TOOLS
+        for tool in _TOOLS:
+            props = (tool.inputSchema or {}).get("properties", {})
+            for key in props:
+                assert not (
+                    key.lower() in ("path", "dir", "directory", "file", "filename")
+                ), f"{tool.name}.{key} looks filesystem-path-like — add real traversal validation for it"
+
+    def test_arbitrary_extra_args_pass_through_unvalidated(self):
+        """A caller-supplied key merely named 'path' is no longer special-cased."""
         from mcp_transports import validate_tool_args
         error = validate_tool_args(
             "cloudiq_analyze_environment",
             {"path": "../../etc/passwd"},
         )
-        assert error is not None
-        assert "path" in error.lower() or "forbidden" in error.lower() or "traversal" in error.lower() or ".." in error
-
-    def test_path_traversal_dotdot_backslash_rejected(self):
-        """Args with ..\\ must be rejected."""
-        from mcp_transports import validate_tool_args
-        # Use a tool that definitely exists; we just need to trigger the traversal check
-        # Use audit_log_decision with a path-like key
-        from mcp_server import _TOOLS
-        # Find any tool with a path-like key, or use validate_tool_args with a custom schema by
-        # adding a temporary path key test on a dict.
-        # Instead, test the module-level _PATH_TRAVERSAL_SEQS via a known path-arg tool.
-        # cloudiq_analyze_environment may or may not have 'path' key; test directly via validate:
-        error = validate_tool_args(
-            "migration_assess_workload",
-            {"path": "..\\windows\\system32"},
-        )
-        # Will return None if no 'path' prop in schema — that's fine, but
-        # if it does exist, must reject. Just confirm no exception.
-        # The real traversal check test is above with the ../ case.
-        # This verifies the function handles backslash input without crashing.
-        assert error is None or ".." in str(error)
+        assert error is None
 
     def test_enum_validation_rejects_invalid_value(self):
         """Enum args must reject values not in the allowed list."""

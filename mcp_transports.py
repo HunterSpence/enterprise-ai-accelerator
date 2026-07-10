@@ -121,8 +121,21 @@ def _get_mcp_audit_chain():
     return _MCP_AUDIT_CHAIN
 
 
-def audit_tool_call(tool_name: str, args: dict[str, Any], result: Any, error: str | None, start_ms: float) -> None:
+def audit_tool_call(
+    tool_name: str,
+    args: dict[str, Any],
+    result: Any,
+    error: str | None,
+    start_ms: float,
+    session_id: str = "mcp-server",
+) -> None:
     """Append a tool-invocation record to the Merkle audit chain.
+
+    ``session_id`` should identify the calling connection/session so audit
+    entries can be attributed per-caller; it previously defaulted to the
+    literal constant ``"mcp-server"`` for every call regardless of caller
+    (see call_tool() in mcp_server.py for how a real per-connection id is
+    derived).
 
     Fail-open: any exception here is logged as a warning and swallowed so it
     never propagates back to the caller.
@@ -139,7 +152,7 @@ def audit_tool_call(tool_name: str, args: dict[str, Any], result: Any, error: st
             output_summary += f" error={error[:200]}"
         chain = _get_mcp_audit_chain()
         chain.append(
-            session_id="mcp-server",
+            session_id=session_id,
             model="mcp-tool",
             input_text=f"tool={tool_name} args_sha256={args_sha256}",
             output_text=output_summary,
@@ -161,10 +174,20 @@ def audit_tool_call(tool_name: str, args: dict[str, Any], result: Any, error: st
 
 
 # ---------------------------------------------------------------------------
-# Input validation (MCP03/05)
+# Input validation (MCP05)
 # ---------------------------------------------------------------------------
-
-_PATH_TRAVERSAL_SEQS = ["..", "~", "%2e", "%2f", "//", "\\"]
+#
+# ponytail (OMISSION fix): this used to also run a path-traversal check
+# (advertised as "MCP03/05"), but it fired only on args.items() keys whose
+# *name* contained "path"/"dir"/"file" — no tool in _TOOLS' inputSchema
+# declares such a property (verified: the only "path"-like schema key is the
+# unrelated "critical_path_workloads" list, and get_prompt()'s "path" arg is
+# interpolated into prompt text, never touches the filesystem). No dispatch
+# path in mcp_server.py reads a caller-supplied filesystem path, so there was
+# nothing to actually protect and the check was dead by construction — it
+# was removed rather than left as a misleading "active security control".
+# If a future tool DOES take a filesystem path, add real traversal/absolute-
+# path validation scoped to that tool's schema key at that time.
 
 
 def validate_tool_args(tool_name: str, args: dict[str, Any]) -> str | None:
@@ -172,7 +195,6 @@ def validate_tool_args(tool_name: str, args: dict[str, Any]) -> str | None:
     Validate args before dispatch. Returns an error string or None if valid.
 
     Checks:
-    - Path-like string args must not contain traversal sequences.
     - Enum-typed args validated against allowed values (from _TOOLS inputSchema).
     - Numeric bounds checked where schema specifies minimum/maximum.
     """
@@ -186,15 +208,6 @@ def validate_tool_args(tool_name: str, args: dict[str, Any]) -> str | None:
     for key, val in args.items():
         prop_schema = props.get(key, {})
         prop_type = prop_schema.get("type")
-
-        # Path traversal check on string values that look path-like
-        if isinstance(val, str) and (
-            "path" in key.lower() or "dir" in key.lower() or "file" in key.lower()
-        ):
-            lower_val = val.lower()
-            for seq in _PATH_TRAVERSAL_SEQS:
-                if seq in lower_val:
-                    return f"Argument '{key}' contains forbidden path sequence '{seq}'"
 
         # Enum validation
         allowed = prop_schema.get("enum")

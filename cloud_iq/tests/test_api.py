@@ -24,6 +24,14 @@ def event_loop():
     loop.close()
 
 
+@pytest.fixture(autouse=True)
+def _dev_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Every app in this module now mounts a fail-closed auth gate
+    # (core.api_key_auth). Tests exercise business logic, not auth, so run
+    # them with the documented local-dev bypass rather than an X-API-Key.
+    monkeypatch.setenv("EAA_DEV_MODE", "true")
+
+
 @pytest_asyncio.fixture
 async def client():
     async with AsyncClient(
@@ -94,6 +102,52 @@ class TestScanEndpoints:
         data = get_response.json()
         assert data["status"] in ("queued", "running", "completed")
         assert data["job_id"] == job_id
+
+
+class TestScanDataStatus:
+    """A completed scan must be honestly labeled — mock data is never COMPLETE."""
+
+    @pytest.mark.asyncio
+    async def test_dry_run_scan_completes_with_demo_status(
+        self, client: AsyncClient
+    ) -> None:
+        post_response = await client.post(
+            "/scan", json={"provider": "aws", "dry_run": True}
+        )
+        job_id = post_response.json()["job_id"]
+
+        data = None
+        for _ in range(40):
+            data = (await client.get(f"/scan/{job_id}")).json()
+            if data["status"] == "completed":
+                break
+            await asyncio.sleep(0.3)
+
+        assert data is not None and data["status"] == "completed"
+        assert data["summary"]["data_status"] == "DEMO"
+
+    @pytest.mark.asyncio
+    async def test_live_scan_fails_instead_of_faking_a_complete_result(
+        self, client: AsyncClient
+    ) -> None:
+        # dry_run=False with no live provider wired in must never return a
+        # fabricated COMPLETE result — it must fail honestly instead.
+        post_response = await client.post(
+            "/scan", json={"provider": "aws", "dry_run": False}
+        )
+        job_id = post_response.json()["job_id"]
+
+        data = None
+        for _ in range(20):
+            data = (await client.get(f"/scan/{job_id}")).json()
+            if data["status"] not in ("queued", "running"):
+                break
+            await asyncio.sleep(0.2)
+
+        assert data is not None
+        assert data["status"] == "failed"
+        assert data["summary"] is None
+        assert data["error"]
 
 
 class TestRecommendationsEndpoint:

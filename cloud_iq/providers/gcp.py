@@ -149,8 +149,16 @@ class GCPProvider(AbstractCloudProvider):
                 headers={"Authorization": f"Bearer {self._access_token}"},
             )
             response.raise_for_status()
-            # In production, aggregate budget spend amounts
-            return self._mock_cost_summary()
+            # ponytail: aggregating the raw budget response into a
+            # ProviderCostSummary isn't implemented — fail loudly instead of
+            # silently handing back synthetic mock numbers as if they were
+            # real GCP billing data. Callers (MultiCloudAggregator) already
+            # treat get_cost_summary() failures as "provider unavailable" and
+            # drop it from the aggregate rather than crash.
+            raise NotImplementedError(
+                "GCPProvider.get_cost_summary: live budget aggregation is not "
+                "implemented. Construct GCPProvider(mock=True) for demo data."
+            )
 
     async def list_resources(
         self, regions: list[str] | None = None

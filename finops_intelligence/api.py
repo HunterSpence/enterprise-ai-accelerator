@@ -47,6 +47,8 @@ from fastapi import (
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field, field_validator
 
+from core.api_key_auth import api_key_dependency
+
 from .analytics_engine import AnalyticsEngine
 from .anomaly_detector_v2 import Anomaly, AnomalyDetectorV2, AnomalySeverity, SuppressionRule
 from .commitment_optimizer import CommitmentOptimizer
@@ -107,12 +109,18 @@ app = FastAPI(
     title="FinOps Intelligence API",
     description=(
         "Enterprise cloud cost intelligence API. "
-        "Replaces CloudZero ($60K+/yr) — runs free, on-premise, zero data egress."
+        "Replaces CloudZero ($60K+/yr) — runs free, on-premise, zero data egress. "
+        "Evaluation prototype — pre-production, solo-maintained. Not a certification "
+        "and not a compliance determination."
     ),
     version="2.0.0",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
+    # P0-01: fail-closed API-key gate on every business route. /health, /docs,
+    # /redoc, /openapi.json stay open (see core/api_key_auth.py exempt list).
+    # This is auth; require_spend_data (below) is a separate data-presence check.
+    dependencies=[Depends(api_key_dependency())],
 )
 
 

@@ -1,32 +1,26 @@
 """
 Colorado SB 26-189 — AI Consumer Protections Act
 ==================================================
-Signed: May 14, 2026.
-Effective: January 1, 2027.
+QUARANTINED (P0-23, 2026-07-10): this scanner is disabled.
 
-Replaces the repealed SB 24-205 (Colorado AI Act, which was vetoed / not enacted
-in its original form). SB 26-189 is the law that actually passed and is in force.
+This module's docstring previously asserted specific statutory section
+numbers, a specific relationship/status for the repealed SB 24-205, and
+specific numeric applicability thresholds — none of which were verified
+against enacted primary legal text and may be fabricated. This module must
+not be used, invoked, or represented as a live legal assessment of Colorado
+AI-law compliance in any mode (mock or live).
 
-Coverage:
-  § 6-1-1701 — Definitions (developer, deployer, high-risk AI system,
-                algorithmic impact assessment, consequential decision)
-  § 6-1-1702 — Developer obligations (documentation, testing, transparency)
-  § 6-1-1703 — Deployer obligations (AIA, consumer disclosure, opt-out)
-  § 6-1-1704 — Algorithmic impact assessment requirements
-  § 6-1-1705 — Consumer rights (notice, explanation, correction, opt-out)
-  § 6-1-1706 — Scope thresholds for high-impact AI decisions
-  § 6-1-1707 — Prohibited AI practices (credit, housing, employment, healthcare
-                decisions without disclosed AI involvement)
-  § 6-1-1708 — Attorney General enforcement; private right of action
-
-Key thresholds: applies to systems making ≥1 consequential decision/day OR
-≥1,000 consequential decisions/year involving Colorado residents.
+``ColoradoSB26189Scanner.scan()`` always raises ``NotImplementedError``.
+Rebuilding this framework requires sourcing every control, threshold, and
+citation directly from the enacted Colorado statute (primary source) — not
+from this file. The control dictionaries below are kept only as a
+placeholder data shape for that future rebuild; each "section" value has
+been scrubbed to "UNVERIFIED" because the original citations could not be
+confirmed against primary law.
 """
 
 from __future__ import annotations
 
-import asyncio
-import random
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Optional
@@ -52,7 +46,7 @@ def days_until_effective() -> int:
 
 DEVELOPER_OBLIGATIONS: dict[str, dict] = {
     "CO_SB26189_702_A": {
-        "section": "§ 6-1-1702(1)(a)",
+        "section": "UNVERIFIED",
         "title": "Risk documentation before deployment",
         "description": (
             "Developers must document the intended use cases, known limitations, "
@@ -61,7 +55,7 @@ DEVELOPER_OBLIGATIONS: dict[str, dict] = {
         "severity": "HIGH",
     },
     "CO_SB26189_702_B": {
-        "section": "§ 6-1-1702(1)(b)",
+        "section": "UNVERIFIED",
         "title": "Pre-deployment bias and fairness testing",
         "description": (
             "Developers must test for discriminatory or disparate impact on protected "
@@ -71,7 +65,7 @@ DEVELOPER_OBLIGATIONS: dict[str, dict] = {
         "severity": "HIGH",
     },
     "CO_SB26189_702_C": {
-        "section": "§ 6-1-1702(1)(c)",
+        "section": "UNVERIFIED",
         "title": "Model card / technical documentation disclosure",
         "description": (
             "Developers must make available to deployers: training data sources, "
@@ -80,7 +74,7 @@ DEVELOPER_OBLIGATIONS: dict[str, dict] = {
         "severity": "MEDIUM",
     },
     "CO_SB26189_702_D": {
-        "section": "§ 6-1-1702(2)",
+        "section": "UNVERIFIED",
         "title": "Post-deployment monitoring requirements",
         "description": (
             "Developers offering high-risk AI systems must establish a monitoring "
@@ -92,7 +86,7 @@ DEVELOPER_OBLIGATIONS: dict[str, dict] = {
 
 DEPLOYER_OBLIGATIONS: dict[str, dict] = {
     "CO_SB26189_703_A": {
-        "section": "§ 6-1-1703(1)(a)",
+        "section": "UNVERIFIED",
         "title": "Pre-deployment algorithmic impact assessment",
         "description": (
             "Deployers must conduct a documented algorithmic impact assessment (AIA) "
@@ -101,7 +95,7 @@ DEPLOYER_OBLIGATIONS: dict[str, dict] = {
         "severity": "CRITICAL",
     },
     "CO_SB26189_703_B": {
-        "section": "§ 6-1-1703(1)(b)",
+        "section": "UNVERIFIED",
         "title": "Consumer-facing AI disclosure",
         "description": (
             "Deployers must conspicuously disclose that an AI system is being used "
@@ -111,7 +105,7 @@ DEPLOYER_OBLIGATIONS: dict[str, dict] = {
         "severity": "HIGH",
     },
     "CO_SB26189_703_C": {
-        "section": "§ 6-1-1703(1)(c)",
+        "section": "UNVERIFIED",
         "title": "Opt-out pathway for AI-assisted decisions",
         "description": (
             "Deployers must offer consumers a meaningful opt-out from AI-assisted "
@@ -120,7 +114,7 @@ DEPLOYER_OBLIGATIONS: dict[str, dict] = {
         "severity": "HIGH",
     },
     "CO_SB26189_703_D": {
-        "section": "§ 6-1-1703(2)",
+        "section": "UNVERIFIED",
         "title": "Annual AIA review and update cycle",
         "description": (
             "Deployers must review and update the algorithmic impact assessment at "
@@ -132,7 +126,7 @@ DEPLOYER_OBLIGATIONS: dict[str, dict] = {
 
 CONSUMER_RIGHTS: dict[str, dict] = {
     "CO_SB26189_705_A": {
-        "section": "§ 6-1-1705(1)",
+        "section": "UNVERIFIED",
         "title": "Right to notice of AI decision involvement",
         "description": (
             "Consumers have a right to receive notice within a reasonable timeframe "
@@ -141,7 +135,7 @@ CONSUMER_RIGHTS: dict[str, dict] = {
         "severity": "HIGH",
     },
     "CO_SB26189_705_B": {
-        "section": "§ 6-1-1705(2)",
+        "section": "UNVERIFIED",
         "title": "Right to plain-language explanation",
         "description": (
             "Consumers may request a plain-language explanation of the AI factors "
@@ -150,7 +144,7 @@ CONSUMER_RIGHTS: dict[str, dict] = {
         "severity": "MEDIUM",
     },
     "CO_SB26189_705_C": {
-        "section": "§ 6-1-1705(3)",
+        "section": "UNVERIFIED",
         "title": "Right to correction of erroneous input data",
         "description": (
             "Consumers may request correction of inaccurate personal data used in "
@@ -159,7 +153,7 @@ CONSUMER_RIGHTS: dict[str, dict] = {
         "severity": "MEDIUM",
     },
     "CO_SB26189_705_D": {
-        "section": "§ 6-1-1705(4)",
+        "section": "UNVERIFIED",
         "title": "Right to appeal to a qualified human reviewer",
         "description": (
             "Consumers adversely affected by an AI consequential decision may appeal "
@@ -171,7 +165,7 @@ CONSUMER_RIGHTS: dict[str, dict] = {
 
 SCOPE_AND_ENFORCEMENT: dict[str, dict] = {
     "CO_SB26189_706_A": {
-        "section": "§ 6-1-1706",
+        "section": "UNVERIFIED",
         "title": "Scope threshold compliance — consequential decision volume",
         "description": (
             "Verify the system falls within scope: ≥1 consequential decision per day "
@@ -181,7 +175,7 @@ SCOPE_AND_ENFORCEMENT: dict[str, dict] = {
         "severity": "MEDIUM",
     },
     "CO_SB26189_707_A": {
-        "section": "§ 6-1-1707(1)",
+        "section": "UNVERIFIED",
         "title": "Prohibited undisclosed AI in credit, housing, and employment",
         "description": (
             "Prohibited: using AI to make consequential decisions in credit, housing, "
@@ -190,7 +184,7 @@ SCOPE_AND_ENFORCEMENT: dict[str, dict] = {
         "severity": "CRITICAL",
     },
     "CO_SB26189_707_B": {
-        "section": "§ 6-1-1707(2)",
+        "section": "UNVERIFIED",
         "title": "Prohibited AI-only final decisions in healthcare",
         "description": (
             "Prohibited: using AI as the sole determinant of a healthcare coverage "
@@ -258,11 +252,13 @@ class ColoradoSB26189Report:
 
 class ColoradoSB26189Scanner:
     """
-    Colorado SB 26-189 compliance scanner.
+    QUARANTINED (P0-23) — see module docstring.
 
-    Assesses developer obligations, deployer obligations, consumer rights,
-    and scope/enforcement thresholds per the Colorado AI Consumer Protections Act
-    (SB 26-189, signed May 14, 2026, effective January 1, 2027).
+    This scanner previously misstated the repealed SB 24-205's status,
+    invented applicability thresholds and private-right-of-action claims,
+    and returned those fabricated results as if they were a real assessment
+    in both mock and "live" mode. It is disabled pending a rebuild sourced
+    from the enacted Colorado statute. ``scan()`` always raises.
     """
 
     def __init__(
@@ -274,127 +270,10 @@ class ColoradoSB26189Scanner:
         self.mock = mock
 
     async def scan(self) -> ColoradoSB26189Report:
-        """Run Colorado SB 26-189 compliance assessment."""
-        if self.mock:
-            return await self._mock_scan()
-        return await self._live_scan()
-
-    async def _mock_scan(self) -> ColoradoSB26189Report:
-        """
-        Simulate a realistic compliance scan with mixed pass/fail/warn results.
-        Introduces slight randomness to model varying compliance postures.
-        """
-        await asyncio.sleep(0.05)  # simulate async I/O
-
-        report = ColoradoSB26189Report(
-            days_until_effective=days_until_effective(),
+        """Always raises — see class docstring and P0-23."""
+        raise NotImplementedError(
+            "ColoradoSB26189Scanner is quarantined pending rebuild from enacted "
+            "primary legal text (P0-23) — not usable for any real or demo "
+            "compliance assessment. See policy_guard/frameworks/colorado_sb26189.py "
+            "module docstring."
         )
-
-        rng = random.Random(42)  # deterministic seed for consistent demo runs
-
-        # Simulate pass/fail per control category
-        compliance_weights = {
-            # Developers generally have moderate documentation
-            "CO_SB26189_702_A": ("PASS", "HIGH", "System risk documentation found in model registry"),
-            "CO_SB26189_702_B": ("WARN", "HIGH", "Bias testing initiated but not yet covering all protected classes"),
-            "CO_SB26189_702_C": ("PASS", "MEDIUM", "Model card published in internal developer portal"),
-            "CO_SB26189_702_D": ("FAIL", "MEDIUM", "No post-deployment monitoring program documented"),
-            # AIA is commonly missing pre-SB 26-189
-            "CO_SB26189_703_A": ("FAIL", "CRITICAL", "No algorithmic impact assessment found for this deployment"),
-            "CO_SB26189_703_B": ("FAIL", "HIGH", "Consumer-facing disclosure of AI decision-making absent from UI"),
-            "CO_SB26189_703_C": ("FAIL", "HIGH", "No opt-out mechanism for AI-assisted decisions implemented"),
-            "CO_SB26189_703_D": ("FAIL", "MEDIUM", "Annual AIA review cycle not established"),
-            # Consumer rights — partially implemented
-            "CO_SB26189_705_A": ("WARN", "HIGH", "AI involvement notice present in ToS but not at point of decision"),
-            "CO_SB26189_705_B": ("FAIL", "MEDIUM", "No explanation endpoint available for AI decisions"),
-            "CO_SB26189_705_C": ("WARN", "MEDIUM", "Data correction pathway exists but not explicitly linked to AI inputs"),
-            "CO_SB26189_705_D": ("FAIL", "HIGH", "No human reviewer appeal process documented"),
-            # Scope / enforcement
-            "CO_SB26189_706_A": ("PASS", "MEDIUM", "Volume threshold confirmed: system processes >1 CO decision/day"),
-            "CO_SB26189_707_A": ("FAIL", "CRITICAL", "Credit decisioning UI does not disclose AI involvement"),
-            "CO_SB26189_707_B": ("PASS", "CRITICAL", "Healthcare decisions routed through qualified human reviewer"),
-        }
-
-        findings = []
-        passing = 0
-
-        for ctrl_id, (status, severity, evidence) in compliance_weights.items():
-            ctrl = ALL_CONTROLS.get(ctrl_id)
-            if ctrl is None:
-                continue
-            finding = ColoradoSB26189Finding(
-                control_id=ctrl_id,
-                section=ctrl["section"],
-                title=ctrl["title"],
-                status=status,
-                severity=severity,
-                evidence=evidence,
-                remediation=self._remediation(ctrl_id, status),
-            )
-            findings.append(finding)
-            if status == "PASS":
-                passing += 1
-            # Count by severity
-            if status in ("FAIL", "WARN"):
-                if severity == "CRITICAL":
-                    report.critical_count += 1
-                elif severity == "HIGH":
-                    report.high_count += 1
-                elif severity == "MEDIUM":
-                    report.medium_count += 1
-                else:
-                    report.low_count += 1
-
-        report.findings = findings
-        report.total_findings = report.critical_count + report.high_count + report.medium_count + report.low_count
-
-        total_ctrls = len(compliance_weights)
-        report.compliance_score = round((passing / total_ctrls) * 100, 1) if total_ctrls else 0.0
-
-        # Sub-tallies
-        report.aia_controls_passing = sum(
-            1 for f in findings
-            if f.control_id in ("CO_SB26189_703_A", "CO_SB26189_703_D") and f.status == "PASS"
-        )
-        report.disclosure_controls_passing = sum(
-            1 for f in findings
-            if f.control_id in ("CO_SB26189_703_B", "CO_SB26189_705_A", "CO_SB26189_707_A") and f.status == "PASS"
-        )
-        report.consumer_rights_passing = sum(
-            1 for f in findings
-            if f.control_id in ("CO_SB26189_705_B", "CO_SB26189_705_C", "CO_SB26189_705_D") and f.status == "PASS"
-        )
-
-        return report
-
-    async def _live_scan(self) -> ColoradoSB26189Report:
-        """Live scan — falls back to mock in the absence of a live config probe."""
-        return await self._mock_scan()
-
-    @staticmethod
-    def _remediation(ctrl_id: str, status: str) -> str:
-        if status == "PASS":
-            return ""
-        remediations = {
-            "CO_SB26189_703_A": (
-                "Conduct and document a formal algorithmic impact assessment covering "
-                "fairness, accuracy, bias, and potential harms before go-live."
-            ),
-            "CO_SB26189_703_B": (
-                "Add a prominent AI disclosure banner or modal at the point of "
-                "consequential decisions affecting Colorado consumers."
-            ),
-            "CO_SB26189_703_C": (
-                "Implement a 'Request human review' button or equivalent opt-out "
-                "pathway accessible before and after AI decisions are rendered."
-            ),
-            "CO_SB26189_705_D": (
-                "Establish a documented human reviewer appeal workflow with SLA "
-                "and authority to override adverse AI decisions."
-            ),
-            "CO_SB26189_707_A": (
-                "Add clear AI-involvement disclosure to all credit-related decision "
-                "screens or notifications, including adverse-action notices."
-            ),
-        }
-        return remediations.get(ctrl_id, "Review control requirements and implement appropriate safeguards.")

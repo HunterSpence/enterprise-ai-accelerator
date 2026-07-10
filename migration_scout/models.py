@@ -8,7 +8,6 @@ Enables full OpenAPI documentation and type-safe serialization.
 
 from __future__ import annotations
 
-from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -118,7 +117,7 @@ class AssessmentRequest(BaseModel):
     """Request body for POST /assessments."""
 
     inventory: list[WorkloadInventoryModel] = Field(
-        ..., description="Workload inventory to assess"
+        ..., description="Workload inventory to assess", min_length=1
     )
     use_ml_classifier: bool = Field(default=True, description="Use ML gradient boosting classifier")
     use_ai_enrichment: bool = Field(
@@ -131,12 +130,16 @@ class AssessmentRequest(BaseModel):
         description="Confidence below this triggers AI enrichment",
     )
     project_name: str = Field(default="Migration Assessment", description="Project name for reports")
+    wave_planning_approach: str = Field(
+        default="balanced", description="Migration approach: aggressive, balanced, conservative"
+    )
+    max_workloads_per_wave: int = Field(default=15, ge=1, le=100)
 
 
 class AssessmentStatusEnum(str, Enum):
-    PENDING = "pending"
+    QUEUED = "queued"
     RUNNING = "running"
-    COMPLETE = "complete"
+    COMPLETED = "completed"
     FAILED = "failed"
 
 
@@ -189,29 +192,34 @@ class AssessmentSummary(BaseModel):
 
 
 class AssessmentResponse(BaseModel):
-    """Response for GET /assessments/{id}."""
+    """Response for POST /assessments and GET /assessments/{id}.
+
+    ponytail: mirrors what api.py actually builds (job_id/status/workload_count
+    plus the completed-job summary fields it mutates in). The richer
+    WorkloadAssessmentResult/AssessmentSummary schemas above are aspirational
+    and unused — kept for future API expansion, not part of this contract.
+    """
 
     job_id: str
     status: AssessmentStatusEnum
-    project_name: str
-    created_at: datetime
-    completed_at: datetime | None = None
-    progress_pct: float = Field(default=0.0, ge=0, le=100)
-    results: list[WorkloadAssessmentResult] = Field(default_factory=list)
-    summary: AssessmentSummary | None = None
-    error: str | None = None
+    workload_count: int
+    message: str = ""
+    waves_count: int | None = None
+    total_p50_weeks: float | None = None
+    annual_savings_usd: float | None = None
+    break_even_months: float | None = None
+    irr_percent: float | None = None
+    top_workloads: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class WavePlanRequest(BaseModel):
     """Request for POST /assessments/{id}/waves."""
 
-    strategy: str = Field(
+    approach: str = Field(
         default="balanced",
-        description="Migration strategy: aggressive, balanced, conservative",
+        description="Migration approach: aggressive, balanced, conservative",
     )
     max_workloads_per_wave: int = Field(default=15, ge=3, le=50)
-    max_waves: int = Field(default=6, ge=2, le=12)
-    monte_carlo_iterations: int = Field(default=10000, ge=1000, le=50000)
 
 
 class WaveConfidenceInterval(BaseModel):
@@ -258,17 +266,19 @@ class MonteCarloSummary(BaseModel):
 
 
 class WavePlanResponse(BaseModel):
-    """Response for POST /assessments/{id}/waves."""
+    """Response for POST /assessments/{id}/waves.
 
-    assessment_id: str
-    migration_strategy: str
-    waves: list[WaveResult]
-    monte_carlo: MonteCarloSummary
-    total_workloads: int
-    total_migration_cost_usd: float
-    total_annual_savings_usd: float
-    critical_path_weeks: float
-    generated_at: datetime
+    ponytail: waves is a loose dict shape (matches what api.py builds per
+    wave: wave_number/name/workload_count/p10-p90/risk_level/costs/
+    convergence_achieved) rather than the richer WaveResult model above,
+    which nothing in api.py populates.
+    """
+
+    job_id: str
+    approach: str
+    waves: list[dict[str, Any]]
+    total_p50_weeks: float
+    gantt_html: str = ""
 
 
 class TCOScenario(BaseModel):
@@ -285,23 +295,21 @@ class TCOScenario(BaseModel):
 
 
 class TCOResponse(BaseModel):
-    """Response for GET /assessments/{id}/tco."""
+    """Response for GET /assessments/{id}/tco.
 
-    assessment_id: str
-    on_prem_monthly_total: float
-    cloud_monthly_total: float
-    monthly_savings: float
+    ponytail: mirrors api.py's actual TCOCalculator.analyze_portfolio() ->
+    TCOAnalysis field names (npv_3yr, not the aspirational npv_8pct/
+    TCOScenario shape above, which nothing populates).
+    """
+
+    job_id: str
     annual_savings: float
-    migration_cost: float
+    total_investment: float
     break_even_months: float
-    npv_3yr: float
-    npv_5yr: float
     irr_percent: float
-    three_year_net_benefit: float
-    five_year_net_benefit: float
-    scenarios: list[TCOScenario]
-    cost_breakdown: dict[str, Any]
-    generated_at: datetime
+    npv_8pct: float
+    contingency_usd: float
+    scenarios: list[dict[str, Any]]
 
 
 class DependencyNodeJSON(BaseModel):
@@ -342,48 +350,49 @@ class DependencyGraphResponse(BaseModel):
 class WhatIfRequest(BaseModel):
     """Request for POST /what-if."""
 
-    assessment_id: str
-    prioritize_workload_ids: list[str] = Field(
-        ..., description="Move these workloads to Wave 1"
+    job_id: str
+    workload_ids: list[str] = Field(
+        ..., description="Workloads to move earlier/later", min_length=1
     )
-    exclude_workload_ids: list[str] = Field(default_factory=list)
-    scenario_name: str = Field(default="What-If Scenario")
+    new_approach: str = Field(
+        default="balanced", description="Migration approach: aggressive, balanced, conservative"
+    )
 
 
 class WhatIfResponse(BaseModel):
-    scenario_name: str
-    original_plan_weeks_p50: float
-    new_plan_weeks_p50: float
-    delta_weeks: float
-    original_wave1_count: int
-    new_wave1_count: int
-    dependency_violations: list[str] = Field(
-        description="Workloads that cannot be moved (unmet dependencies)"
-    )
-    risk_delta: float
-    cost_delta: float
+    """ponytail: mirrors api.py's actual what_if_analysis() return shape."""
+
+    job_id: str
+    workload_ids: list[str]
+    base_p50_weeks: float
+    new_p50_weeks: float
+    p50_delta_weeks: float
+    npv_delta_usd: float
+    risk_delta: str
+    impacted_workloads: dict[str, list[str]]
     recommendation: str
-    new_wave_plan: WavePlanResponse
 
 
 class RunbookRequest(BaseModel):
-    workload_id: str
+    job_id: str
     use_ai: bool = Field(default=True)
 
 
 class RunbookResponse(BaseModel):
+    """ponytail: mirrors api.py's generate_runbook() return shape (built from
+    RunbookGenerator.generate_workload_runbook() -> RunbookResult)."""
+
     workload_id: str
     workload_name: str
     strategy: str
-    target_service: str
-    estimated_total_hours: float
+    runbook_markdown: str
+    estimated_hours: float
+    risk_level: str
     ai_generated: bool
-    markdown_content: str
-    generated_at: datetime
 
 
 class HealthResponse(BaseModel):
     status: str
     version: str
-    ml_model_loaded: bool
-    ai_available: bool
+    uptime_seconds: int
+    active_jobs: int

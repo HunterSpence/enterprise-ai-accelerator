@@ -9,6 +9,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed — truth & safety pass (docs/marketing)
+- Added an "Evaluation prototype — pre-production, solo-maintained. Not a certification and not a compliance determination." banner to `README.md` and `PRICING.md`.
+- Corrected fabricated "25,000 agents deployed" PwC claim to "250+" (as of 2025, per PwC public statements) in `README.md`.
+- Reworded AWS Migration Hub framing: AWS retired it in favor of AWS Transform, which AWS states has equivalent+enhanced capabilities; the platform now competes on openness/cross-cloud coverage instead of an abandoned-service narrative.
+- `PRICING.md` — clearly relabeled "Accelerator Cloud" managed hosting (SSO/SAML, unlimited users, per-tier support) as **planned, not available today**; softened Enterprise Self-Hosted "24×7" support language to best-effort (solo maintainer, no staffed on-call).
+- `PRICING.md` / `README.md` — reframed the "3-year TCO" tables as fee-only, illustrative cost-of-support comparisons (excludes infra/API usage/implementation/operations), not a real total-cost-of-ownership calculator.
+- Replaced "tamper-proof" with "tamper-evident (single trust boundary; no external anchor)" in the competitor comparison table.
+- Added a "Current capability status" table to `README.md` marking each module implemented / partial / demo-only / planned honestly.
+- Fixed the IaC quick-start command in `README.md` and `docs/DEMO.md`: `python -m iac_security scan .` (was missing the `scan` subcommand).
+- Replaced "Article 62" / universal "72-hour" EU AI Act incident-deadline references with "Article 73 (tiered deadlines — verify against primary source)" and added a "not legal advice" note.
+- Removed `docs/CASE_STUDY.md` (fictional Accenture/Ironside case study with invented executives, quotes, and dollar figures; was already labeled fictional and orphaned/unlinked).
+- Reconciled the version banner in `README.md` to v0.5.0 (was still showing v0.4.0 despite `pyproject.toml` already at 0.5.0).
+
 ---
 
 ## [0.5.0] -- 2026-06-12

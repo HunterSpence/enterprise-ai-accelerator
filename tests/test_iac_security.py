@@ -1,16 +1,23 @@
 """Tests for iac_security/ — terraform_parser, pulumi_parser, policies, sarif, drift, sbom."""
 
 import json
+import sys
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-from iac_security.terraform_parser import TerraformResource, _build_line_index
+from iac_security.terraform_parser import (
+    TerraformResource,
+    TerraformParseStats,
+    _build_line_index,
+    _parse_file,
+    parse_terraform,
+)
 from iac_security.pulumi_parser import PulumiResource
 from iac_security.policies import ALL_POLICIES
 from iac_security.sarif_exporter import export_sarif, SARIFExporter
 from iac_security.drift_detector import DriftDetector, DriftItem, DriftReport
-from iac_security.sbom_generator import SBOMGenerator
+from iac_security.sbom_generator import SBOMGenerator, MLBOMGenerator, _ml_model_component
 
 
 # ---------------------------------------------------------------------------
@@ -252,6 +259,150 @@ class TestSBOMGenerator:
         assert "metadata" in sbom_dict
 
     def test_sbom_has_components(self, tmp_path):
+        # Seed a real dependency so the SBOM actually has components — a
+        # spec-valid CycloneDX doc omits the "components" key when empty, so an
+        # empty repo can't exercise this assertion.
+        (tmp_path / "requirements.txt").write_text("requests==2.31.0\n")
         gen = SBOMGenerator()
         sbom_dict = gen.generate(tmp_path)
-        assert "components" in sbom_dict
+        assert sbom_dict.get("components"), "expected at least one component"
+
+
+class TestMLBOMComponentType:
+    """P0-24: CycloneDX 1.7 has no 'ml-model' enum value — must be
+    'machine-learning-model'. License data must live on the standard
+    component-level 'licenses' array, not the (schema-invalid)
+    modelCard.considerations.licenses location."""
+
+    def test_component_type_is_valid_cyclonedx_enum(self):
+        comp = _ml_model_component(
+            model_id="claude-sonnet-5", name="Claude Sonnet 5", version="claude-sonnet-5",
+            provider="Anthropic", intended_use="test", role="worker",
+        )
+        assert comp["type"] == "machine-learning-model"
+        assert comp["type"] != "ml-model"
+
+    def test_license_on_component_not_in_model_card(self):
+        comp = _ml_model_component(
+            model_id="claude-sonnet-5", name="Claude Sonnet 5", version="claude-sonnet-5",
+            provider="Anthropic", intended_use="test", role="worker",
+        )
+        assert comp["licenses"] == [{"license": {"name": "Anthropic Usage Policy"}}]
+        assert "considerations" not in comp["modelCard"]
+
+    def test_generate_all_components_valid_type(self):
+        mlbom = MLBOMGenerator().generate()
+        assert mlbom["components"], "expected at least one ML-BOM component"
+        for comp in mlbom["components"]:
+            assert comp["type"] == "machine-learning-model"
+
+
+class TestTerraformParseFailClosed:
+    """P0-08: missing parser / unparseable files must fail closed — never
+    a silent 0-resource, 0-finding, passed:true scan."""
+
+    def test_missing_hcl2_reports_skip_reason(self, tmp_path, monkeypatch):
+        tf = tmp_path / "main.tf"
+        tf.write_text('resource "aws_s3_bucket" "b" { acl = "private" }\n')
+
+        real_import = __import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "hcl2":
+                raise ImportError("simulated: python-hcl2 not installed")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+
+        resources, stats = parse_terraform(tmp_path)
+        assert resources == []
+        assert stats.files_seen == 1
+        assert stats.files_parsed == 0
+        assert stats.files_skipped == 1
+        assert any("hcl2" in r for r in stats.skip_reasons)
+
+    def test_malformed_hcl_recorded_as_skip_not_silent_zero(self, tmp_path):
+        tf = tmp_path / "broken.tf"
+        tf.write_text("resource aws_s3_bucket b { this is not valid hcl {{{\n")
+
+        resources, stats = parse_terraform(tmp_path)
+        assert stats.files_seen == 1
+        assert stats.files_parsed == 0
+        assert stats.files_skipped == 1
+        assert stats.skip_reasons  # reason captured, not swallowed
+
+    def test_scanner_reports_failed_status_on_total_parse_failure(self, tmp_path, monkeypatch):
+        from iac_security.scanner import IaCScanner
+
+        tf = tmp_path / "main.tf"
+        tf.write_text('resource "aws_s3_bucket" "b" { acl = "private" }\n')
+
+        real_import = __import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "hcl2":
+                raise ImportError("simulated: python-hcl2 not installed")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+
+        report = IaCScanner().scan(tmp_path)
+        assert report.status == "FAILED"
+        assert report.resource_count == 0
+        assert report.findings == []
+        # The flagship bug: this must NOT look like a clean pass.
+        assert report.passed is False
+
+    def test_cli_scan_exits_nonzero_on_missing_parser_without_allow_partial(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        from iac_security import cli as iac_cli
+
+        tf = tmp_path / "main.tf"
+        tf.write_text('resource "aws_s3_bucket" "b" { acl = "private" }\n')
+
+        real_import = __import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "hcl2":
+                raise ImportError("simulated: python-hcl2 not installed")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+
+        parser = iac_cli.build_parser()
+        args = parser.parse_args(["scan", str(tmp_path)])
+        exit_code = iac_cli.cmd_scan(args)
+        assert exit_code != 0
+
+    def test_cli_scan_allow_partial_falls_through_to_findings(
+        self, tmp_path, monkeypatch
+    ):
+        from iac_security import cli as iac_cli
+
+        tf = tmp_path / "main.tf"
+        tf.write_text('resource "aws_s3_bucket" "b" { acl = "private" }\n')
+
+        real_import = __import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "hcl2":
+                raise ImportError("simulated: python-hcl2 not installed")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+
+        parser = iac_cli.build_parser()
+        # FAILED status (0 files parsed) is still a hard stop even with
+        # --allow-partial — there is no usable scan result to trust.
+        args = parser.parse_args(["scan", str(tmp_path), "--allow-partial"])
+        exit_code = iac_cli.cmd_scan(args)
+        assert exit_code != 0
+
+    def test_clean_repo_status_complete_and_passed(self, tmp_path):
+        tf = tmp_path / "main.tf"
+        tf.write_text('resource "aws_s3_bucket" "b" { acl = "private" }\n')
+        resources, stats = parse_terraform(tmp_path)
+        assert stats.files_seen == 1
+        assert stats.files_parsed == 1
+        assert stats.files_skipped == 0

@@ -13,6 +13,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
 
+# .dockerignore (repo root) strips .git, .env*, tests/, caches, and other
+# non-runtime/secret paths out of this build context before they ever reach COPY.
 COPY . .
 
 ENV PYTHONUNBUFFERED=1 \

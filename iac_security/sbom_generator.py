@@ -318,9 +318,17 @@ def _to_cyclonedx_via_lib(
     from cyclonedx.output.json import JsonV1Dot5
     from packageurl import PackageURL
 
+    def _component(ctype: "ComponentType", **kw: Any) -> "Component":
+        # ponytail: the type kwarg was renamed component_type -> type across
+        # cyclonedx-python-lib releases; support both instead of pinning.
+        try:
+            return Component(type=ctype, **kw)
+        except TypeError:
+            return Component(component_type=ctype, **kw)
+
     bom = Bom()
-    bom.metadata.component = Component(
-        component_type=ComponentType.APPLICATION,
+    bom.metadata.component = _component(
+        ComponentType.APPLICATION,
         name=repo_name,
         version=version,
     )
@@ -330,8 +338,8 @@ def _to_cyclonedx_via_lib(
             purl = PackageURL.from_string(dc.purl) if dc.purl else None
         except Exception:
             purl = None
-        comp = Component(
-            component_type=ComponentType.LIBRARY,
+        comp = _component(
+            ComponentType.LIBRARY,
             name=dc.name,
             version=dc.version or None,
             purl=purl,
@@ -481,15 +489,23 @@ def _ml_model_component(
     role: str,
     context_window: Optional[int] = None,
 ) -> dict[str, Any]:
-    """Build a single CycloneDX 1.7 ml-model component dict."""
+    """Build a single CycloneDX 1.7 machine-learning-model component dict.
+
+    CycloneDX 1.7 component.type enum has no "ml-model" value — the valid
+    enum member is "machine-learning-model" (P0-24). License info belongs
+    on the standard component-level "licenses" array, not under
+    modelCard.considerations (which has no "licenses" field in the schema)
+    — kept minimal-but-valid rather than guessing an unverified location.
+    """
     comp: dict[str, Any] = {
-        "type": "ml-model",
+        "type": "machine-learning-model",
         "bom-ref": str(uuid.uuid4()),
         "name": name,
         "version": version,
         "supplier": {"name": provider},
         "purl": f"pkg:mlmodel/{provider.lower()}/{model_id}@{version}",
         "description": f"{intended_use}. Role: {role}.",
+        "licenses": [{"license": {"name": "Anthropic Usage Policy"}}],
         "properties": [
             {"name": "ai:intended-use", "value": intended_use},
             {"name": "ai:role", "value": role},
@@ -503,9 +519,6 @@ def _ml_model_component(
                 "outputs": [{"format": "text"}],
             },
             "quantitativeAnalysis": {},
-            "considerations": {
-                "licenses": [{"license": {"name": "Anthropic Usage Policy"}}],
-            },
         },
     }
     if context_window is not None:

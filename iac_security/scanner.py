@@ -82,6 +82,14 @@ class ScanReport:
     resource_count: int = 0
     findings: list[Finding] = field(default_factory=list)
 
+    # Parse-coverage bookkeeping (P0-08: fail closed instead of silently
+    # reporting a clean pass when the Terraform parser is missing/broken).
+    status: str = "COMPLETE"  # DEMO | PARTIAL | FAILED | COMPLETE
+    files_seen: int = 0
+    files_parsed: int = 0
+    files_skipped: int = 0
+    parse_errors: list[str] = field(default_factory=list)
+
     @property
     def critical_count(self) -> int:
         return sum(1 for f in self.findings if f.severity == "CRITICAL")
@@ -100,6 +108,12 @@ class ScanReport:
 
     @property
     def passed(self) -> bool:
+        # A FAILED scan (parser missing / every file unparseable) can never
+        # be reported as passed, regardless of the (necessarily empty)
+        # findings list — 0 findings from 0 parsed files is not a clean bill
+        # of health (P0-08).
+        if self.status == "FAILED":
+            return False
         return self.critical_count == 0 and self.high_count == 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -108,6 +122,13 @@ class ScanReport:
             "iac_type": self.iac_type,
             "timestamp": self.timestamp,
             "resource_count": self.resource_count,
+            "status": self.status,
+            "parse_coverage": {
+                "files_seen": self.files_seen,
+                "files_parsed": self.files_parsed,
+                "files_skipped": self.files_skipped,
+                "skip_reasons": self.parse_errors,
+            },
             "summary": {
                 "total_findings": len(self.findings),
                 "critical": self.critical_count,
@@ -127,6 +148,14 @@ class ScanReport:
         lines.append(f"**Type:** {self.iac_type}  ")
         lines.append(f"**Scanned:** {self.timestamp}  ")
         lines.append(f"**Resources:** {self.resource_count}  ")
+        lines.append(f"**Status:** {self.status}  ")
+        if self.status != "COMPLETE":
+            lines.append(
+                f"**Parse coverage:** {self.files_parsed}/{self.files_seen} files parsed, "
+                f"{self.files_skipped} skipped  "
+            )
+            for reason in self.parse_errors:
+                lines.append(f"  - {reason}")
         lines.append(f"")
         lines.append(f"## Summary")
         lines.append(f"")
@@ -299,7 +328,12 @@ class IaCScanner:
 
         if iac_type in {"terraform", "mixed"}:
             from iac_security.terraform_parser import parse_terraform
-            resources.extend(parse_terraform(path))
+            tf_resources, tf_stats = parse_terraform(path)
+            resources.extend(tf_resources)
+            report.files_seen += tf_stats.files_seen
+            report.files_parsed += tf_stats.files_parsed
+            report.files_skipped += tf_stats.files_skipped
+            report.parse_errors.extend(tf_stats.skip_reasons)
 
         if iac_type in {"pulumi", "mixed"}:
             from iac_security.pulumi_parser import parse_pulumi
@@ -309,6 +343,16 @@ class IaCScanner:
             logger.warning("No Terraform or Pulumi files found in %s", path)
 
         report.resource_count = len(resources)
+
+        # P0-08: derive scan status from parse coverage. A parser that is
+        # missing/broken for every file it saw must never look like a clean
+        # 0-resource pass — that's a FAILED scan, not a COMPLETE one.
+        if report.files_seen > 0 and report.files_parsed == 0:
+            report.status = "FAILED"
+        elif report.files_skipped > 0:
+            report.status = "PARTIAL"
+        else:
+            report.status = "COMPLETE"
 
         # Run policies
         raw_findings: list[CheckResult] = []

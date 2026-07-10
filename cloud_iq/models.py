@@ -42,6 +42,21 @@ class CloudProvider(str, Enum):
     GCP = "gcp"
 
 
+class ScanDataStatus(str, Enum):
+    """Explicit provenance of a scan result — never let mock/demo data pass as COMPLETE.
+
+    DEMO: synthetic data returned for dry_run/demo mode (labeled, not hidden).
+    PARTIAL: a real scan ran but some providers/regions failed.
+    FAILED: no real data could be produced; nothing fabricated in its place.
+    COMPLETE: a real scan against live provider credentials succeeded in full.
+    """
+
+    DEMO = "DEMO"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
+    COMPLETE = "COMPLETE"
+
+
 # ---------------------------------------------------------------------------
 # Scan API
 # ---------------------------------------------------------------------------
@@ -76,6 +91,7 @@ class ScanProgressEvent(BaseModel):
 class ScanResultSummary(BaseModel):
     """Lightweight summary embedded in GET /scan/{job_id} response."""
 
+    data_status: ScanDataStatus
     total_resources: int
     monthly_cost_usd: float
     total_waste_usd: float

@@ -17,6 +17,43 @@ except ImportError:
     FASTAPI_AVAILABLE = False
 
 
+@pytest.fixture(autouse=True)
+def _dev_mode_auth(monkeypatch):
+    # P0-01: business routes are fail-closed (503) unless EAA_API_KEY or
+    # EAA_DEV_MODE is set — these tests exercise the routes directly, not
+    # the auth gate, so run them in dev mode.
+    monkeypatch.setenv("EAA_DEV_MODE", "true")
+    monkeypatch.delenv("EAA_API_KEY", raising=False)
+
+
+@pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
+class TestAuthGate:
+    """P0-01: business routes must be fail-closed without EAA_API_KEY/EAA_DEV_MODE."""
+
+    def test_unconfigured_business_route_returns_503(self, monkeypatch):
+        monkeypatch.delenv("EAA_DEV_MODE", raising=False)
+        monkeypatch.delenv("EAA_API_KEY", raising=False)
+        client = TestClient(app)
+        resp = client.get("/dashboard/summary")
+        assert resp.status_code == 503
+
+    def test_health_stays_open_without_auth(self, monkeypatch):
+        monkeypatch.delenv("EAA_DEV_MODE", raising=False)
+        monkeypatch.delenv("EAA_API_KEY", raising=False)
+        client = TestClient(app)
+        resp = client.get("/health")
+        assert resp.status_code == 200
+
+    def test_configured_key_required_when_not_dev_mode(self, monkeypatch):
+        monkeypatch.delenv("EAA_DEV_MODE", raising=False)
+        monkeypatch.setenv("EAA_API_KEY", "test-secret")
+        client = TestClient(app)
+        assert client.get("/dashboard/summary").status_code == 401
+        assert client.get(
+            "/dashboard/summary", headers={"X-API-Key": "test-secret"}
+        ).status_code == 200
+
+
 @pytest.mark.skipif(not FASTAPI_AVAILABLE, reason="FastAPI not installed")
 class TestHealthEndpoint:
     def test_health_returns_200(self):

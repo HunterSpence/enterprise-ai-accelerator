@@ -4,9 +4,12 @@ integrations/aws_migration_hub.py — AWS Migration Hub Integration
 
 .. deprecated::
    AWS Migration Hub was CLOSED TO NEW CUSTOMERS on November 7, 2025.
-   AWS Transform (its stated replacement) covers .NET and mainframe code
-   modernization only — it does NOT provide general-purpose 6R classification,
-   dependency mapping, or wave planning.
+   AWS Transform (its stated successor) is a broad migration/modernization
+   platform — it includes discovery, dependency mapping, wave/sequencing
+   planning, and automated code transformation across multiple languages,
+   not only .NET and mainframe. This module isn't retained because Transform
+   is deficient; it predates Transform and demonstrates an open, cross-cloud
+   (AWS/Azure/GCP) alternative to an AWS-only migration path.
 
    For new deployments use the CloudQuery backend instead:
      from migration_scout.integrations.cloudquery_backend import CloudQueryBackend
@@ -20,20 +23,15 @@ Environment variables:
   AWS_ACCESS_KEY_ID   — AWS credentials
   AWS_SECRET_ACCESS_KEY — AWS credentials
   MIG_HUB_HOME_REGION — AWS account home region for Migration Hub
+
+Evaluation prototype — pre-production, solo-maintained. Not a certification
+and not a compliance determination.
 """
-
-import warnings
-
-warnings.warn(
-    "AWS Migration Hub closed to new customers on November 7, 2025. "
-    "Use migration_scout.integrations.cloudquery_backend.CloudQueryBackend instead.",
-    DeprecationWarning,
-    stacklevel=2,
-)
 
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -41,6 +39,16 @@ from typing import Any
 from rich.console import Console
 
 console = Console()
+
+# ponytail: module-level warning must come after `from __future__ import
+# annotations` (future imports must be the first statement in the file) —
+# moved below the import block instead of above it.
+warnings.warn(
+    "AWS Migration Hub closed to new customers on November 7, 2025. "
+    "Use migration_scout.integrations.cloudquery_backend.CloudQueryBackend instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 @dataclass

@@ -112,17 +112,20 @@ class ReportGenerator:
             except Exception:
                 pass
 
+        # P0-12/COMP-007: these are readiness-tier descriptions against an
+        # internal control checklist, not a legal compliance determination.
         risk_words = {
-            "Critical Risk": "severely non-compliant",
-            "High Risk": "significantly non-compliant",
-            "Medium Risk": "partially non-compliant",
-            "Low Risk": "largely compliant with minor gaps",
-            "Compliant": "compliant",
+            "Critical Risk": "showing severe control-mapping gaps",
+            "High Risk": "showing significant control-mapping gaps",
+            "Medium Risk": "showing partial control-mapping coverage",
+            "Low Risk": "showing strong control-mapping coverage with minor gaps",
+            "Strong Readiness": "showing strong control-mapping coverage",
         }
         risk_word = risk_words.get(report.risk_rating, "under review")
 
         return (
-            f"This PolicyGuard compliance assessment reveals that the organization is currently "
+            f"This PolicyGuard readiness assessment (control-mapping only — not a compliance "
+            f"determination or legal advice) reveals that the organization is currently "
             f"{risk_word} across the regulatory frameworks evaluated, with an overall score of "
             f"{report.overall_score:.1f}%. A total of {report.total_findings} compliance gaps were "
             f"identified, including {report.critical_findings} Critical findings that require immediate "
@@ -577,7 +580,8 @@ class ReportGenerator:
 <div class="footer">
     <p><strong>PolicyGuard V2.0</strong> — AI Governance and Cloud Compliance Platform</p>
     <p>EU AI Act + NIST AI RMF (72 subcategories) + SOC 2 AICC (2024) + CIS AWS + HIPAA</p>
-    <p>This report is for informational purposes. For regulatory advice, consult qualified legal counsel.</p>
+    <p>This report is a control-mapping readiness assessment against a hardcoded checklist, not a compliance determination. For regulatory advice, consult qualified legal counsel.</p>
+    <p>Evaluation prototype — pre-production, solo-maintained. Not a certification and not a compliance determination.</p>
 </div>
 
 </body>

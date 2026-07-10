@@ -17,6 +17,7 @@ from typing import Any
 
 from cloud_iq.cost_analyzer import CostReport
 from cloud_iq.scanner import InfrastructureSnapshot
+from core.ai_client import AIClient
 
 logger = logging.getLogger(__name__)
 
@@ -243,44 +244,48 @@ class NLQueryEngine:
                 "Set it or pass anthropic_api_key= to NLQueryEngine."
             )
 
-        self._client = anthropic.Anthropic(api_key=self._api_key)
+        # Route through the governed core client (refusal handling, server-side
+        # fallbacks, prompt caching) instead of constructing a raw
+        # anthropic.Anthropic() client that bypasses all of that.
+        self._client = AIClient(
+            client=anthropic.AsyncAnthropic(api_key=self._api_key),
+            default_model=self._model,
+        )
 
-    def _build_messages(self, question: str) -> list[dict[str, str]]:
-        messages: list[dict[str, str]] = []
-
-        # Inject infrastructure context on the first turn only
+    def _build_user_prompt(self, question: str) -> str:
+        # ponytail: AIClient.thinking() takes a single system+user turn, not a
+        # full message list — the governed client has no multi-turn chat
+        # method today. Fold prior turns into the user prompt as a transcript
+        # instead of building a proper messages array, so follow-up questions
+        # still get conversation context. Upgrade path: add a multi-turn
+        # method to AIClient if this needs real back-and-forth fidelity.
         if not self._history:
-            context_injection = (
+            return (
                 f"Infrastructure snapshot:\n```json\n{self._infra_context}\n```\n\n"
                 f"Cost analysis:\n```json\n{self._cost_context}\n```\n\n"
                 f"Question: {question}"
             )
-            messages.append({"role": "user", "content": context_injection})
-        else:
-            for turn in self._history:
-                messages.append({"role": turn.role, "content": turn.content})
-            messages.append({"role": "user", "content": question})
+        transcript = "\n\n".join(f"{turn.role}: {turn.content}" for turn in self._history)
+        return f"{transcript}\n\nuser: {question}"
 
-        return messages
-
-    def query(self, question: str) -> QueryResult:
+    async def query(self, question: str) -> QueryResult:
         """
         Answer a natural language question about the infrastructure.
 
         Maintains conversation state so follow-up questions work naturally.
         Returns a QueryResult with the answer and supporting data.
         """
-        messages = self._build_messages(question)
+        prompt = self._build_user_prompt(question)
 
-        response = self._client.messages.create(
+        response = await self._client.thinking(
+            system=SYSTEM_PROMPT,
+            user=prompt,
             model=self._model,
             max_tokens=1024,
-            system=SYSTEM_PROMPT,
-            messages=messages,
         )
 
-        answer = response.content[0].text
-        tokens = response.usage.input_tokens + response.usage.output_tokens
+        answer = response.text
+        tokens = response.total_tokens
 
         # Update conversation history
         if not self._history:

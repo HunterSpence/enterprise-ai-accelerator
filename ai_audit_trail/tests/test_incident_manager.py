@@ -2,8 +2,8 @@
 test_incident_manager.py — Tests for AI incident management.
 
 Tests:
-- P0 incident creates 72-hour Article 62 deadline
-- Article 62 report template generates valid text
+- P0 incident creates a tiered Article 73 deadline
+- Article 73 report template generates valid text
 - Severity escalation ordering
 - MTTR computation on resolution
 - detect_from_chain integration
@@ -23,35 +23,37 @@ from ai_audit_trail.incident_manager import (
     IncidentStatus,
     _SEVERITY_ORDER,
     _PLAYBOOKS,
+    _article_73_deadline_hours,
 )
-from ai_audit_trail.eu_ai_act import ARTICLE_62_REPORTING_HOURS
+from ai_audit_trail.eu_ai_act import ARTICLE_73_REPORTING_HOURS
 
 
 # ---------------------------------------------------------------------------
-# P0 incident — Article 62 deadline
+# P0 incident — Article 73 deadline (tiered, NOT a flat 72h window)
 # ---------------------------------------------------------------------------
 
-class TestArticle62Deadline:
-    def test_p0_safety_sets_72h_deadline(self, p0_incident: AIIncident):
-        """P0-SAFETY incident must have a 72-hour reporting deadline."""
-        assert p0_incident.article_62_required is True
-        assert p0_incident.article_62_deadline is not None
+class TestArticle73Deadline:
+    def test_p0_safety_sets_tiered_deadline(self, p0_incident: AIIncident):
+        """P0-SAFETY incident must have a deadline matching its Article 73 tier."""
+        assert p0_incident.article_73_required is True
+        assert p0_incident.article_73_deadline is not None
 
         detected = datetime.fromisoformat(p0_incident.detected_at)
-        deadline = datetime.fromisoformat(p0_incident.article_62_deadline)
+        deadline = datetime.fromisoformat(p0_incident.article_73_deadline)
         if detected.tzinfo is None:
             detected = detected.replace(tzinfo=timezone.utc)
         if deadline.tzinfo is None:
             deadline = deadline.replace(tzinfo=timezone.utc)
 
         delta_hours = (deadline - detected).total_seconds() / 3600
-        assert abs(delta_hours - ARTICLE_62_REPORTING_HOURS) < 0.01
+        expected_hours = _article_73_deadline_hours(IncidentSeverity.P0_SAFETY)
+        assert abs(delta_hours - expected_hours) < 0.01
 
-    def test_p0_discrimination_sets_72h_deadline(self, p0_discrimination_incident: AIIncident):
-        assert p0_discrimination_incident.article_62_required is True
-        assert p0_discrimination_incident.article_62_deadline is not None
+    def test_p0_discrimination_sets_tiered_deadline(self, p0_discrimination_incident: AIIncident):
+        assert p0_discrimination_incident.article_73_required is True
+        assert p0_discrimination_incident.article_73_deadline is not None
 
-    def test_p2_incident_does_not_require_article_62(self, incident_manager: IncidentManager):
+    def test_p2_incident_does_not_require_article_73(self, incident_manager: IncidentManager):
         inc = incident_manager.create_incident(
             system_id="sys",
             system_name="Test System",
@@ -59,10 +61,10 @@ class TestArticle62Deadline:
             title="Latency spike",
             description="p95 latency exceeded SLA",
         )
-        assert inc.article_62_required is False
-        assert inc.article_62_deadline is None
+        assert inc.article_73_required is False
+        assert inc.article_73_deadline is None
 
-    def test_p3_incident_does_not_require_article_62(self, incident_manager: IncidentManager):
+    def test_p3_incident_does_not_require_article_73(self, incident_manager: IncidentManager):
         inc = incident_manager.create_incident(
             system_id="sys",
             system_name="Test System",
@@ -70,46 +72,54 @@ class TestArticle62Deadline:
             title="Cost spike",
             description="Token spend exceeded budget",
         )
-        assert inc.article_62_required is False
+        assert inc.article_73_required is False
 
     def test_hours_until_deadline_is_positive_for_new_p0(self, p0_incident: AIIncident):
         """Freshly created P0 incidents have positive hours remaining."""
-        hrs = p0_incident.hours_until_article_62_deadline
+        hrs = p0_incident.hours_until_article_73_deadline
         assert hrs is not None
         assert hrs > 0
 
-    def test_article_62_deadline_constant_is_72(self):
-        assert ARTICLE_62_REPORTING_HOURS == 72
+    def test_article_73_reporting_hours_is_tiered_not_a_flat_72(self):
+        """
+        Regression for P0-19: EU AI Act serious-incident reporting is Article 73
+        with TIERED deadlines, not Article 62 with a flat 72h window. There must
+        be more than one distinct tier, and each tier must be a positive number
+        of hours a caller can look up by incident type.
+        """
+        assert isinstance(ARTICLE_73_REPORTING_HOURS, dict)
+        assert len(set(ARTICLE_73_REPORTING_HOURS.values())) > 1
+        assert all(isinstance(h, int) and h > 0 for h in ARTICLE_73_REPORTING_HOURS.values())
 
 
 # ---------------------------------------------------------------------------
-# Article 62 report template
+# Article 73 report template
 # ---------------------------------------------------------------------------
 
-class TestArticle62Report:
+class TestArticle73Report:
     def test_report_generates_markdown(self, p0_incident: AIIncident):
-        report = p0_incident.generate_article_62_report(provider_name="TestCorp")
+        report = p0_incident.generate_article_73_report(provider_name="TestCorp")
         md = report.to_markdown()
-        assert "Article 62" in md
+        assert "Article 73" in md
         assert "Regulation (EU) 2024/1689" in md
 
     def test_report_contains_provider_name(self, p0_incident: AIIncident):
-        report = p0_incident.generate_article_62_report(provider_name="Acme Legal AI")
+        report = p0_incident.generate_article_73_report(provider_name="Acme Legal AI")
         md = report.to_markdown()
         assert "Acme Legal AI" in md
 
     def test_report_contains_incident_id(self, p0_incident: AIIncident):
-        report = p0_incident.generate_article_62_report()
+        report = p0_incident.generate_article_73_report()
         md = report.to_markdown()
         assert p0_incident.incident_id in md
 
     def test_report_contains_system_id(self, p0_incident: AIIncident):
-        report = p0_incident.generate_article_62_report()
+        report = p0_incident.generate_article_73_report()
         md = report.to_markdown()
         assert p0_incident.system_id in md
 
     def test_report_contains_affected_persons_count(self, p0_discrimination_incident: AIIncident):
-        report = p0_discrimination_incident.generate_article_62_report()
+        report = p0_discrimination_incident.generate_article_73_report()
         md = report.to_markdown()
         assert "342" in md  # affected_persons_estimate from fixture
 
@@ -130,11 +140,11 @@ class TestArticle62Report:
         old_inc = dataclasses.replace(
             inc,
             detected_at=past_detected,
-            article_62_deadline=(
+            article_73_deadline=(
                 datetime.now(timezone.utc) - timedelta(hours=8)
             ).isoformat(),
         )
-        report = old_inc.generate_article_62_report()
+        report = old_inc.generate_article_73_report()
         md = report.to_markdown()
         assert "OVERDUE" in md or "remaining" in md
 
@@ -226,7 +236,7 @@ class TestIncidentSummary:
         assert "total" in summary
         assert "open" in summary
         assert "p0_critical" in summary
-        assert "article_62_pending" in summary
+        assert "article_73_pending" in summary
         assert "by_severity" in summary
 
     def test_summary_counts_p0_correctly(
@@ -238,11 +248,11 @@ class TestIncidentSummary:
         summary = incident_manager.summary()
         assert summary["p0_critical"] >= 2
 
-    def test_summary_article_62_pending_count(
+    def test_summary_article_73_pending_count(
         self, incident_manager: IncidentManager, p0_incident: AIIncident
     ):
         summary = incident_manager.summary()
-        assert summary["article_62_pending"] >= 1
+        assert summary["article_73_pending"] >= 1
 
 
 # ---------------------------------------------------------------------------
@@ -250,10 +260,10 @@ class TestIncidentSummary:
 # ---------------------------------------------------------------------------
 
 class TestPlaybooks:
-    def test_p0_safety_playbook_has_article_62_step(self):
+    def test_p0_safety_playbook_has_article_73_step(self):
         steps = _PLAYBOOKS[IncidentSeverity.P0_SAFETY]
         combined = " ".join(steps)
-        assert "Article 62" in combined or "72" in combined
+        assert "Article 73" in combined
 
     def test_p0_discrimination_playbook_has_bias_step(self):
         steps = _PLAYBOOKS[IncidentSeverity.P0_DISCRIMINATION]

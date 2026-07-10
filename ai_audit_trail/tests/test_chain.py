@@ -266,6 +266,40 @@ class TestTamperDetection:
         report = populated_chain.verify_chain()
         assert report.confidence in ("LOW", "MEDIUM")
 
+    def test_stale_checkpoint_after_full_chain_rewrite_is_detected(self, empty_chain: AuditChain):
+        """
+        Regression for P0-05: verify_chain() used to claim the root matched the
+        latest checkpoint without ever reading chain_checkpoints. A full-chain
+        rewrite (delete rows, re-insert a new internally-consistent chain) stays
+        internally consistent (hashes/prev_hash all line up) but leaves the old
+        checkpoint row stale — that mismatch must now be caught.
+        """
+        for i in range(5):
+            empty_chain.append(
+                session_id="s1", model="m", input_text=f"in{i}", output_text=f"out{i}",
+                input_tokens=10, output_tokens=10, latency_ms=100.0,
+            )
+        # Force a checkpoint over the current (pre-rewrite) 5 entries.
+        empty_chain._checkpoint_merkle_root(empty_chain.count())
+
+        report_before = empty_chain.verify_chain()
+        assert report_before.is_valid is True
+
+        # Simulate a full-chain rewrite: wipe the log, re-insert a brand-new,
+        # internally-consistent chain. The stale chain_checkpoints row from
+        # before the rewrite is left behind untouched.
+        empty_chain._conn.execute("DELETE FROM audit_log")
+        empty_chain._conn.commit()
+        for i in range(5):
+            empty_chain.append(
+                session_id="s1", model="m", input_text=f"rewritten{i}", output_text=f"rewritten-out{i}",
+                input_tokens=10, output_tokens=10, latency_ms=100.0,
+            )
+
+        report_after = empty_chain.verify_chain()
+        assert report_after.is_valid is False
+        assert any("checkpoint" in e.lower() for e in report_after.errors)
+
 
 # ---------------------------------------------------------------------------
 # Chain export / import round-trip

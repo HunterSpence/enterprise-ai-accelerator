@@ -23,16 +23,19 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Depends, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
+from core.api_key_auth import api_key_dependency
+
 from .assessor import WorkloadAssessor, WorkloadInventory
-from .dependency_mapper import DependencyMapper
+from .dependency_mapper import DependencyMapper, WorkloadNode
 from .models import (
     AssessmentRequest,
     AssessmentResponse,
@@ -59,12 +62,20 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    dependencies=[Depends(api_key_dependency())],
 )
 
+# ponytail: allowlist-only CORS from env — never wildcard-with-credentials
+# (browsers reject it and it's a credentialed-CSRF hole on any origin).
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get("MIGRATIONSCOUT_CORS_ORIGINS", "").split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=bool(_cors_origins),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -97,26 +108,36 @@ async def _emit_progress(job_id: str, step: str, percent: int, detail: str = "")
 
 
 def _inventory_model_to_dataclass(m: WorkloadInventoryModel) -> WorkloadInventory:
-    """Convert Pydantic model to assessor dataclass."""
+    """Convert Pydantic model to assessor dataclass.
+
+    Field names must match WorkloadInventoryModel (models.py) 1:1 — it was
+    modeled directly on this dataclass. use_enum_values=True on the Pydantic
+    model means database_type/business_criticality are already plain str.
+    """
     return WorkloadInventory(
-        workload_id=m.workload_id,
+        id=m.id,
         name=m.name,
         workload_type=m.workload_type,
         language=m.language,
-        database=m.database,
+        framework=m.framework,
+        os=m.os,
+        cpu_cores=m.cpu_cores,
+        ram_gb=m.ram_gb,
+        storage_gb=m.storage_gb,
+        monthly_on_prem_cost=m.monthly_on_prem_cost,
         age_years=m.age_years,
-        lines_of_code=m.lines_of_code,
-        team_size=m.team_size,
-        business_criticality=m.business_criticality,
-        dependencies=m.dependencies,
-        on_prem_annual_cost=m.on_prem_annual_cost,
-        containerized=m.containerized,
+        has_external_dependencies=m.has_external_dependencies,
+        dependency_count=m.dependency_count,
         has_custom_hardware=m.has_custom_hardware,
-        vendor_lock_in=m.vendor_lock_in,
-        active_development=m.active_development,
-        end_of_life=m.end_of_life,
-        compliance_requirements=m.compliance_requirements,
-        current_availability=m.current_availability,
+        is_stateful=m.is_stateful,
+        database_type=m.database_type,
+        business_criticality=m.business_criticality,
+        team_cloud_familiarity=m.team_cloud_familiarity,
+        last_major_update_years=m.last_major_update_years,
+        license_type=m.license_type,
+        license_cost_annual=m.license_cost_annual,
+        containerized=m.containerized,
+        team_size=m.team_size,
         notes=m.notes or "",
     )
 
@@ -132,19 +153,19 @@ async def _run_assessment(job_id: str, request: AssessmentRequest) -> None:
     job["status"] = "running"
 
     try:
-        await _emit_progress(job_id, "init", 2, f"Initializing assessment for {len(request.workloads)} workloads")
+        await _emit_progress(job_id, "init", 2, f"Initializing assessment for {len(request.inventory)} workloads")
 
         # Convert Pydantic models → dataclasses
-        inventories = [_inventory_model_to_dataclass(w) for w in request.workloads]
+        inventories = [_inventory_model_to_dataclass(w) for w in request.inventory]
 
         # ── Stage 1: ML + AI Assessment ───────────────────────────────────────
         await _emit_progress(job_id, "assessment", 5, "Training ML classifier (GradientBoosting on 600 samples)...")
 
-        use_ai = request.enable_ai_enrichment
+        use_ai = request.use_ai_enrichment
         assessor = WorkloadAssessor(
-            use_ml=True,
+            use_ml=request.use_ml_classifier,
             use_ai=use_ai,
-            confidence_threshold=0.65,
+            confidence_threshold=request.confidence_threshold,
         )
 
         assessments = []
@@ -155,7 +176,7 @@ async def _run_assessment(job_id: str, request: AssessmentRequest) -> None:
                 job_id, "assessment", pct,
                 f"Assessing {inv.name} ({i+1}/{total})"
             )
-            assessment = assessor.assess(inv)
+            assessment = assessor.assess_workload(inv)
             assessments.append(assessment)
             # Yield control so WebSocket events can flush
             await asyncio.sleep(0)
@@ -168,14 +189,26 @@ async def _run_assessment(job_id: str, request: AssessmentRequest) -> None:
 
         mapper = DependencyMapper()
         for inv, assessment in zip(inventories, assessments):
-            mapper.add_workload(inv, assessment)
-        dep_graph = mapper.build_graph()
+            # ponytail: WorkloadInventoryModel only carries a dependency
+            # *count*, not real edge targets, so we can add nodes but not
+            # real edges here. The graph analysis (SCC/centrality/critical
+            # path) still runs correctly, just edge-less until a real
+            # dependency source (e.g. CloudQuery discovery) is wired in.
+            mapper.add_node(WorkloadNode(
+                id=inv.id,
+                name=inv.name,
+                workload_type=inv.workload_type,
+                business_criticality=inv.business_criticality,
+                strategy=assessment.strategy.value,
+                migration_readiness_score=assessment.migration_readiness_score,
+            ))
+        dep_graph = mapper.analyze()
 
         job["dep_graph"] = dep_graph
         await _emit_progress(
             job_id, "dependencies", 55,
             f"Graph: {len(dep_graph.nodes)} nodes, {len(dep_graph.edges)} edges, "
-            f"{len(dep_graph.scc_clusters)} SCC clusters"
+            f"{len(dep_graph.clusters)} migration clusters"
         )
 
         # ── Stage 3: Wave Planning ─────────────────────────────────────────────
@@ -190,14 +223,14 @@ async def _run_assessment(job_id: str, request: AssessmentRequest) -> None:
             f"Running Monte Carlo ({approach.value} approach, 10,000 iterations)..."
         )
 
-        planner = WavePlanner(max_workloads_per_wave=request.max_workloads_per_wave or 15)
-        wave_plan = planner.plan_waves(assessments, dep_graph, approach=approach)
+        planner = WavePlanner(max_workloads_per_wave=request.max_workloads_per_wave or 15, approach=approach)
+        wave_plan = planner.plan(dep_graph, assessments)
 
         job["wave_plan"] = wave_plan
         await _emit_progress(
             job_id, "wave_planning", 72,
             f"Wave plan: {len(wave_plan.waves)} waves, "
-            f"P50={wave_plan.total_p50_weeks:.1f}w, "
+            f"P50={wave_plan.monte_carlo.p50_weeks:.1f}w, "
             f"P90={sum(w.confidence_interval.p90 for w in wave_plan.waves):.1f}w"
         )
 
@@ -205,7 +238,7 @@ async def _run_assessment(job_id: str, request: AssessmentRequest) -> None:
         await _emit_progress(job_id, "tco", 74, "Computing 3-year TCO (3 scenarios, IRR, NPV)...")
 
         tco_calc = TCOCalculator()
-        tco = tco_calc.calculate(assessments, wave_plan)
+        tco = tco_calc.analyze_portfolio(assessments)
 
         job["tco"] = tco
         await _emit_progress(
@@ -257,7 +290,7 @@ async def create_assessment(request: AssessmentRequest) -> AssessmentResponse:
         "job_id": job_id,
         "status": "queued",
         "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "workload_count": len(request.workloads),
+        "workload_count": len(request.inventory),
         "project_name": request.project_name,
     }
     _progress_queues[job_id] = asyncio.Queue()
@@ -268,7 +301,7 @@ async def create_assessment(request: AssessmentRequest) -> AssessmentResponse:
     return AssessmentResponse(
         job_id=job_id,
         status="queued",
-        workload_count=len(request.workloads),
+        workload_count=len(request.inventory),
         message=f"Assessment queued. Subscribe to /ws/progress/{job_id} for real-time updates.",
     )
 
@@ -296,22 +329,25 @@ async def get_assessment(job_id: str) -> AssessmentResponse:
 
         if wave_plan and tco:
             response.waves_count = len(wave_plan.waves)
-            response.total_p50_weeks = wave_plan.total_p50_weeks
+            response.total_p50_weeks = wave_plan.monte_carlo.p50_weeks
             response.annual_savings_usd = tco.annual_savings
             response.break_even_months = tco.break_even_months
             response.irr_percent = tco.irr_percent
 
         # Top 5 workloads by savings
         if assessments:
-            top = sorted(assessments, key=lambda a: a.annual_savings, reverse=True)[:5]
+            top = sorted(assessments, key=lambda a: a.annual_savings_usd, reverse=True)[:5]
             response.top_workloads = [
                 {
                     "name": a.workload.name,
-                    "strategy": a.recommended_strategy,
-                    "annual_savings": a.annual_savings,
+                    "strategy": a.strategy.value,
+                    "annual_savings": a.annual_savings_usd,
                     "migration_readiness_score": a.migration_readiness_score,
                     "ml_classified": a.ml_classified,
-                    "top_features": a.top_feature_importances[:3],
+                    "top_features": [
+                        {"feature": fi.feature, "importance": fi.importance, "direction": fi.direction}
+                        for fi in a.top_feature_importances[:3]
+                    ],
                 }
                 for a in top
             ]
@@ -344,8 +380,8 @@ async def get_wave_plan(job_id: str, request: WavePlanRequest) -> WavePlanRespon
     }
     approach = approach_map.get((request.approach or "balanced").lower(), MigrationApproach.BALANCED)
 
-    planner = WavePlanner(max_workloads_per_wave=request.max_workloads_per_wave or 15)
-    wave_plan = planner.plan_waves(assessments, dep_graph, approach=approach)
+    planner = WavePlanner(max_workloads_per_wave=request.max_workloads_per_wave or 15, approach=approach)
+    wave_plan = planner.plan(dep_graph, assessments)
     job["wave_plan"] = wave_plan
 
     waves_out = []
@@ -354,24 +390,24 @@ async def get_wave_plan(job_id: str, request: WavePlanRequest) -> WavePlanRespon
         waves_out.append({
             "wave_number": w.wave_number,
             "name": w.name,
-            "workload_count": len(w.workloads),
+            "workload_count": w.workload_count,
             "p10_weeks": ci.p10,
             "p25_weeks": ci.p25,
             "p50_weeks": ci.p50,
             "p75_weeks": ci.p75,
             "p90_weeks": ci.p90,
             "risk_level": w.risk_level,
-            "migration_cost": w.migration_cost,
-            "monthly_savings": w.monthly_savings,
-            "convergence_achieved": w.monte_carlo_result.convergence_achieved if w.monte_carlo_result else True,
+            "migration_cost": w.total_migration_cost_usd,
+            "monthly_savings": w.total_monthly_savings_usd,
+            "convergence_achieved": wave_plan.monte_carlo.convergence_achieved,
         })
 
     return WavePlanResponse(
         job_id=job_id,
         approach=approach.value,
         waves=waves_out,
-        total_p50_weeks=wave_plan.total_p50_weeks,
-        gantt_html=wave_plan.gantt_html or "",
+        total_p50_weeks=wave_plan.monte_carlo.p50_weeks,
+        gantt_html=planner.export_html_gantt(wave_plan),
     )
 
 
@@ -399,7 +435,7 @@ async def get_tco(job_id: str) -> TCOResponse:
             "year2_savings": s.year2_savings,
             "year3_savings": s.year3_savings,
             "total_3yr_savings": s.year1_savings + s.year2_savings + s.year3_savings,
-            "npv": s.npv,
+            "npv": s.npv_3yr,
             "break_even_months": s.break_even_months,
         })
 
@@ -409,7 +445,7 @@ async def get_tco(job_id: str) -> TCOResponse:
         total_investment=tco.total_investment_usd,
         break_even_months=tco.break_even_months,
         irr_percent=tco.irr_percent,
-        npv_8pct=tco.npv,
+        npv_8pct=tco.npv_3yr,
         contingency_usd=tco.contingency_usd,
         scenarios=scenarios_out,
     )
@@ -432,7 +468,7 @@ async def generate_runbook(workload_id: str, request: RunbookRequest) -> Runbook
         )
 
     assessments = job.get("assessments", [])
-    target = next((a for a in assessments if a.workload.workload_id == workload_id), None)
+    target = next((a for a in assessments if a.workload.id == workload_id), None)
     if not target:
         raise HTTPException(
             status_code=404,
@@ -440,13 +476,13 @@ async def generate_runbook(workload_id: str, request: RunbookRequest) -> Runbook
         )
 
     from .runbook_generator import RunbookGenerator
-    gen = RunbookGenerator()
+    gen = RunbookGenerator(use_ai=request.use_ai)
     runbook = gen.generate_workload_runbook(target)
 
     return RunbookResponse(
         workload_id=workload_id,
         workload_name=target.workload.name,
-        strategy=target.recommended_strategy,
+        strategy=target.strategy.value,
         runbook_markdown=runbook.content,
         estimated_hours=runbook.estimated_hours,
         risk_level=runbook.risk_level,
@@ -466,14 +502,17 @@ async def get_dependency_graph(job_id: str) -> dict[str, Any]:
     if not dep_graph:
         raise HTTPException(status_code=422, detail="Dependency graph not available for this assessment")
 
+    # export_d3_json/export_mermaid are pure functions of dep_graph — a fresh
+    # DependencyMapper instance is fine, no accumulated state is read.
+    mapper = DependencyMapper()
     return {
         "job_id": job_id,
         "node_count": len(dep_graph.nodes),
         "edge_count": len(dep_graph.edges),
-        "scc_cluster_count": len(dep_graph.scc_clusters),
+        "scc_cluster_count": len(dep_graph.clusters),
         "hub_services": dep_graph.hub_services,
-        "d3_json": dep_graph.d3_export,
-        "mermaid": dep_graph.mermaid_export,
+        "d3_json": mapper.export_d3_json(dep_graph),
+        "mermaid": mapper.export_mermaid(dep_graph),
     }
 
 
@@ -503,7 +542,7 @@ async def what_if_analysis(request: WhatIfRequest) -> WhatIfResponse:
     # Find the targeted workloads
     target_assessments = [
         a for a in assessments
-        if a.workload.workload_id in request.workload_ids
+        if a.workload.id in request.workload_ids
     ]
     if not target_assessments:
         raise HTTPException(
@@ -532,7 +571,8 @@ async def what_if_analysis(request: WhatIfRequest) -> WhatIfResponse:
     avg_readiness = sum(
         a.migration_readiness_score for a in target_assessments
     ) / len(target_assessments)
-    p50_delta_weeks = -0.1 * wave_plan.total_p50_weeks if avg_readiness > 70 else 0.05 * wave_plan.total_p50_weeks
+    base_p50_weeks = wave_plan.monte_carlo.p50_weeks
+    p50_delta_weeks = -0.1 * base_p50_weeks if avg_readiness > 70 else 0.05 * base_p50_weeks
 
     # NPV sensitivity: 1 week earlier ≈ $12K NPV improvement (standard enterprise rate)
     npv_delta = -p50_delta_weeks * 12_000
@@ -542,8 +582,8 @@ async def what_if_analysis(request: WhatIfRequest) -> WhatIfResponse:
     return WhatIfResponse(
         job_id=request.job_id,
         workload_ids=request.workload_ids,
-        base_p50_weeks=wave_plan.total_p50_weeks,
-        new_p50_weeks=wave_plan.total_p50_weeks + p50_delta_weeks,
+        base_p50_weeks=base_p50_weeks,
+        new_p50_weeks=base_p50_weeks + p50_delta_weeks,
         p50_delta_weeks=p50_delta_weeks,
         npv_delta_usd=npv_delta,
         risk_delta=risk_delta,

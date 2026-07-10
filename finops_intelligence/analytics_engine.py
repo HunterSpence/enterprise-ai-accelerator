@@ -93,6 +93,9 @@ class AnalyticsEngine:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._table_loaded = False
         self._in_memory_cache: dict[str, tuple[QueryResult, float]] = {}  # key -> (result, expire_ts)
+        # P0-28: bumped on every load_dataframe/load_parquet so cache keys
+        # from a prior dataset can never satisfy a query against a new one.
+        self._data_version = 0
 
     # ------------------------------------------------------------------
     # Connection management
@@ -137,6 +140,8 @@ class AnalyticsEngine:
         conn.execute("DROP TABLE IF EXISTS costs")
         conn.execute("CREATE TABLE costs AS SELECT * FROM df")
         self._table_loaded = True
+        self._data_version += 1
+        self.clear_cache()  # atomic invalidation: old-dataset entries can't leak past a reload
         return self
 
     def load_parquet(self, path: str) -> "AnalyticsEngine":
@@ -165,6 +170,8 @@ class AnalyticsEngine:
         """)
         row_count = conn.execute("SELECT COUNT(*) FROM costs").fetchone()[0]
         self._table_loaded = True
+        self._data_version += 1
+        self.clear_cache()  # atomic invalidation: old-dataset entries can't leak past a reload
         return self
 
     def get_row_count(self) -> int:
@@ -431,7 +438,11 @@ class AnalyticsEngine:
     # ------------------------------------------------------------------
 
     def _cache_key(self, sql: str, params: list[Any] | None) -> str:
-        raw = f"{sql}|{json.dumps(params or [], default=str)}"
+        # P0-28: dataset version is part of the key so a query issued against
+        # dataset N can never be satisfied by a cache entry written for
+        # dataset N-1 — including the Redis path, which clear_cache() (an
+        # in-memory-only reset) doesn't touch.
+        raw = f"v{self._data_version}|{sql}|{json.dumps(params or [], default=str)}"
         return hashlib.md5(raw.encode()).hexdigest()
 
     def _get_cached(self, key: str) -> QueryResult | None:

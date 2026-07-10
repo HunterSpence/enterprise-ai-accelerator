@@ -1,10 +1,10 @@
 # Roadmap — Enterprise AI Accelerator
 
-Items are grouped by horizon: **NOW** (in v0.4.0 or already shipped), **NEXT** (next release cycle), **LATER** (future consideration). No specific dates. Status indicates current state.
+Items are grouped by horizon: **NOW** (in v0.5.0 or already shipped), **NEXT** (next release cycle), **LATER** (future consideration). No specific dates. Status indicates current state.
 
 ---
 
-## NOW — v0.4.0 (current release)
+## NOW — v0.5.0 (current release)
 
 | Item | Rationale | Status |
 |------|-----------|--------|
