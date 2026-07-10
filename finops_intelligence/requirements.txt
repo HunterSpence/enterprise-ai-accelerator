@@ -16,7 +16,7 @@ numpy>=1.26.0
 
 # --- ML / Forecasting ---
 scikit-learn>=1.4.0   # IsolationForest
-prophet>=1.1.5        # time-series forecasting
+prophet>=1.3.0        # time-series forecasting
 # torch>=2.2.0        # optional LSTM autoencoder — install separately
 
 # --- AI ---
