@@ -14,7 +14,7 @@
 
 Report security vulnerabilities by emailing:
 
-**hspence21190@gmail.com**
+**hunter@vantaweb.io**
 
 Include in your report:
 - A description of the vulnerability and its potential impact
