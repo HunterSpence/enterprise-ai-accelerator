@@ -12,13 +12,6 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-patch"]
 
-  # npm dependencies — main codebase only
-  # examples/sample_repo intentionally pins old vulnerable versions for demo
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
   # Suppress ALL Dependabot updates for the intentional vulnerable fixture
   # This path exists to demonstrate security scanning capabilities of the platform.
   # See examples/sample_repo/README.md: "Pinned dependency versions are intentionally
