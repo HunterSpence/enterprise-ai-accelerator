@@ -41,6 +41,7 @@ for i, prompt in enumerate([
     response = client.messages.create(
         model="claude-haiku-5-5",  # Use any Claude model
         max_tokens=200,
+        thinking={"type": "disabled"},  # Haiku 5.5 thinks by default and thinking shares max_tokens
         messages=[{"role": "user", "content": prompt}],
     )
 

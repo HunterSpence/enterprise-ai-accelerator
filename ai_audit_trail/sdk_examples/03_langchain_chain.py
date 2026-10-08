@@ -38,6 +38,7 @@ try:
     llm = ChatAnthropic(
         model="claude-haiku-5-5",
         max_tokens=200,
+        thinking={"type": "disabled"},  # Haiku 5.5 thinks by default and thinking shares max_tokens
         callbacks=[audit_callback],       # ← Single line change for full audit
     )
 

@@ -1091,7 +1091,7 @@ async def _finops_explain(args: dict[str, Any]) -> dict[str, Any]:
         tool_name="emit_anomaly_explanation",
         tool_description="Explain the cost anomaly.",
         model=MODEL_HAIKU_5_5,
-        max_tokens=512,
+        max_tokens=1024,
         effort="low",  # Haiku 5.5 defaults to medium; thinking shares max_tokens
     )
     return response.data

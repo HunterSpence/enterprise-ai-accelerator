@@ -783,7 +783,7 @@ Respond with the workload's classification and guidance."""
                     user=prompt,
                     schema=schema,
                     model=MODEL_HAIKU_5_5,
-                    max_tokens=500,
+                    max_tokens=1024,
                     effort="low",  # Haiku 5.5 defaults to medium; thinking shares max_tokens
                 )
             )

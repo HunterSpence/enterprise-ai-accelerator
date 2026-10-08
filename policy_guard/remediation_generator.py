@@ -461,7 +461,8 @@ Start directly with the first resource block or comment."""
                 self._client.thinking(
                     system=system_prompt,
                     user=prompt,
-                    max_tokens=800,
+                    max_tokens=1024,
+                    effort="low",  # Haiku 5.5: thinking shares max_tokens; high effort can leave no text
                 )
             )
             time.sleep(self._rate_limit_delay)

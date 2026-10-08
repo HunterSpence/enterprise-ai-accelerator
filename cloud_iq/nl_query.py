@@ -282,6 +282,7 @@ class NLQueryEngine:
             user=prompt,
             model=self._model,
             max_tokens=1024,
+            effort="low",  # Haiku 5.5: thinking shares max_tokens; high effort can leave no text
         )
 
         answer = response.text

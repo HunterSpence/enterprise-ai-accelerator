@@ -590,7 +590,7 @@ class AnomalyDetectorV2:
                         "explain the causal relationship. End with one specific CLI command or console action."
                     ),
                     user=context,
-                    max_tokens=450,
+                    max_tokens=1024,
                     effort="low",  # Haiku 5.5 defaults to medium; thinking shares max_tokens
                 )
                 anomaly.explanation = response.text.strip() or self._fallback_explanation(anomaly)

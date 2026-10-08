@@ -122,6 +122,8 @@ class BaseAgent:
             tool_description=self.tool_description,
             model=self.model,
             max_tokens=self.max_tokens,
+            # Workers run on Haiku 5.5 (default effort medium; thinking shares max_tokens).
+            effort="low" if self.model == _WORKER_MODEL else None,
         )
         return response.data, response
 
