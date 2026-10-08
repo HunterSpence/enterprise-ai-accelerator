@@ -77,3 +77,59 @@ def test_cost_estimator_tiers_each_request():
     assert est.estimate(
         HAIKU_5_5, input_tokens=50_000, output_tokens=0, cache_read=60_000
     ) == pytest.approx(50_000 * 0.50 / 1e6 + 60_000 * 0.05 / 1e6)
+
+
+# --- Call sites that go through AIClient.thinking(): Haiku 5.5 thinks adaptively and
+# --- thinking tokens share max_tokens. At effort high with a small cap the reply can be
+# --- thinking-only (empty text), so these requests must be low effort with room for text.
+
+def _thinking_then_text(text):
+    usage = SimpleNamespace(
+        input_tokens=10, output_tokens=10, cache_read_input_tokens=0,
+        cache_creation_input_tokens=0, iterations=None,
+    )
+    return SimpleNamespace(
+        content=[SimpleNamespace(type="thinking", thinking=""), SimpleNamespace(type="text", text=text)],
+        stop_reason="end_turn", stop_details=None, model=HAIKU_5_5, usage=usage,
+    )
+
+
+def _stub_ai_client(text):
+    from unittest.mock import AsyncMock, MagicMock
+
+    from core.ai_client import AIClient
+
+    raw = MagicMock()
+    raw.messages.create = AsyncMock(return_value=_thinking_then_text(text))
+    return AIClient(client=raw, default_model=HAIKU_5_5, enable_fallbacks=False), raw
+
+
+def test_remediation_generator_requests_low_effort_with_room_for_text():
+    from policy_guard.remediation_generator import RemediationGenerator
+
+    hcl = 'resource "aws_s3_bucket" "b" {}'
+    gen = RemediationGenerator(rate_limit_delay=0)
+    gen._client, raw = _stub_ai_client(hcl)
+    result = gen.generate_for_finding("PG-NO-TEMPLATE-1", "t", "HIGH", "cis_aws", "d", "r")
+    kwargs = raw.messages.create.call_args.kwargs
+    assert kwargs["output_config"] == {"effort": "low"}
+    assert kwargs["max_tokens"] == 1024
+    assert (result.generated_by, result.remediation_hcl) == ("claude", hcl)
+
+
+async def test_nl_query_requests_low_effort_with_room_for_text():
+    from datetime import datetime, timezone
+
+    from cloud_iq.nl_query import NLQueryEngine
+    from cloud_iq.scanner import InfrastructureSnapshot
+
+    snap = InfrastructureSnapshot(
+        account_id="123456789012", regions=["us-east-1"], scanned_at=datetime.now(timezone.utc)
+    )
+    engine = NLQueryEngine(snap, anthropic_api_key="test-key")
+    engine._client, raw = _stub_ai_client("There are no instances.")
+    result = await engine.query("How many instances?")
+    kwargs = raw.messages.create.call_args.kwargs
+    assert kwargs["output_config"] == {"effort": "low"}
+    assert kwargs["max_tokens"] == 1024
+    assert result.answer == "There are no instances."
