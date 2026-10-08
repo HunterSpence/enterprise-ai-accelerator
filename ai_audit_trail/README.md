@@ -40,7 +40,7 @@ from ai_audit_trail.chain import AuditChain
 client = AuditedAnthropic(audit_chain=AuditChain("audit.db"), system_id="my-ai-v1")
 
 # Every call is now tamper-evident, EU-compliant, and cost-tracked:
-response = client.messages.create(model="claude-haiku-4-5-20251001", max_tokens=200,
+response = client.messages.create(model="claude-haiku-5-5", max_tokens=200,
                                    messages=[{"role": "user", "content": "Hello"}])
 ```
 
@@ -62,7 +62,7 @@ from ai_audit_trail.integrations.langchain import AuditTrailCallback
 from ai_audit_trail.chain import AuditChain
 
 audit = AuditTrailCallback(audit_chain=AuditChain("audit.db"), system_id="lc-pipeline-v1")
-llm = ChatAnthropic(model="claude-haiku-4-5-20251001", callbacks=[audit])  # <- one line
+llm = ChatAnthropic(model="claude-haiku-5-5", callbacks=[audit])  # <- one line
 ```
 
 ### 4. LlamaIndex (retrieval + synthesis)

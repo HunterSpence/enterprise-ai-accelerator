@@ -264,9 +264,9 @@ class Dashboard:
 
         model_map = {
             "Coordinator": getattr(_models, "MODEL_COORDINATOR", "claude-fable-5"),
-            "ArchitectureAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-4-5"),
-            "MigrationAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-4-5"),
-            "ComplianceAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-4-5"),
+            "ArchitectureAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-5-5"),
+            "MigrationAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-5-5"),
+            "ComplianceAgent": getattr(_models, "MODEL_WORKER", "claude-haiku-5-5"),
             "ReportAgent": getattr(_models, "MODEL_REPORTER", "claude-sonnet-4-6"),
         }
 

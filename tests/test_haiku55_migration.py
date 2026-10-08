@@ -1,4 +1,4 @@
-"""Acceptance tests for the Haiku 4.5 -> 5.5 migration.
+"""Acceptance tests for the Haiku 5.5 migration.
 
 Four independent tests. Each imports inside the function so each one fails on
 the pre-migration code for its own reason (no shared ImportError).

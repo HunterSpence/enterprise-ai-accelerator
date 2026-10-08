@@ -26,7 +26,7 @@ from core.models import (
     EFFORT_XHIGH,
     MODEL_FABLE_5,
     MODEL_FALLBACK,
-    MODEL_HAIKU_4_5,
+    MODEL_HAIKU_5_5,
     MODEL_SONNET_4_6,
     describe_model,
     effort_for_budget,
@@ -119,10 +119,11 @@ class TestModelHelpers:
         assert meta["can_refuse"] is True
         assert meta["supports_structured_outputs"] is True
 
-    def test_describe_model_haiku_no_effort(self):
-        meta = describe_model(MODEL_HAIKU_4_5)
-        assert meta["supports_effort"] is False
-        assert meta["supports_adaptive_thinking"] is False
+    def test_describe_model_haiku_adaptive_and_effort(self):
+        meta = describe_model(MODEL_HAIKU_5_5)
+        assert meta["supports_effort"] is True
+        assert meta["supports_adaptive_thinking"] is True
+        assert meta["context_window"] == 1_000_000
 
     def test_sonnet_context_window_is_1m(self):
         assert describe_model(MODEL_SONNET_4_6)["context_window"] == 1_000_000
@@ -250,12 +251,14 @@ class TestThinking:
         kwargs = raw.messages.create.call_args.kwargs
         assert kwargs["thinking"] == {"type": "adaptive"}
 
-    async def test_haiku_gets_no_thinking_param(self):
+    async def test_haiku_gets_plain_adaptive_and_effort(self):
         ai, raw = _make_client(enable_fallbacks=False)
-        await ai.thinking(system="s", user="u", model=MODEL_HAIKU_4_5)
+        await ai.thinking(system="s", user="u", model=MODEL_HAIKU_5_5)
         kwargs = raw.messages.create.call_args.kwargs
-        assert "thinking" not in kwargs
-        assert "output_config" not in kwargs  # effort errors on Haiku
+        assert kwargs["thinking"] == {"type": "adaptive"}  # budget_tokens would be a 400
+        assert kwargs["output_config"] == {"effort": EFFORT_HIGH}
+        for banned in ("temperature", "top_p", "top_k"):  # all 400 on Haiku 5.5
+            assert banned not in kwargs
 
     async def test_budget_tokens_deprecated_translates_to_effort(self):
         ai, raw = _make_client(enable_fallbacks=False)

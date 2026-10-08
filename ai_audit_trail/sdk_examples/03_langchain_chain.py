@@ -36,7 +36,7 @@ try:
     # Step 5: Wire AuditTrailCallback into the LLM constructor.
     #         No other code changes needed — all calls are now audited.
     llm = ChatAnthropic(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-5-5",
         max_tokens=200,
         callbacks=[audit_callback],       # ← Single line change for full audit
     )
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         demo = AuditChain(":memory:")
         demo.append(
             session_id="lc-demo-1",
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-5-5",
             input_text="What is EU AI Act Article 12?",
             output_text="Article 12 requires high-risk AI systems to maintain logs…",
             input_tokens=25,

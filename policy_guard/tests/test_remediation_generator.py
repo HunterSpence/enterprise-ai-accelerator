@@ -68,8 +68,8 @@ class TestInstantiation:
         assert gen._client is None
 
     def test_custom_model_stored(self):
-        gen = RemediationGenerator(model="claude-haiku-4-5-20251001")
-        assert gen._model == "claude-haiku-4-5-20251001"
+        gen = RemediationGenerator(model="claude-haiku-5-5")
+        assert gen._model == "claude-haiku-5-5"
 
     def test_custom_max_findings(self):
         gen = RemediationGenerator(max_findings=10)
@@ -340,6 +340,6 @@ class TestRemediationResultDataclass:
             framework="cis_aws",
             remediation_hcl="# x",
             generated_by="claude",
-            model_used="claude-haiku-4-5",
+            model_used="claude-haiku-5-5",
         )
-        assert result.model_used == "claude-haiku-4-5"
+        assert result.model_used == "claude-haiku-5-5"

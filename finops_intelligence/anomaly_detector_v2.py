@@ -545,7 +545,7 @@ class AnomalyDetectorV2:
         try:
             from anthropic import AsyncAnthropic
             from core.ai_client import AIClient
-            from core.models import MODEL_HAIKU_4_5
+            from core.models import MODEL_HAIKU_5_5
         except ImportError:
             for a in anomalies:
                 a.explanation = self._fallback_explanation(a)
@@ -556,7 +556,7 @@ class AnomalyDetectorV2:
         # AIClient is async-only; explain_all stays a sync entry point for
         # existing callers (same sync-wraps-async pattern as
         # iac_security/scanner.py IaCScanner.scan).
-        ai = AIClient(AsyncAnthropic(api_key=self.api_key), default_model=MODEL_HAIKU_4_5)
+        ai = AIClient(AsyncAnthropic(api_key=self.api_key), default_model=MODEL_HAIKU_5_5)
         return self._run_sync(self._explain_all_async(ai, anomalies, spend_data))
 
     @staticmethod
@@ -591,6 +591,7 @@ class AnomalyDetectorV2:
                     ),
                     user=context,
                     max_tokens=450,
+                    effort="low",  # Haiku 5.5 defaults to medium; thinking shares max_tokens
                 )
                 anomaly.explanation = response.text.strip() or self._fallback_explanation(anomaly)
             except Exception:

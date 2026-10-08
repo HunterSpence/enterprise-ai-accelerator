@@ -118,7 +118,7 @@ from core import (
     AIClient,
     MODEL_OPUS_4_7,
     MODEL_SONNET_4_6,
-    MODEL_HAIKU_4_5,
+    MODEL_HAIKU_5_5,
 )
 from core.models import describe_model
 
@@ -210,7 +210,7 @@ server = Server("enterprise-ai-accelerator")
 
 _RISK_ENUM = ["MINIMAL", "LIMITED", "HIGH", "UNACCEPTABLE"]
 _STRATEGY_ENUM = ["Retire", "Retain", "Rehost", "Replatform", "Repurchase", "Refactor"]
-_MODEL_ENUM = [MODEL_OPUS_4_7, MODEL_SONNET_4_6, MODEL_HAIKU_4_5]
+_MODEL_ENUM = [MODEL_OPUS_4_7, MODEL_SONNET_4_6, MODEL_HAIKU_5_5]
 
 _TOOLS: list[Tool] = [
     # ----- AIAuditTrail -------------------------------------------------
@@ -318,7 +318,7 @@ _TOOLS: list[Tool] = [
     # ----- FinOps Intelligence ------------------------------------------
     Tool(
         name="finops_explain_anomaly",
-        description="Explain a single FinOps cost anomaly in executive-friendly language (real-time, Haiku 4.5).",
+        description="Explain a single FinOps cost anomaly in executive-friendly language (real-time, Haiku 5.5).",
         inputSchema={
             "type": "object",
             "required": ["anomaly"],
@@ -805,7 +805,7 @@ async def _dispatch(name: str, args: dict[str, Any]) -> Any:
             "models": [
                 describe_model(MODEL_OPUS_4_7),
                 describe_model(MODEL_SONNET_4_6),
-                describe_model(MODEL_HAIKU_4_5),
+                describe_model(MODEL_HAIKU_5_5),
             ],
         }
     if name == "platform_capabilities":
@@ -957,7 +957,7 @@ def _platform_capabilities() -> dict[str, Any]:
         "models": {
             "coordinator": MODEL_OPUS_4_7,
             "reporter": MODEL_SONNET_4_6,
-            "worker": MODEL_HAIKU_4_5,
+            "worker": MODEL_HAIKU_5_5,
         },
     }
 
@@ -1090,8 +1090,9 @@ async def _finops_explain(args: dict[str, Any]) -> dict[str, Any]:
         schema=schema,
         tool_name="emit_anomaly_explanation",
         tool_description="Explain the cost anomaly.",
-        model=MODEL_HAIKU_4_5,
+        model=MODEL_HAIKU_5_5,
         max_tokens=512,
+        effort="low",  # Haiku 5.5 defaults to medium; thinking shares max_tokens
     )
     return response.data
 

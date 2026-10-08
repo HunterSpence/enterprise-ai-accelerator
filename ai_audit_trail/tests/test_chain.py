@@ -81,7 +81,7 @@ class TestLogEntryHash:
         empty_chain.store_plaintext = True
         entry = empty_chain.append(
             session_id="s1",
-            model="claude-haiku-4-5",
+            model="claude-haiku-5-5",
             input_text="Test input",
             output_text="Test output",
             input_tokens=10,

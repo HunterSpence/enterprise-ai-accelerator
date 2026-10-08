@@ -2,20 +2,20 @@
 core/cost_estimator.py
 ======================
 
-Anthropic-native cost estimation for Fable 5 / Sonnet 4.6 / Haiku 4.5.
+Anthropic-native cost estimation for Fable 5 / Sonnet 4.6 / Haiku 5.5.
 Zero external dependencies — all arithmetic in pure Python.
 
 WIRING (one-liner):
     from core.cost_estimator import CostEstimator
     est = CostEstimator()
-    cost = est.estimate(MODEL_HAIKU_4_5, input_tokens=1000, output_tokens=300)
+    cost = est.estimate(MODEL_HAIKU_5_5, input_tokens=1000, output_tokens=300)
     print(f"${cost:.4f}")
 
 Full pipeline summary:
     from core.cost_estimator import CostEstimator, TokenUsageSummary
     summary = TokenUsageSummary()
     summary.add(model=MODEL_FABLE_5, input_tokens=500, output_tokens=200)
-    summary.add(model=MODEL_HAIKU_4_5, input_tokens=8000, output_tokens=1200, via_batch=True)
+    summary.add(model=MODEL_HAIKU_5_5, input_tokens=8000, output_tokens=1200, via_batch=True)
     breakdown = est.summary(summary)
     print(breakdown.render_markdown())
 
@@ -28,17 +28,19 @@ Pricing reference (Anthropic as of 2026-06, USD per 1M tokens):
                 Cache read: $0.30
                 Cache creation: $3.75
                 Batch: 50% off
-    Haiku 4.5:  $1.00 input / $5.00 output
-                Cache read: $0.10
-                Cache creation: $1.25
+    Haiku 5.5 (2026-10-08): $0.10 input / $0.50 output
+                Cache read: $0.01
+                Cache creation: $0.125
                 Batch: 50% off
+                Prompts over 100K tokens (input + cache read + cache creation)
+                bill the whole request at $0.50 / $2.50 / $0.05 / $0.625.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from core.models import MODEL_FABLE_5, MODEL_HAIKU_4_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
+from core.models import MODEL_FABLE_5, MODEL_HAIKU_5_5, MODEL_OPUS_4_7, MODEL_SONNET_4_6
 
 # ---------------------------------------------------------------------------
 # Pricing table  — (input, output, cache_read, cache_creation) per 1M tokens
@@ -68,14 +70,31 @@ _PRICING: dict[str, _ModelPricing] = {
         cache_creation_per_m=3.75,
         batch_discount=0.50,
     ),
-    MODEL_HAIKU_4_5: _ModelPricing(
-        input_per_m=1.00,
-        output_per_m=5.00,
-        cache_read_per_m=0.10,
-        cache_creation_per_m=1.25,
+    MODEL_HAIKU_5_5: _ModelPricing(
+        input_per_m=0.10,
+        output_per_m=0.50,
+        cache_read_per_m=0.01,
+        cache_creation_per_m=0.125,
         batch_discount=0.50,
     ),
 }
+# Long-prompt tier: a request whose prompt (input + cache read + cache creation)
+# exceeds the threshold is billed at these rates for the WHOLE request.
+_LONG_CONTEXT_TOKENS = 100_000
+_LONG_PRICING: dict[str, _ModelPricing] = {
+    MODEL_HAIKU_5_5: _ModelPricing(
+        input_per_m=0.50,
+        output_per_m=2.50,
+        cache_read_per_m=0.05,
+        cache_creation_per_m=0.625,
+        batch_discount=0.50,
+    ),
+}
+
+
+def _is_long_ctx(model: str, input_tokens: int, cache_read: int, cache_creation: int) -> bool:
+    return model in _LONG_PRICING and input_tokens + cache_read + cache_creation > _LONG_CONTEXT_TOKENS
+
 # Keep deprecated key pointing at Fable 5 so callers using MODEL_OPUS_4_7 still resolve.
 _PRICING[MODEL_OPUS_4_7] = _PRICING[MODEL_FABLE_5]
 
@@ -92,6 +111,7 @@ class _CallRecord:
     cache_read: int
     cache_creation: int
     via_batch: bool
+    long_ctx: bool = False  # tier decided per request, at add time
 
 
 @dataclass
@@ -125,7 +145,7 @@ class TokenUsageSummary:
         cache_creation: int = 0,
         via_batch: bool = False,
     ) -> None:
-        """Record token usage for one API call."""
+        """Record token usage for one API call (its price tier is fixed here, per request)."""
         self._records.append(
             _CallRecord(
                 model=model,
@@ -134,6 +154,7 @@ class TokenUsageSummary:
                 cache_read=cache_read,
                 cache_creation=cache_creation,
                 via_batch=via_batch,
+                long_ctx=_is_long_ctx(model, input_tokens, cache_read, cache_creation),
             )
         )
 
@@ -253,6 +274,12 @@ class CostEstimator:
         if pricing_overrides:
             self._pricing.update(pricing_overrides)
 
+    def _price(self, model: str, long_ctx: bool) -> _ModelPricing:
+        if long_ctx:
+            return _LONG_PRICING[model]
+        # Unknown model — fall back to Sonnet pricing
+        return self._pricing.get(model, self._pricing[MODEL_SONNET_4_6])
+
     # ------------------------------------------------------------------
     # Single call estimate
     # ------------------------------------------------------------------
@@ -272,7 +299,7 @@ class CostEstimator:
         Parameters
         ----------
         model:
-            Model ID (MODEL_FABLE_5 / MODEL_SONNET_4_6 / MODEL_HAIKU_4_5).
+            Model ID (MODEL_FABLE_5 / MODEL_SONNET_4_6 / MODEL_HAIKU_5_5).
         input_tokens:
             Number of non-cached input tokens.
         output_tokens:
@@ -289,10 +316,7 @@ class CostEstimator:
         float
             Estimated cost in USD.
         """
-        p = self._pricing.get(model)
-        if p is None:
-            # Unknown model — fall back to Sonnet pricing
-            p = self._pricing[MODEL_SONNET_4_6]
+        p = self._price(model, _is_long_ctx(model, input_tokens, cache_read, cache_creation))
 
         discount = p.batch_discount if via_batch else 0.0
         multiplier = 1.0 - discount
@@ -325,7 +349,7 @@ class CostEstimator:
         per_model: dict[str, dict] = {
             MODEL_FABLE_5:    _zero_row(),
             MODEL_SONNET_4_6: _zero_row(),
-            MODEL_HAIKU_4_5:  _zero_row(),
+            MODEL_HAIKU_5_5:  _zero_row(),
         }
 
         total_usd = 0.0
@@ -341,7 +365,7 @@ class CostEstimator:
         total_output_no_batch = 0
 
         for rec in usage._records:
-            p = self._pricing.get(rec.model, self._pricing[MODEL_SONNET_4_6])
+            p = self._price(rec.model, rec.long_ctx)
             discount = p.batch_discount if rec.via_batch else 0.0
             mult = 1.0 - discount
 
@@ -381,8 +405,8 @@ class CostEstimator:
         # This is already captured in the pricing; compute the delta
         cache_savings = sum(
             (rec.cache_read / 1_000_000) * (
-                self._pricing.get(rec.model, self._pricing[MODEL_SONNET_4_6]).input_per_m
-                - self._pricing.get(rec.model, self._pricing[MODEL_SONNET_4_6]).cache_read_per_m
+                self._price(rec.model, rec.long_ctx).input_per_m
+                - self._price(rec.model, rec.long_ctx).cache_read_per_m
             )
             for rec in usage._records
         )
@@ -395,7 +419,7 @@ class CostEstimator:
             )
             for rec in usage._records
             if rec.via_batch
-            for p in [self._pricing.get(rec.model, self._pricing[MODEL_SONNET_4_6])]
+            for p in [self._price(rec.model, rec.long_ctx)]
         )
 
         # Remove models with zero calls
@@ -439,7 +463,7 @@ def _short_model_name(model_id: str) -> str:
     if "sonnet" in model_id:
         return "Sonnet 4.6"
     if "haiku" in model_id:
-        return "Haiku 4.5"
+        return "Haiku 5.5"
     return model_id
 
 

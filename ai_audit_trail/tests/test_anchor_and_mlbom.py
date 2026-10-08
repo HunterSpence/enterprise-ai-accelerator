@@ -98,7 +98,7 @@ class TestFileAnchor:
         chain = AuditChain(":memory:", anchor_backend=backend)
         # Seed an entry then force anchor
         chain.append(
-            session_id="s1", model="claude-haiku-4-5-20251001",
+            session_id="s1", model="claude-haiku-5-5",
             input_text="x", output_text="y",
             input_tokens=10, output_tokens=5, latency_ms=100.0,
             decision_type=DecisionType.GENERATION, risk_tier=RiskTier.MINIMAL,
@@ -208,7 +208,7 @@ class TestAuditChainAnchorIntegration:
     def test_default_no_backend_no_output(self, capsys):
         chain = AuditChain(":memory:")
         chain.append(
-            session_id="s1", model="claude-haiku-4-5-20251001",
+            session_id="s1", model="claude-haiku-5-5",
             input_text="hello", output_text="world",
             input_tokens=5, output_tokens=5, latency_ms=50.0,
             decision_type=DecisionType.GENERATION, risk_tier=RiskTier.MINIMAL,

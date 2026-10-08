@@ -283,7 +283,7 @@ class RemediationGenerator:
     def __init__(
         self,
         anthropic_api_key: Optional[str] = None,
-        model: str = "claude-haiku-4-5-20251001",
+        model: str = "claude-haiku-5-5",
         rate_limit_delay: float = 0.3,    # seconds between API calls
         max_findings: int = 50,            # cap to avoid excessive API spend
     ) -> None:

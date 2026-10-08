@@ -18,7 +18,7 @@ Routing precedence (first match wins):
        model — Sonnet 4.6 matches Fable 5's window at 30% of the input price)
     4. needs_executive_prose=True → Sonnet 4.6 @ medium
     5. kind in {classification, extraction, simple_summary} AND the task fits
-       Haiku's 200K window → Haiku 4.5
+       Haiku's 1M window → Haiku 5.5 @ low
     6. default → Sonnet 4.6 @ medium
 
 Each decision also carries an ``output_config.effort`` level — the modern
@@ -27,7 +27,7 @@ depth/cost control (thinking-token budgets are gone on Fable 5 / Opus 4.7+).
 Cost assumptions ($/1M tokens, used only for savings estimates):
     Fable 5:    $10 input / $50 output
     Sonnet 4.6: $3  input / $15 output
-    Haiku 4.5:  $1  input / $5  output
+    Haiku 5.5:  $0.10 input / $0.50 output (<=100K-token prompts; 5x above that)
 """
 
 from __future__ import annotations
@@ -36,12 +36,13 @@ import threading
 from dataclasses import dataclass, field
 
 from core.models import (
-    CTX_WINDOW_HAIKU_4_5,
+    CTX_WINDOW_HAIKU_5_5,
     EFFORT_HIGH,
+    EFFORT_LOW,
     EFFORT_MEDIUM,
     EFFORT_XHIGH,
     MODEL_FABLE_5,
-    MODEL_HAIKU_4_5,
+    MODEL_HAIKU_5_5,
     MODEL_OPUS_4_7,
     MODEL_SONNET_4_6,
 )
@@ -61,7 +62,7 @@ _HAIKU_KINDS: frozenset[str] = frozenset(
 _COST_TABLE: dict[str, tuple[float, float]] = {
     MODEL_FABLE_5:    (10.00, 50.00),
     MODEL_SONNET_4_6: (3.00,  15.00),
-    MODEL_HAIKU_4_5:  (1.00,   5.00),
+    MODEL_HAIKU_5_5:  (0.10,   0.50),  # ponytail: <=100K card; the >100K tier (5x) is not modeled in these estimates
 }
 # Keep deprecated key pointing at Fable 5 so callers using MODEL_OPUS_4_7 still resolve.
 _COST_TABLE[MODEL_OPUS_4_7] = _COST_TABLE[MODEL_FABLE_5]
@@ -73,9 +74,9 @@ _OUTPUT_RATIO = 0.25
 # (Sonnet 4.6 — the cheapest model with a 1M window as of June 2026).
 _OPUS_CONTEXT_THRESHOLD: int = 400_000
 
-# Tasks bigger than ~90% of Haiku's 200K window must never route to Haiku,
+# Tasks bigger than ~90% of Haiku's 1M window must never route to Haiku,
 # regardless of task kind.
-_HAIKU_CONTEXT_CEILING: int = int(CTX_WINDOW_HAIKU_4_5 * 0.9)
+_HAIKU_CONTEXT_CEILING: int = int(CTX_WINDOW_HAIKU_5_5 * 0.9)
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +104,7 @@ class RoutingTask:
         executive summaries). Routes to Sonnet.
     override_model:
         If set, bypasses all heuristics. Must be a canonical model ID from
-        core.models (MODEL_OPUS_4_7 / MODEL_SONNET_4_6 / MODEL_HAIKU_4_5).
+        core.models (MODEL_OPUS_4_7 / MODEL_SONNET_4_6 / MODEL_HAIKU_5_5).
     metadata:
         Arbitrary caller-supplied dict passed through to stats. Useful for
         tagging routed calls by pipeline name, tenant, etc.
@@ -122,8 +123,7 @@ class RoutingDecision:
     """A routed (model, effort) pair.
 
     ``effort`` is the recommended ``output_config.effort`` level for the
-    call — None for models that do not support the effort parameter
-    (Haiku 4.5 errors on it).
+    call — None for models that do not support the effort parameter.
     """
 
     model: str
@@ -158,7 +158,7 @@ class ModelRouter:
     -----
     >>> router = ModelRouter()
     >>> model = router.route(RoutingTask(kind="extraction"))
-    >>> router.stats()   # { "claude-haiku-4-5-..": {"calls": 1, ...}, ... }
+    >>> router.stats()   # { "claude-haiku-5-5": {"calls": 1, ...}, ... }
     """
 
     def __init__(
@@ -173,7 +173,7 @@ class ModelRouter:
         self._stats: dict[str, _ModelStats] = {
             MODEL_FABLE_5:    _ModelStats(),
             MODEL_SONNET_4_6: _ModelStats(),
-            MODEL_HAIKU_4_5:  _ModelStats(),
+            MODEL_HAIKU_5_5:  _ModelStats(),
         }
         # Track hypothetical Opus-always baseline for savings delta
         self._opus_baseline: _ModelStats = _ModelStats()
@@ -278,8 +278,8 @@ class ModelRouter:
             task.kind in self._haiku_kinds
             and task.token_count_estimate <= _HAIKU_CONTEXT_CEILING
         ):
-            # Haiku 4.5 does not support the effort parameter.
-            return RoutingDecision(MODEL_HAIKU_4_5, None)
+            # Cheap path: Haiku 5.5 at low effort (its default is medium).
+            return RoutingDecision(MODEL_HAIKU_5_5, EFFORT_LOW)
         return RoutingDecision(MODEL_SONNET_4_6, EFFORT_MEDIUM)
 
     def _record(self, model: str, token_estimate: int) -> None:

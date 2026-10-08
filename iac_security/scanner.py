@@ -6,7 +6,7 @@ IaCScanner — top-level entry point for infrastructure-as-code security scannin
 
 Detects whether a path contains Terraform or Pulumi (or both), runs the
 appropriate parser, evaluates all 20 built-in policies, and optionally
-generates AI-powered remediation summaries using claude-haiku-4-5 for cost
+generates AI-powered remediation summaries using claude-haiku-5-5 for cost
 efficiency.
 
 Output is a ScanReport containing:
@@ -239,7 +239,7 @@ async def _generate_remediation(
     model: str,
 ) -> str:
     """
-    Call claude-haiku-4-5 to generate a concise one-paragraph remediation
+    Call claude-haiku-5-5 to generate a concise one-paragraph remediation
     for a single finding.  Returns empty string on any error.
     """
     try:
@@ -295,7 +295,7 @@ class IaCScanner:
         self.ai_remediation = ai_remediation and ai_client is not None
         # Default to Haiku for cost; caller can override
         self.ai_model = ai_model or os.environ.get(
-            "IAC_REMEDIATION_MODEL", "claude-haiku-4-5-20251001"
+            "IAC_REMEDIATION_MODEL", "claude-haiku-5-5"
         )
 
     def scan(self, path: Path) -> ScanReport:

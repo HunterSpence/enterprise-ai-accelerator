@@ -45,16 +45,16 @@ Complexity-based model selection. Scores each task on factors including:
 Routes to:
 - **Fable 5** (`claude-fable-5`, overridable via `EAA_FLAGSHIP_MODEL`) — coordination, extended thinking, executive chat, high-stakes compliance
 - **Sonnet 4.6** — report synthesis, moderate-complexity analysis
-- **Haiku 4.5** — high-volume worker tasks, simple classification
+- **Haiku 5.5** — high-volume worker tasks, simple classification
 
-At reference workload (1,000 6R classifications), routing vs. all-Fable-5 saves ~10× on worker-call input cost before batch and cache discounts stack on top.
+At reference workload (1,000 6R classifications), routing vs. all-Fable-5 saves ~100× on worker-call input cost before batch and cache discounts stack on top.
 
 ```python
 from core.model_router import ModelRouter
 
 router = ModelRouter()
 model = router.select(task="classify_workload", token_estimate=800)
-# Returns "claude-haiku-4-5-20251001" for simple classification
+# Returns "claude-haiku-5-5" for simple classification
 ```
 
 ### `ResultCache` (`result_cache.py`)
@@ -82,7 +82,7 @@ from core.batch_coalescer import BatchCoalescer
 
 async with BatchCoalescer(flush_size=100) as coalescer:
     request_id = await coalescer.submit(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-5-5",
         messages=[{"role": "user", "content": "Classify: ..."}],
     )
     result = await coalescer.get_result(request_id)
@@ -132,13 +132,15 @@ result = await loop.run(
 
 Per-call and per-session cost estimation. Uses current Anthropic list pricing (pinned in `cost_estimator.py` — update when pricing changes).
 
-| Token type | Fable 5 | Sonnet 4.6 | Haiku 4.5 |
+| Token type | Fable 5 | Sonnet 4.6 | Haiku 5.5 |
 |---|---|---|---|
-| Input | $10/MTok | $3/MTok | $1/MTok |
-| Output | $50/MTok | $15/MTok | $5/MTok |
-| Cache read | $1/MTok | $0.30/MTok | $0.10/MTok |
-| Cache creation | $12.50/MTok | $3.75/MTok | $1.25/MTok |
-| Batch (input) | $5/MTok | $1.50/MTok | $0.50/MTok |
+| Input | $10/MTok | $3/MTok | $0.10/MTok |
+| Output | $50/MTok | $15/MTok | $0.50/MTok |
+| Cache read | $1/MTok | $0.30/MTok | $0.01/MTok |
+| Cache creation | $12.50/MTok | $3.75/MTok | $0.125/MTok |
+| Batch (input) | $5/MTok | $1.50/MTok | $0.05/MTok |
+
+Haiku 5.5 rates apply to prompts up to 100K tokens (input + cache read + cache creation). A request with a longer prompt is billed at $0.50 input / $2.50 output / $0.05 cache read / $0.625 cache creation for the whole request; `CostEstimator` tiers each request on its own prompt and sums the per-request costs.
 
 ```python
 from core.cost_estimator import CostEstimator

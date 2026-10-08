@@ -97,7 +97,7 @@ Format: Use bullet points for lists of 3+ items. Keep responses under 300 words 
         spend_data: SpendData | None = None,
         anomalies: list[Anomaly] | None = None,
         optimization_plan: OptimizationPlan | None = None,
-        default_model: str = "claude-haiku-4-5",
+        default_model: str = "claude-haiku-5-5",
         complex_model: str = "claude-sonnet-4-6",
     ) -> None:
         self.api_key = anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY", "")
@@ -165,13 +165,17 @@ Format: Use bullet points for lists of 3+ items. Keep responses under 300 words 
         session.add_user(user_content)
 
         try:
+            from core.ai_client import response_text
+
             response = client.messages.create(
                 model=use_model,
                 max_tokens=600,
+                # Haiku 5.5 thinks by default and thinking shares max_tokens.
+                **({"thinking": {"type": "disabled"}} if "haiku" in use_model else {}),
                 system=self.SYSTEM_PROMPT,
                 messages=session.to_api_messages(),
             )
-            answer_text = response.content[0].text.strip()
+            answer_text = response_text(response).strip()
             session.add_assistant(answer_text)
 
             return NLAnswer(

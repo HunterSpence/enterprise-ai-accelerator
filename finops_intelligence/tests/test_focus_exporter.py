@@ -258,7 +258,7 @@ class TestExportAIModelCosts:
     def test_claude_provider_detected(self):
         exporter = FOCUSExporter()
         rows = exporter.export_ai_model_costs([
-            {"model": "claude-haiku-4-5", "total_cost": 1.0, "input_tokens": 100000}
+            {"model": "claude-haiku-5-5", "total_cost": 1.0, "input_tokens": 100000}
         ])
         assert rows[0].ProviderName == "Anthropic"
 

@@ -221,7 +221,7 @@ class NLQueryEngine:
         snapshot: InfrastructureSnapshot,
         cost_report: CostReport | None = None,
         anthropic_api_key: str | None = None,
-        model: str = "claude-haiku-4-5-20251001",
+        model: str = "claude-haiku-5-5",
     ) -> None:
         self._snapshot = snapshot
         self._cost_report = cost_report

@@ -39,13 +39,15 @@ for i, prompt in enumerate([
     #         The wrapper captures tokens, cost, latency, and hashes the
     #         input/output before passing through the original response.
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",  # Use any Claude model
+        model="claude-haiku-5-5",  # Use any Claude model
         max_tokens=200,
         messages=[{"role": "user", "content": prompt}],
     )
 
     # Step 7: The response is the real Anthropic response — no wrapping.
-    answer = response.content[0].text if response.content else ""
+    #         Haiku 5.5 thinks first, so content[0] may be a thinking block:
+    #         join the text blocks instead of indexing.
+    answer = "".join(b.text for b in response.content if b.type == "text")
     print(f"\n[{i+1}] Q: {prompt}")
     print(f"     A: {answer[:80]}…")
 
@@ -77,7 +79,7 @@ if __name__ == "__main__":
         demo_chain = AuditChain(":memory:")
         demo_chain.append(
             session_id="demo-session",
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-5-5",
             input_text="What is the EU AI Act?",
             output_text="The EU AI Act is a comprehensive regulation…",
             input_tokens=12,

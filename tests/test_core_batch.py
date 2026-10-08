@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from core.batch_coalescer import BatchCoalescer, BatchableRequest, BatchFuture, _extract_batch_result
-from core.models import MODEL_HAIKU_4_5
+from core.models import MODEL_HAIKU_5_5
 
 
 def _make_mock_ai(batch_id="batch-123"):
@@ -28,21 +28,21 @@ class TestBatchCoalescerSubmit:
     async def test_submit_returns_batch_future(self):
         ai = _make_mock_ai()
         coalescer = BatchCoalescer(ai=ai, flush_interval_s=999)
-        req = BatchableRequest(model=MODEL_HAIKU_4_5, system="sys", user="usr")
+        req = BatchableRequest(model=MODEL_HAIKU_5_5, system="sys", user="usr")
         future = await coalescer.submit(req)
         assert isinstance(future, BatchFuture)
 
     async def test_submit_assigns_custom_id_if_empty(self):
         ai = _make_mock_ai()
         coalescer = BatchCoalescer(ai=ai, flush_interval_s=999)
-        req = BatchableRequest(model=MODEL_HAIKU_4_5, system="sys", user="usr", custom_id="")
+        req = BatchableRequest(model=MODEL_HAIKU_5_5, system="sys", user="usr", custom_id="")
         await coalescer.submit(req)
         assert req.custom_id != ""
 
     async def test_submit_respects_provided_custom_id(self):
         ai = _make_mock_ai()
         coalescer = BatchCoalescer(ai=ai, flush_interval_s=999)
-        req = BatchableRequest(model=MODEL_HAIKU_4_5, system="sys", user="usr", custom_id="my-id")
+        req = BatchableRequest(model=MODEL_HAIKU_5_5, system="sys", user="usr", custom_id="my-id")
         await coalescer.submit(req)
         assert req.custom_id == "my-id"
 
@@ -51,13 +51,13 @@ class TestBatchCoalescerSubmit:
         coalescer = BatchCoalescer(ai=ai)
         coalescer._closed = True
         with pytest.raises(RuntimeError, match="closed"):
-            await coalescer.submit(BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user="u"))
+            await coalescer.submit(BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user="u"))
 
     async def test_stats_queued_count(self):
         ai = _make_mock_ai()
         coalescer = BatchCoalescer(ai=ai, flush_interval_s=999)
-        await coalescer.submit(BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user="u1"))
-        await coalescer.submit(BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user="u2"))
+        await coalescer.submit(BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user="u1"))
+        await coalescer.submit(BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user="u2"))
         stats = coalescer.stats()
         assert stats["queued"] == 2
 
@@ -66,8 +66,8 @@ class TestBatchCoalescerFlush:
     async def test_flush_on_max_size_triggers_batch_create(self):
         ai = _make_mock_ai()
         coalescer = BatchCoalescer(ai=ai, max_batch_size=2, flush_interval_s=999)
-        req1 = BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user="u1")
-        req2 = BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user="u2")
+        req1 = BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user="u1")
+        req2 = BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user="u2")
         await coalescer.submit(req1)
         await coalescer.submit(req2)
         # give event loop a tick so the ensure_future flush runs
@@ -76,14 +76,14 @@ class TestBatchCoalescerFlush:
 
     async def test_build_batch_params_includes_custom_id(self):
         req = BatchableRequest(
-            model=MODEL_HAIKU_4_5, system="sys", user="usr", custom_id="abc"
+            model=MODEL_HAIKU_5_5, system="sys", user="usr", custom_id="abc"
         )
         params = BatchCoalescer._build_batch_params(req)
         assert params["custom_id"] == "abc"
 
     async def test_build_batch_params_with_schema(self):
         req = BatchableRequest(
-            model=MODEL_HAIKU_4_5, system="s", user="u",
+            model=MODEL_HAIKU_5_5, system="s", user="u",
             schema={"type": "object", "properties": {"x": {"type": "string"}}},
             tool_name="extract",
         )
@@ -92,7 +92,7 @@ class TestBatchCoalescerFlush:
         assert params["params"]["tool_choice"]["name"] == "extract"
 
     async def test_build_batch_params_without_schema(self):
-        req = BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user="u")
+        req = BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user="u")
         params = BatchCoalescer._build_batch_params(req)
         assert "tools" not in params["params"]
 
@@ -121,7 +121,7 @@ class TestBatchCoalescerPartition:
         coalescer = BatchCoalescer(ai=ai, max_batch_size=1_000_000, flush_interval_s=999)
         futures = []
         for i in range(2000):
-            req = BatchableRequest(model=MODEL_HAIKU_4_5, system="s", user=f"u{i}", custom_id=f"id-{i}")
+            req = BatchableRequest(model=MODEL_HAIKU_5_5, system="s", user=f"u{i}", custom_id=f"id-{i}")
             futures.append(await coalescer.submit(req))
 
         coalescer._max_batch_size = 1000

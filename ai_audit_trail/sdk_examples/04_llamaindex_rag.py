@@ -105,7 +105,7 @@ if __name__ == "__main__":
         # Synthesis step logged
         demo.append(
             session_id="rag-demo-q1",
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-5-5",
             input_text="[Context + Question]",
             output_text="Article 12 requires automatic logging throughout the lifetime of high-risk AI systems.",
             input_tokens=150,

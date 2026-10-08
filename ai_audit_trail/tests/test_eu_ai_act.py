@@ -352,14 +352,14 @@ class TestGPAIObligations:
 
     def test_all_docs_present_reduces_missing_obligations(self):
         full_check = check_gpai_obligations(
-            "claude-haiku-4-5",
+            "claude-haiku-5-5",
             has_transparency_doc=True,
             has_copyright_policy=True,
             has_energy_consumption_data=True,
             has_capabilities_limitations_doc=True,
             has_incident_reporting_process=True,
         )
-        minimal_check = check_gpai_obligations("claude-haiku-4-5")
+        minimal_check = check_gpai_obligations("claude-haiku-5-5")
         assert len(full_check.obligations_missing) < len(minimal_check.obligations_missing)
 
     def test_transparency_checklist_is_dict(self):

@@ -83,7 +83,7 @@ _DEMO_SYSTEMS = [
 _MODELS = [
     "claude-fable-5",
     "claude-sonnet-4-6",
-    "claude-haiku-4-5",
+    "claude-haiku-5-5",
     "gpt-4o",
     "gpt-4o-mini",
 ]
@@ -94,7 +94,7 @@ _DECISION_TYPES = list(DecisionType)
 _COSTS = {
     "claude-fable-5": 0.010,
     "claude-sonnet-4-6": 0.003,
-    "claude-haiku-4-5": 0.001,
+    "claude-haiku-5-5": 0.0001,
     "gpt-4o": 0.005,
     "gpt-4o-mini": 0.0006,
 }
@@ -604,7 +604,7 @@ def render_nist_rmf(chain: AuditChain) -> None:
         from core.models import (
             MODEL_FABLE_5,
             MODEL_SONNET_4_6,
-            MODEL_HAIKU_4_5,
+            MODEL_HAIKU_5_5,
             MODEL_COORDINATOR,
             MODEL_REPORTER,
             MODEL_WORKER,
@@ -625,10 +625,10 @@ def render_nist_rmf(chain: AuditChain) -> None:
                 "risk_notes": "General purpose; Art. 52 transparency obligations apply",
             },
             {
-                "model_id": MODEL_HAIKU_4_5,
+                "model_id": MODEL_HAIKU_5_5,
                 "role": "high-volume worker (bulk scans, anomaly explanations)",
                 "provider": "Anthropic",
-                "source": "core.models.MODEL_HAIKU_4_5",
+                "source": "core.models.MODEL_HAIKU_5_5",
                 "risk_notes": "Lightweight worker; standard transparency obligations",
             },
         ]

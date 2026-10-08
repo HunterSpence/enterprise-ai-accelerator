@@ -557,10 +557,10 @@ class MLBOMGenerator:
         from core.models import (
             MODEL_FABLE_5,
             MODEL_SONNET_4_6,
-            MODEL_HAIKU_4_5,
+            MODEL_HAIKU_5_5,
             CTX_WINDOW_FABLE_5,
             CTX_WINDOW_SONNET_4_6,
-            CTX_WINDOW_HAIKU_4_5,
+            CTX_WINDOW_HAIKU_5_5,
         )
 
         components = [
@@ -583,13 +583,13 @@ class MLBOMGenerator:
                 context_window=CTX_WINDOW_SONNET_4_6,
             ),
             _ml_model_component(
-                model_id=MODEL_HAIKU_4_5,
-                name="Claude Haiku 4.5",
-                version=MODEL_HAIKU_4_5,
+                model_id=MODEL_HAIKU_5_5,
+                name="Claude Haiku 5.5",
+                version=MODEL_HAIKU_5_5,
                 provider="Anthropic",
                 intended_use="High-volume worker, bulk scans, anomaly explanations",
                 role="worker",
-                context_window=CTX_WINDOW_HAIKU_4_5,
+                context_window=CTX_WINDOW_HAIKU_5_5,
             ),
         ]
 

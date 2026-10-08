@@ -87,7 +87,7 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 │  └─────────────────────────────┬───────────────────────────────────────────────┘ │
 │            ┌────────────────────┼────────────────────┐                           │
 │  ┌─────────▼──────┐  ┌─────────▼──────┐  ┌──────────▼───────┐                  │
-│  │ WorkerAgent    │  │ WorkerAgent    │  │ WorkerAgent      │  (Haiku 4.5)       │
+│  │ WorkerAgent    │  │ WorkerAgent    │  │ WorkerAgent      │  (Haiku 5.5)       │
 │  │ (module task)  │  │ (module task)  │  │ (module task)    │                    │
 │  └────────────────┘  └────────────────┘  └──────────────────┘                   │
 │            └────────────────────┬────────────────────┘                           │
@@ -168,7 +168,7 @@ Enterprise AI Accelerator is a unified cloud governance platform. It has five la
 |---|---|---|
 | High | claude-fable-5 | Coordination, extended thinking, executive chat, high-stakes compliance audits, interleaved thinking loops |
 | Medium | claude-sonnet-4-6 | Report synthesis, moderate-complexity analysis, IaC policy explanations |
-| Low | claude-haiku-4-5-20251001 | High-volume worker tasks, simple classification, data extraction, CVE triage |
+| Low | claude-haiku-5-5 | High-volume worker tasks, simple classification, data extraction, CVE triage |
 
 `ModelRouter.select(task, token_estimate)` returns a model string. Override by passing `model=` directly to `AIClient.complete()`.
 

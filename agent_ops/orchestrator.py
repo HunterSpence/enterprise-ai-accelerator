@@ -18,7 +18,7 @@ Hardening additions (2026-06):
 
 Architecture:
   - Fable 5 coordinator decomposes the task
-  - Architecture / Migration / Compliance workers run in parallel (Haiku 4.5)
+  - Architecture / Migration / Compliance workers run in parallel (Haiku 5.5)
   - Sonnet 4.6 ReportAgent synthesizes the final briefing
 """
 

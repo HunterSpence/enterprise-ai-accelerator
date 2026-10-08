@@ -37,7 +37,7 @@ from rich.panel import Panel
 from rich import box
 
 from core.ai_client import get_client
-from core.models import MODEL_HAIKU_4_5
+from core.models import MODEL_HAIKU_5_5
 
 console = Console()
 
@@ -782,8 +782,9 @@ Respond with the workload's classification and guidance."""
                     system="You are an expert cloud migration architect.",
                     user=prompt,
                     schema=schema,
-                    model=MODEL_HAIKU_4_5,
+                    model=MODEL_HAIKU_5_5,
                     max_tokens=500,
+                    effort="low",  # Haiku 5.5 defaults to medium; thinking shares max_tokens
                 )
             )
             data = structured.data

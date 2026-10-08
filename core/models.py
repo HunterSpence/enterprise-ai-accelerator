@@ -8,7 +8,7 @@ Enterprise AI Accelerator.
 Rules of the road:
   - Fable 5 is the coordinator / high-stakes classifier / executive chat model
   - Sonnet 4.6 is the report writer / medium-stakes summarizer / long-context workhorse
-  - Haiku 4.5 is the high-volume worker (bulk scans, anomaly explanations)
+  - Haiku 5.5 is the high-volume worker (bulk scans, anomaly explanations)
   - Opus 4.8 is the refusal-fallback model (Fable 5's safety classifiers can
     decline a request with ``stop_reason: "refusal"``; Opus 4.8 picks it up)
 
@@ -28,7 +28,7 @@ from __future__ import annotations
 import os
 
 # ---------------------------------------------------------------------------
-# Canonical model IDs (as of 2026-06-12)
+# Canonical model IDs (as of 2026-06-12; worker tier moved to Haiku 5.5 on 2026-10-08)
 # ---------------------------------------------------------------------------
 
 # Flagship: Claude Fable 5 — $10/MTok input, $50/MTok output (June 2026)
@@ -36,7 +36,9 @@ import os
 MODEL_FABLE_5: str = os.environ.get("EAA_FLAGSHIP_MODEL", "claude-fable-5")
 MODEL_OPUS_4_8: str = "claude-opus-4-8"
 MODEL_SONNET_4_6: str = "claude-sonnet-4-6"
-MODEL_HAIKU_4_5: str = "claude-haiku-4-5-20251001"
+# Haiku 5.5: no date suffix. 400s on temperature/top_p/top_k and on prefill; thinking is
+# adaptive by default, so content can START with a thinking block (core.ai_client.response_text).
+MODEL_HAIKU_5_5: str = "claude-haiku-5-5"
 
 # Refusal fallback: Fable 5 requests can come back with stop_reason="refusal"
 # (safety classifiers; HTTP 200, not an exception). The platform retries
@@ -53,13 +55,13 @@ MODEL_OPUS_4_7: str = MODEL_FABLE_5  # deprecated: was "claude-opus-4-7"
 
 MODEL_COORDINATOR: str = MODEL_FABLE_5
 MODEL_REPORTER: str = MODEL_SONNET_4_6
-MODEL_WORKER: str = MODEL_HAIKU_4_5
+MODEL_WORKER: str = MODEL_HAIKU_5_5
 
 # ---------------------------------------------------------------------------
 # Effort levels — output_config={"effort": ...}
 #
 # This replaced fixed thinking-token budgets across the Claude 4.6+ family.
-# Supported on Fable 5, Opus 4.6+, and Sonnet 4.6 (errors on Haiku 4.5).
+# Supported on Fable 5, Opus 4.6+, Sonnet 4.6, and Haiku 5.5.
 #
 #   low     — short scoped tasks, latency-sensitive worker calls
 #   medium  — cost-sensitive report generation
@@ -151,12 +153,12 @@ CACHE_TTL_1H: str = "1h"          # 1 hour TTL (2x write cost; for bursty traffi
 CTX_WINDOW_FABLE_5: int = 1_000_000
 CTX_WINDOW_OPUS_4_8: int = 1_000_000
 CTX_WINDOW_SONNET_4_6: int = 1_000_000   # 1M as of Sonnet 4.6 (was 200K on 4.5)
-CTX_WINDOW_HAIKU_4_5: int = 200_000
+CTX_WINDOW_HAIKU_5_5: int = 1_000_000
 
 MAX_OUTPUT_FABLE_5: int = 128_000        # streaming required above ~16K
 MAX_OUTPUT_OPUS_4_8: int = 128_000
 MAX_OUTPUT_SONNET_4_6: int = 64_000
-MAX_OUTPUT_HAIKU_4_5: int = 64_000
+MAX_OUTPUT_HAIKU_5_5: int = 128_000
 
 # Deprecated alias kept for backward compatibility.
 CTX_WINDOW_OPUS_4_7: int = CTX_WINDOW_FABLE_5
@@ -214,15 +216,15 @@ def describe_model(model_id: str) -> dict[str, object]:
             "can_refuse": False,
             "role": "reporter",
         }
-    if model_id == MODEL_HAIKU_4_5:
+    if model_id == MODEL_HAIKU_5_5:
         return {
-            "model": MODEL_HAIKU_4_5,
+            "model": MODEL_HAIKU_5_5,
             "family": "haiku",
-            "context_window": CTX_WINDOW_HAIKU_4_5,
-            "max_output_tokens": MAX_OUTPUT_HAIKU_4_5,
-            "supports_extended_thinking": True,   # budget-style thinking only
-            "supports_adaptive_thinking": False,
-            "supports_effort": False,             # effort param errors on Haiku 4.5
+            "context_window": CTX_WINDOW_HAIKU_5_5,
+            "max_output_tokens": MAX_OUTPUT_HAIKU_5_5,
+            "supports_extended_thinking": True,   # adaptive only — budget_tokens is a 400
+            "supports_adaptive_thinking": True,   # on by default; thinking blocks come first
+            "supports_effort": True,              # low|medium|high|xhigh|max (default medium)
             "always_on_thinking": False,
             "supports_structured_outputs": True,
             "supports_citations": True,
