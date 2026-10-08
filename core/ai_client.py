@@ -297,8 +297,9 @@ class AIClient:
         Fable 5 / Opus 4.8 family: adaptive with summarized display — the
         display opt-in is what keeps the Annex IV reasoning trace non-empty
         (the default on these models is ``omitted``: empty thinking text).
-        Sonnet 4.6: plain adaptive. Models without adaptive support
-        (Haiku 4.5): None — caller falls back to no thinking.
+        Sonnet 4.6 / Haiku 5.5: plain adaptive (``budget_tokens`` is a 400 on
+        Haiku 5.5). Models without adaptive support: None — caller falls back
+        to no thinking.
         """
         if not supports_adaptive_thinking(model):
             return None
@@ -683,6 +684,25 @@ def _strict_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
     _walk(normalized)
     return normalized
+
+
+def response_text(resp: Any) -> str:
+    """Join the ``type == "text"`` blocks of a Messages response.
+
+    Accepts a message (SDK object or dict) or a bare list of content blocks,
+    each an SDK object or a dict. Haiku 5.5 thinks adaptively, so
+    ``content[0]`` is often a thinking block: never index it for text.
+    """
+    blocks = resp.get("content") if isinstance(resp, dict) else getattr(resp, "content", resp)
+    parts: list[str] = []
+    for b in blocks or []:
+        kind, text = (
+            (b.get("type"), b.get("text")) if isinstance(b, dict)
+            else (getattr(b, "type", None), getattr(b, "text", None))
+        )
+        if kind == "text":
+            parts.append(text or "")
+    return "".join(parts)
 
 
 def _extract_json_text(response: Any) -> tuple[dict[str, Any], str]:

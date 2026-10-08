@@ -92,7 +92,7 @@ print(response.answer)
 Walk through `README.md` ASCII diagram. Explain the three-tier model structure:
 - Fable 5 (`claude-fable-5`) for coordination, extended thinking, executive chat
 - Sonnet 4.6 for report synthesis
-- Haiku 4.5 for high-volume worker tasks
+- Haiku 5.5 for high-volume worker tasks
 
 Point to `core/model_router.py` — show that complexity scoring is automatic.
 

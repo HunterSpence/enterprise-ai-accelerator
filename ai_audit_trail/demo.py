@@ -155,7 +155,7 @@ def _populate_chain(
 
         chain.append(
             session_id=f"sess_{i // 50}",
-            model="claude-sonnet-4-6" if risk == "HIGH" else "claude-haiku-4-5",
+            model="claude-sonnet-4-6" if risk == "HIGH" else "claude-haiku-5-5",
             input_text=prompt,
             output_text=response,
             input_tokens=in_tok,
@@ -208,7 +208,7 @@ def _scenario_1_enterprise_deploy(chain_path: str) -> None:
 
             chain.append(
                 session_id=f"deploy-session-{system_id}",
-                model="claude-sonnet-4-6" if risk == "HIGH" else "claude-haiku-4-5",
+                model="claude-sonnet-4-6" if risk == "HIGH" else "claude-haiku-5-5",
                 input_text=prompt,
                 output_text=response,
                 input_tokens=in_tok,

@@ -53,7 +53,7 @@ class TestPrometheusExporter:
         from core.prometheus_exporter import record_llm_call
         # Should silently no-op if prometheus not installed
         record_llm_call(
-            model="claude-haiku-4-5", module="test", outcome="success",
+            model="claude-haiku-5-5", module="test", outcome="success",
             input_tokens=100, output_tokens=50, latency_seconds=0.5,
         )
 
@@ -83,14 +83,14 @@ class TestHooks:
         from unittest.mock import MagicMock
         from core._hooks import LLMCallEvent
         resp = MagicMock()
-        resp.model = "claude-haiku-4-5-20251001"
+        resp.model = "claude-haiku-5-5"
         resp.input_tokens = 100
         resp.output_tokens = 50
         resp.cache_read_tokens = 0
         resp.cache_creation_tokens = 0
         resp.stop_reason = "end_turn"
         ev = LLMCallEvent.from_structured_response(resp, module="test", latency_seconds=1.2)
-        assert ev.model == "claude-haiku-4-5-20251001"
+        assert ev.model == "claude-haiku-5-5"
         assert ev.input_tokens == 100
         assert ev.latency_seconds == 1.2
 

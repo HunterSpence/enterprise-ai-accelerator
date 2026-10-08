@@ -5,7 +5,7 @@ agent_ops/agents.py
 Specialized sub-agents that wrap enterprise analysis modules.
 
 Opus 4.7 upgrade (2026-04):
-  - Haiku 4.5 remains the high-volume worker for Architecture/Migration/Compliance
+  - Haiku 5.5 remains the high-volume worker for Architecture/Migration/Compliance
   - ReportAgent is promoted to Sonnet 4.6 (better narrative synthesis)
   - Every agent now uses native tool-use structured output via ``core.AIClient``,
     replacing the fragile ``_parse_json_response`` regex path
@@ -67,7 +67,7 @@ class AgentResult:
 # Base agent
 # ---------------------------------------------------------------------------
 
-_WORKER_MODEL = MODEL_WORKER         # claude-haiku-4-5-20251001
+_WORKER_MODEL = MODEL_WORKER         # claude-haiku-5-5
 _REPORTER_MODEL = MODEL_REPORTER     # claude-sonnet-4-6
 
 
@@ -122,6 +122,8 @@ class BaseAgent:
             tool_description=self.tool_description,
             model=self.model,
             max_tokens=self.max_tokens,
+            # Workers run on Haiku 5.5 (default effort medium; thinking shares max_tokens).
+            effort="low" if self.model == _WORKER_MODEL else None,
         )
         return response.data, response
 

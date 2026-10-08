@@ -517,12 +517,15 @@ def _enhance_with_claude(
             f"Context: {resource_summary}\n\n"
             f"```hcl\n{hcl_content}\n```"
         )
+        from core.ai_client import response_text
+
         response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-5-5",
             max_tokens=4096,
+            thinking={"type": "disabled"},  # Haiku 5.5 thinks by default; thinking shares max_tokens
             messages=[{"role": "user", "content": prompt}],
         )
-        enhanced = response.content[0].text
+        enhanced = response_text(response)
         # Strip markdown code fences if present
         if "```" in enhanced:
             match = re.search(r"```(?:hcl)?\n(.*?)```", enhanced, re.DOTALL)

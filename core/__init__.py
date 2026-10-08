@@ -3,7 +3,7 @@ core — Shared Anthropic client layer for Enterprise AI Accelerator
 ==================================================================
 
 Centralizes:
-- Model selection (Fable 5 coordinator, Sonnet 4.6 reporter, Haiku 4.5 worker)
+- Model selection (Fable 5 coordinator, Sonnet 4.6 reporter, Haiku 5.5 worker)
 - Adaptive thinking + effort levels (the June-2026 depth/cost control)
 - Refusal handling with server-side fallback to Opus 4.8
 - Prompt caching (5-minute ephemeral cache on heavy system prompts)
@@ -21,6 +21,7 @@ from core.ai_client import (
     StructuredResponse,
     ThinkingResponse,
     get_client,
+    response_text,
 )
 from core.models import (
     DEFAULT_EFFORT,
@@ -32,7 +33,7 @@ from core.models import (
     MODEL_COORDINATOR,
     MODEL_FABLE_5,
     MODEL_FALLBACK,
-    MODEL_HAIKU_4_5,
+    MODEL_HAIKU_5_5,
     MODEL_OPUS_4_7,
     MODEL_OPUS_4_8,
     MODEL_REPORTER,
@@ -52,7 +53,7 @@ __all__ = [
     "MODEL_OPUS_4_8",
     "MODEL_OPUS_4_7",
     "MODEL_SONNET_4_6",
-    "MODEL_HAIKU_4_5",
+    "MODEL_HAIKU_5_5",
     "MODEL_FALLBACK",
     "EFFORT_LOW",
     "EFFORT_MEDIUM",
@@ -68,5 +69,6 @@ __all__ = [
     "RefusalError",
     "StructuredResponse",
     "ThinkingResponse",
+    "response_text",
     "get_client",
 ]

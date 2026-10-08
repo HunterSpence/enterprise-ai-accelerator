@@ -5,7 +5,7 @@ finops_intelligence/savings_reporter.py
 SavingsReporter — consolidates RI/SP, right-sizing, and carbon recommendations
 into a single CFO-ready executive savings report.
 
-Uses core.AIClient with Haiku 4.5 (MODEL_WORKER) to generate a one-paragraph
+Uses core.AIClient with Haiku 5.5 (MODEL_WORKER) to generate a one-paragraph
 narrative summary — cached via the result_cache parameter if provided.
 
 No new dependencies — uses existing anthropic, pandas, json (stdlib).
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 # Haiku model constant (mirrors core.models.MODEL_WORKER)
 # ---------------------------------------------------------------------------
 
-_HAIKU_MODEL = "claude-haiku-4-5-20251001"
+_HAIKU_MODEL = "claude-haiku-5-5"
 
 # ---------------------------------------------------------------------------
 # Opportunity dataclass (unified view across all saving types)
@@ -325,7 +325,7 @@ class SavingsReporter:
         savings_pct = (total_savings / current_monthly_spend * 100) if current_monthly_spend > 0 else 0.0
 
         # ------------------------------------------------------------------
-        # AI narrative (Haiku 4.5, cached)
+        # AI narrative (Haiku 5.5, cached)
         # ------------------------------------------------------------------
         narrative = ""
         if self._ai_client is not None and total_savings > 0:
@@ -373,7 +373,7 @@ class SavingsReporter:
         co2e_reduction_kg: float,
         top_opportunity: Optional[SavingsOpportunity],
     ) -> str:
-        """Call Haiku 4.5 to write a CFO-ready paragraph."""
+        """Call Haiku 5.5 to write a CFO-ready paragraph."""
         system = (
             "You are a FinOps analyst writing a one-paragraph executive summary for a CFO. "
             "Be specific about dollar amounts and percentages. No bullet points. "
@@ -393,13 +393,16 @@ class SavingsReporter:
             "Write a CFO-ready executive summary paragraph."
         )
         try:
+            from core.ai_client import response_text
+
             response = await self._ai_client.raw.messages.create(
                 model=_HAIKU_MODEL,
                 max_tokens=256,
+                thinking={"type": "disabled"},  # Haiku 5.5 thinks by default; thinking shares max_tokens
                 system=system,
                 messages=[{"role": "user", "content": user}],
             )
-            return response.content[0].text.strip()
+            return response_text(response).strip()
         except Exception as exc:
             logger.warning("AI narrative generation failed: %s", exc)
             return (

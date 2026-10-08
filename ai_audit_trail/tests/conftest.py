@@ -40,7 +40,7 @@ def populated_chain() -> Generator[AuditChain, None, None]:
     """
     chain = AuditChain(":memory:", store_plaintext=True)
     systems = ["loan-approval-v2", "fraud-detection-v3"]
-    models = ["claude-sonnet-4-6", "claude-haiku-4-5", "gpt-4o"]
+    models = ["claude-sonnet-4-6", "claude-haiku-5-5", "gpt-4o"]
     tiers = [RiskTier.HIGH, RiskTier.HIGH, RiskTier.LIMITED, RiskTier.MINIMAL]
     dtypes = list(DecisionType)
 

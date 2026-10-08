@@ -519,7 +519,7 @@ async def scene_6_nl_query(fast: bool, skip_nl: bool) -> None:
          "   Cache hit rate dropped from 91% to 67% after June 20 deploy.\n"
          "   Fix: Add Accept-Encoding to CloudFront cache policy. ETA: 30 min.\n\n", "white"),
         ("Total identified: $57,408 in avoidable spend this quarter.\n", "bold green"),
-        ("Model: claude-haiku-4-5 (fast Q&A) | Context: 847K rows via DuckDB\n", "dim"),
+        ("Model: claude-haiku-5-5 (fast Q&A) | Context: 847K rows via DuckDB\n", "dim"),
     ]
 
     console.print(f"  [{C.BLUE}]Assistant:[/]")

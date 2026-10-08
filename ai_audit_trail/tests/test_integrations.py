@@ -39,9 +39,21 @@ class TestCostCalculation:
         assert abs(cost - 3.00) < 0.01
 
     def test_haiku_cost_calculation(self):
-        """claude-haiku-4: $1.00/M input, $5.00/M output."""
-        cost = _calculate_cost("claude-haiku-4-5", input_tokens=1_000_000, output_tokens=0)
-        assert abs(cost - 1.00) < 0.01
+        """claude-haiku-5-5: $0.10/M input, $0.50/M output (prompts up to 100K tokens)."""
+        cost = _calculate_cost("claude-haiku-5-5", input_tokens=100_000, output_tokens=0)
+        assert abs(cost - 0.01) < 1e-9
+        cost = _calculate_cost("claude-haiku-5-5", input_tokens=0, output_tokens=1_000_000)
+        assert abs(cost - 0.50) < 1e-9
+
+    def test_haiku_long_prompt_tier(self):
+        """A prompt over 100K tokens bills the whole request at $0.50/M in, $2.50/M out."""
+        cost = _calculate_cost("claude-haiku-5-5", input_tokens=200_000, output_tokens=10_000)
+        assert abs(cost - 0.125) < 1e-9
+        # Cached tokens count toward the prompt size.
+        cost = _calculate_cost(
+            "claude-haiku-5-5", input_tokens=50_000, output_tokens=0, cache_read_tokens=60_000
+        )
+        assert abs(cost - (50_000 * 0.50 + 60_000 * 0.05) / 1_000_000) < 1e-9
 
     def test_fable_cost_calculation(self):
         """claude-fable-5: $10.00/M input, $50.00/M output."""
@@ -64,7 +76,7 @@ class TestCostCalculation:
         assert cached_cost < regular_cost
 
     def test_zero_tokens_zero_cost(self):
-        cost = _calculate_cost("claude-haiku-4-5", input_tokens=0, output_tokens=0)
+        cost = _calculate_cost("claude-haiku-5-5", input_tokens=0, output_tokens=0)
         assert cost == 0.0
 
     def test_unknown_model_returns_fallback_cost(self):
@@ -88,7 +100,7 @@ def _mock_anthropic_response(
     text: str = "Mock response",
     input_tokens: int = 100,
     output_tokens: int = 50,
-    model: str = "claude-haiku-4-5-20251001",
+    model: str = "claude-haiku-5-5",
 ) -> MagicMock:
     """Build a mock Anthropic messages.create() response."""
     response = MagicMock()
@@ -136,7 +148,7 @@ class TestAuditedAnthropic:
 
             client = AuditedAnthropic(audit_chain=empty_chain, system_id="test")
             client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
                 max_tokens=100,
                 messages=[{"role": "user", "content": "Hello"}],
             )
@@ -151,7 +163,7 @@ class TestAuditedAnthropic:
 
             client = AuditedAnthropic(audit_chain=empty_chain, system_id="test")
             client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
                 max_tokens=100,
                 messages=[{"role": "user", "content": "Hello"}],
             )
@@ -164,13 +176,13 @@ class TestAuditedAnthropic:
         """Cost in USD should be stored and be positive for real token usage."""
         with patch("ai_audit_trail.integrations.anthropic_sdk.Anthropic") as MockAnthropic:
             mock_response = _mock_anthropic_response(
-                input_tokens=1000, output_tokens=500, model="claude-haiku-4-5-20251001"
+                input_tokens=1000, output_tokens=500, model="claude-haiku-5-5"
             )
             MockAnthropic.return_value.messages.create.return_value = mock_response
 
             client = AuditedAnthropic(audit_chain=empty_chain, system_id="test")
             client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
                 max_tokens=100,
                 messages=[{"role": "user", "content": "Hello"}],
             )
@@ -186,7 +198,7 @@ class TestAuditedAnthropic:
 
             client = AuditedAnthropic(audit_chain=empty_chain, system_id="test")
             result = client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
                 max_tokens=100,
                 messages=[{"role": "user", "content": "Hello"}],
             )
@@ -199,7 +211,7 @@ class TestAuditedAnthropic:
             MockAnthropic.return_value.messages.create.return_value = _mock_anthropic_response()
             client = AuditedAnthropic(audit_chain=empty_chain, system_id="loan-approval-v2")
             client.messages.create(
-                model="claude-haiku-4-5-20251001",
+                model="claude-haiku-5-5",
                 max_tokens=100,
                 messages=[{"role": "user", "content": "Hello"}],
             )
@@ -214,7 +226,7 @@ class TestAuditedAnthropic:
             client = AuditedAnthropic(audit_chain=empty_chain, system_id="test")
             for _ in range(5):
                 client.messages.create(
-                    model="claude-haiku-4-5-20251001",
+                    model="claude-haiku-5-5",
                     max_tokens=50,
                     messages=[{"role": "user", "content": "ping"}],
                 )
@@ -332,7 +344,7 @@ class TestLangChainCallback:
         # (decoupled from LangChain's event system for unit testing)
         empty_chain.append(
             session_id="lc-session",
-            model="claude-haiku-4-5",
+            model="claude-haiku-5-5",
             input_text="LangChain test prompt",
             output_text="LangChain response",
             input_tokens=50,

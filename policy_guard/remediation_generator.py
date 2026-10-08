@@ -283,7 +283,7 @@ class RemediationGenerator:
     def __init__(
         self,
         anthropic_api_key: Optional[str] = None,
-        model: str = "claude-haiku-4-5-20251001",
+        model: str = "claude-haiku-5-5",
         rate_limit_delay: float = 0.3,    # seconds between API calls
         max_findings: int = 50,            # cap to avoid excessive API spend
     ) -> None:
@@ -461,7 +461,8 @@ Start directly with the first resource block or comment."""
                 self._client.thinking(
                     system=system_prompt,
                     user=prompt,
-                    max_tokens=800,
+                    max_tokens=1024,
+                    effort="low",  # Haiku 5.5: thinking shares max_tokens; high effort can leave no text
                 )
             )
             time.sleep(self._rate_limit_delay)

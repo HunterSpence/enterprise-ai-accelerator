@@ -511,7 +511,7 @@ def main(argv: list[str] | None = None) -> None:
     console.print(f"  [bold]Total on-prem annual run cost:[/bold] [red]${total_on_prem:,.0f}[/red]")
     console.print(
         f"  [bold]AI enrichment:[/bold] "
-        f"{'[dim]disabled (--no-ai)[/dim]' if args.no_ai else '[green]enabled (Claude Haiku 4.5)[/green]'}"
+        f"{'[dim]disabled (--no-ai)[/dim]' if args.no_ai else '[green]enabled (Claude Haiku 5.5)[/green]'}"
     )
     console.print()
 

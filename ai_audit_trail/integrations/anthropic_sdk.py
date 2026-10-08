@@ -49,12 +49,17 @@ _ANTHROPIC_PRICING: dict[str, dict[str, float]] = {
     "claude-fable-5": {"input": 10.00, "output": 50.00, "cache_read": 1.00},
     "claude-opus-4": {"input": 15.00, "output": 75.00, "cache_read": 1.50},
     "claude-sonnet-4": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
-    "claude-haiku-4": {"input": 1.00, "output": 5.00, "cache_read": 0.10},
+    "claude-haiku-5": {"input": 0.10, "output": 0.50, "cache_read": 0.01},
     "claude-3-opus": {"input": 15.00, "output": 75.00, "cache_read": 1.50},
     "claude-3-5-sonnet": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
     "claude-3-sonnet": {"input": 3.00, "output": 15.00, "cache_read": 0.30},
     "claude-3-haiku": {"input": 0.25, "output": 1.25, "cache_read": 0.03},
 }
+# Haiku 5.5 bills a request whose prompt (input + cache reads) exceeds 100K
+# tokens at these rates for the whole request.
+# ponytail: cache-creation tokens are not passed in, so they do not count toward the tier.
+_HAIKU_5_LONG_PROMPT = {"input": 0.50, "output": 2.50, "cache_read": 0.05}
+_LONG_PROMPT_TOKENS = 100_000
 
 
 def _calculate_cost(
@@ -72,6 +77,8 @@ def _calculate_cost(
     for key, rates in _ANTHROPIC_PRICING.items():
         if key in model_lower:
             pricing = rates
+            if key == "claude-haiku-5" and input_tokens + cache_read_tokens > _LONG_PROMPT_TOKENS:
+                pricing = _HAIKU_5_LONG_PROMPT
             break
 
     if pricing is None:

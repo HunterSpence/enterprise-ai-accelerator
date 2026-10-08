@@ -193,7 +193,7 @@ rich >= 13.0
 
 | Task | Model | Rationale |
 |---|---|---|
-| 6R classification enrichment | `claude-haiku-4-5-20251001` | Fast, cheap, good structured output |
+| 6R classification enrichment | `claude-haiku-5-5` | Fast, cheap, good structured output |
 | Migration runbook generation | `claude-sonnet-4-6` | Complex multi-step content requires reasoning |
 
 Estimated cost per full assessment (47 workloads, all AI features enabled): **~$0.15–$0.40**

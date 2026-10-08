@@ -252,7 +252,7 @@ async def run_demo() -> None:
         Panel(
             "[bold white]AgentOps — Multi-Agent Claude Orchestration[/bold white]\n\n"
             "[dim]Coordinator:[/dim]  [bold magenta]Claude Opus 4.6[/bold magenta]  (complex reasoning + task decomposition)\n"
-            "[dim]Sub-agents:[/dim]   [bold cyan]Claude Haiku 4.5[/bold cyan]  (cost-efficient parallel workers)\n\n"
+            "[dim]Sub-agents:[/dim]   [bold cyan]Claude Haiku 5.5[/bold cyan]  (cost-efficient parallel workers)\n\n"
             "[dim]Agents:[/dim]  ArchitectureAgent  |  MigrationAgent  |  ComplianceAgent  |  ReportAgent\n"
             "[dim]Mode:[/dim]   asyncio.gather — all analysis agents run in parallel",
             title="[bold white on dark_blue]  enterprise-ai-accelerator  [/bold white on dark_blue]",

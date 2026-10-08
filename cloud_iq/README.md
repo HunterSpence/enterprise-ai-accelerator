@@ -188,7 +188,7 @@ Security defaults baked into every generated resource:
 - Async scanning with `asyncio.gather` — parallel service discovery per region
 - Typed dataclasses throughout — no dicts masquerading as structs
 - Rich for all terminal output — no plain print() calls
-- Claude Haiku (`claude-haiku-4-5-20251001`) for NL queries and Terraform enhancement
+- Claude Haiku (`claude-haiku-5-5`) for NL queries and Terraform enhancement
 - Handles AWS API pagination for all services
 - Graceful degradation: scan errors are captured per-service, not fatal
 - IAM credential report parsing for MFA and key rotation analysis

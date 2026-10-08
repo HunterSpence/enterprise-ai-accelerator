@@ -60,6 +60,7 @@ def _score_six_r_live(cases: list[dict]) -> SuiteScore:
     Only called when ANTHROPIC_API_KEY is set and --offline is not passed.
     """
     import anthropic  # type: ignore[import]
+    from core.ai_client import response_text
     from evals.loader import VALID_6R_LABELS
 
     client = anthropic.Anthropic()
@@ -77,12 +78,14 @@ def _score_six_r_live(cases: list[dict]) -> SuiteScore:
     for case in cases:
         try:
             response = client.messages.create(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=16,
+                model="claude-haiku-5-5",
+                # Thinking tokens count toward max_tokens: 16 left no room for the label.
+                max_tokens=1024,
+                extra_body={"output_config": {"effort": "low"}},
                 system=SYSTEM,
                 messages=[{"role": "user", "content": case["description"]}],
             )
-            predicted = response.content[0].text.strip()
+            predicted = response_text(response).strip()
         except Exception as exc:
             logger.warning("API call failed for case %s: %s", case["id"], exc)
             predicted = "ERROR"

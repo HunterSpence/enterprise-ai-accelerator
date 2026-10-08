@@ -114,7 +114,7 @@ evals/
 - Injection: calls `core.guardrails.is_injection()` if the module is present; gracefully skips (exit 0) if absent.
 
 **Live mode** (when `ANTHROPIC_API_KEY` is set and `--offline` not passed):
-- 6R cases are sent to `claude-haiku-4-5-20251001` for label classification; accuracy vs golden labels is scored.
+- 6R cases are sent to `claude-haiku-5-5` for label classification; accuracy vs golden labels is scored.
 - IaC and injection suites run identically to offline mode.
 
 ## DeepEval / promptfoo Interop

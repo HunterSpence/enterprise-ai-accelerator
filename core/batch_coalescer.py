@@ -9,7 +9,7 @@ WIRING (one-liner):
     from core.batch_coalescer import BatchCoalescer, BatchableRequest
     coalescer = BatchCoalescer(ai=get_client())
     future = await coalescer.submit(BatchableRequest(
-        custom_id="job-001", model=MODEL_HAIKU_4_5,
+        custom_id="job-001", model=MODEL_HAIKU_5_5,
         system="Classify this text.", user="Cloud migration project.",
         schema={"type":"object","properties":{"label":{"type":"string"}}},
     ))

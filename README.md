@@ -188,7 +188,7 @@ All module demos run offline against synthetic fixtures — **demo mode never ca
 ┌───────────────────────────────────▼────────────────────────────────────────────┐
 │        agent_ops/ — Multi-Agent Orchestrator (retries · budgets ·              │
 │        checkpoints · human-in-the-loop approval hooks)                          │
-│        Fable 5 Coordinator · Sonnet 4.6 Reporter · Haiku 4.5 Workers           │
+│        Fable 5 Coordinator · Sonnet 4.6 Reporter · Haiku 5.5 Workers           │
 └───────────────────────────────────┬────────────────────────────────────────────┘
                                     │
           ┌─────────────────────────┼─────────────────────────┐
@@ -214,7 +214,7 @@ All module demos run offline against synthetic fixtures — **demo mode never ca
 └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Model tier:** Fable 5 (`claude-fable-5`) handles coordination and high-stakes reasoning (6R, audit-grade adaptive thinking, executive chat) — overridable to Opus 4.8. Sonnet 4.6 handles report synthesis and long-context work (1M window at 30% of flagship input price). Haiku 4.5 handles high-volume worker tasks. The model router selects the tier — and the recommended effort level — automatically by task complexity. Fable 5 safety-classifier declines fail over to Opus 4.8 server-side in the same round trip, so a refusal never takes the pipeline down.
+**Model tier:** Fable 5 (`claude-fable-5`) handles coordination and high-stakes reasoning (6R, audit-grade adaptive thinking, executive chat) — overridable to Opus 4.8. Sonnet 4.6 handles report synthesis and long-context work (1M window at 30% of flagship input price). Haiku 5.5 handles high-volume worker tasks. The model router selects the tier — and the recommended effort level — automatically by task complexity. Fable 5 safety-classifier declines fail over to Opus 4.8 server-side in the same round trip, so a refusal never takes the pipeline down.
 
 ---
 
@@ -278,7 +278,7 @@ The `core/` optimization layer applies four levers automatically:
 
 | Lever | Mechanism | Saving |
 |---|---|---|
-| **Complexity routing** | `ModelRouter` scores each task; simple tasks go to Haiku 4.5 instead of Fable 5 ($10/MTok input) | ~10× on worker-tier input |
+| **Complexity routing** | `ModelRouter` scores each task; simple tasks go to Haiku 5.5 instead of Fable 5 ($10/MTok input vs $0.10 for prompts up to 100K tokens) | ~100× on worker-tier input |
 | **Result cache** | SQLite-backed `ResultCache` returns identical results without a second API call | 100% on cache hits |
 | **Batch coalescing** | `BatchCoalescer` auto-submits accumulated requests to the Anthropic Batch API | 50% discount on batched calls |
 | **Prompt caching** | 5-min ephemeral on all system prompts; 1-hour on executive chat | large reduction on repeat pipelines |

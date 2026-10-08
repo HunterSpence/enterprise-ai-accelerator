@@ -274,6 +274,7 @@ class AnomalyDetector:
 
         try:
             import anthropic
+            from core.ai_client import response_text
             client = anthropic.Anthropic(api_key=self.api_key)
         except ImportError:
             for a in anomalies:
@@ -285,8 +286,9 @@ class AnomalyDetector:
             context = self._build_anomaly_context(anomaly, spend_data)
             try:
                 response = client.messages.create(
-                    model="claude-haiku-4-5",
+                    model="claude-haiku-5-5",
                     max_tokens=400,
+                    thinking={"type": "disabled"},  # Haiku 5.5 thinks by default; thinking shares max_tokens
                     system=(
                         "You are a senior FinOps engineer analyzing AWS cost anomalies. "
                         "Provide concise, specific root cause analysis in 2-4 sentences. "
@@ -300,7 +302,7 @@ class AnomalyDetector:
                         }
                     ],
                 )
-                anomaly.explanation = response.content[0].text.strip()
+                anomaly.explanation = response_text(response).strip()
             except Exception as exc:
                 anomaly.explanation = self._fallback_explanation(anomaly)
             explained.append(anomaly)

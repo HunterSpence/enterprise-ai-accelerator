@@ -699,7 +699,7 @@ async def root() -> str:
   <h2>Key Capabilities</h2>
   <ul>
     <li><strong>ML Classifier:</strong> GradientBoostingClassifier trained on 600 synthetic samples — 6R strategy in &lt;10ms</li>
-    <li><strong>AI Enrichment:</strong> Claude Haiku 4.5 enriches low-confidence workloads (&lt;65% confidence)</li>
+    <li><strong>AI Enrichment:</strong> Claude Haiku 5.5 enriches low-confidence workloads (&lt;65% confidence)</li>
     <li><strong>Monte Carlo:</strong> 10,000 iterations, P10/P25/P50/P75/P90 confidence intervals per wave</li>
     <li><strong>TCO:</strong> 3 scenarios (Lift &amp; Shift / Replatform / Re-architect), IRR, NPV at 8% hurdle</li>
     <li><strong>Runbooks:</strong> Claude Sonnet 4.6 with Pyramid Principle executive narrative</li>
